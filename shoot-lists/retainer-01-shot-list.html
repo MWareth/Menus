@@ -1,0 +1,558 @@
+<title>Truck Shoot One</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Cairo:wght@400;600;700;900&display=swap">
+<style>
+  :root{
+    --butter:#FFD21C; --ketchup:#F02820; --carbon:#101010; --paper:#FFF9EE;
+    --cobalt:#2452FF; --heat:#FF6A00;
+    --ink:#101010; --ink-2:#4a463e; --ink-3:#8a857a;
+    --rule:#e4dcc9; --card:#ffffff;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:Cairo,'Segoe UI',system-ui,sans-serif; font-size:16px; line-height:1.6;
+    -webkit-text-size-adjust:100%;
+  }
+  .disp{font-family:'Lilita One','Arial Black',sans-serif; font-weight:400; letter-spacing:.01em}
+  .wrap{max-width:900px; margin:0 auto; padding:0 20px}
+
+  /* header */
+  header{background:var(--carbon); color:var(--paper); padding:44px 0 0}
+  .kicker{font-size:12px; font-weight:900; letter-spacing:.22em; color:var(--butter)}
+  header h1{font-family:'Lilita One','Arial Black',sans-serif; font-weight:400;
+    font-size:clamp(38px,8vw,66px); line-height:1.02; margin:12px 0 0; text-wrap:balance}
+  header h1 em{font-style:normal; color:var(--butter)}
+  .sub{margin:14px 0 0; color:#b3aea3; max-width:56ch}
+  .facts{display:flex; flex-wrap:wrap; gap:10px; margin:26px 0 0}
+  .fact{border:1.5px solid #33312d; border-radius:999px; padding:6px 14px;
+    font-size:13px; font-weight:700; color:var(--paper)}
+  .fact b{color:var(--butter)}
+  .ticker{margin-top:32px; background:var(--butter); color:var(--carbon);
+    font-size:12px; font-weight:900; letter-spacing:.1em; padding:12px 0; overflow:hidden; white-space:nowrap}
+  .ticker div{max-width:900px; margin:0 auto; padding:0 20px; text-overflow:ellipsis; overflow:hidden}
+
+  section{padding:46px 0 0}
+  .eyebrow{font-size:12px; font-weight:900; letter-spacing:.22em; color:var(--ketchup)}
+  h2{font-family:'Lilita One','Arial Black',sans-serif; font-weight:400;
+    font-size:clamp(26px,5vw,36px); line-height:1.1; margin:10px 0 0; text-wrap:balance}
+  .lead{margin:10px 0 0; color:var(--ink-2); max-width:62ch}
+
+  /* run of day */
+  .day{margin:26px 0 0; border-top:2px solid var(--rule)}
+  .slot{display:grid; grid-template-columns:104px 1fr; gap:20px;
+    padding:16px 0; border-bottom:1px solid var(--rule); align-items:start}
+  .slot .t{font-family:'Lilita One','Arial Black',sans-serif; font-size:19px; color:var(--heat);
+    font-variant-numeric:tabular-nums; line-height:1.3}
+  .slot .t span{display:block; font-family:Cairo,sans-serif; font-size:11px; font-weight:700;
+    letter-spacing:.1em; color:var(--ink-3)}
+  .slot h3{margin:0 0 4px; font-size:17px; font-weight:900}
+  .slot p{margin:0; color:var(--ink-2); font-size:15px}
+
+  /* shots */
+  .shots{display:flex; flex-direction:column; gap:18px; margin:26px 0 0}
+  .shot{background:var(--card); border:1px solid var(--rule); border-radius:14px; overflow:hidden}
+  .shot > .top{display:grid; grid-template-columns:64px 1fr; gap:16px; padding:20px 20px 0}
+  .num{font-family:'Lilita One','Arial Black',sans-serif; font-size:40px; line-height:.9; color:var(--ketchup)}
+  .shot.reel .num{color:var(--cobalt)}
+  .shot h3{margin:0; font-size:19px; font-weight:900; line-height:1.25; text-wrap:balance}
+  .tags{display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 0}
+  .tag{font-size:11px; font-weight:900; letter-spacing:.06em; padding:4px 10px; border-radius:999px;
+    background:#f1ead9; color:#5c5849}
+  .tag.k{background:var(--ketchup); color:#fff}
+  .tag.b{background:var(--butter); color:var(--carbon)}
+  .tag.c{background:var(--cobalt); color:#fff}
+  .tag.h{background:var(--heat); color:var(--carbon)}
+  .shot .body{padding:12px 20px 0 100px; color:var(--ink-2); font-size:15px}
+  @media(max-width:620px){
+    .shot > .top{grid-template-columns:44px 1fr; gap:12px; padding:16px 16px 0}
+    .num{font-size:30px}
+    .shot .body{padding:10px 16px 0 16px}
+  }
+  .prompt{margin:16px 0 0; background:var(--carbon); color:#e8e4da; position:relative}
+  .prompt .lbl{display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:10px 16px; border-bottom:1px solid #2a2926}
+  .prompt .lbl span{font-size:11px; font-weight:900; letter-spacing:.16em; color:var(--butter)}
+  .prompt pre{margin:0; padding:14px 16px; font-family:var(--mono); font-size:12.5px;
+    line-height:1.65; white-space:pre-wrap; word-break:break-word; color:#e8e4da}
+  .prompt code{color:#e8e4da}
+  .copy{font:inherit; font-size:11px; font-weight:900; letter-spacing:.1em;
+    background:transparent; color:var(--paper); border:1.5px solid #44423d; border-radius:999px;
+    padding:5px 12px; cursor:pointer}
+  .copy:hover{border-color:var(--butter); color:var(--butter)}
+  .copy:focus-visible{outline:2px solid var(--butter); outline-offset:2px}
+
+  /* kit + notes */
+  .cols{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin:24px 0 0}
+  @media(max-width:700px){.cols{grid-template-columns:1fr}}
+  .box{background:var(--card); border:1px solid var(--rule); border-radius:14px; padding:22px}
+  .box.dark{background:var(--carbon); color:var(--paper); border-color:var(--carbon)}
+  .box h3{margin:0 0 12px; font-size:17px; font-weight:900}
+  .box.dark h3{color:var(--butter)}
+  .box ul{margin:0; padding:0 0 0 18px; color:var(--ink-2); font-size:15px}
+  .box.dark ul{color:#b3aea3}
+  .box li{margin:0 0 7px}
+  .box li b{color:var(--ink)}
+  .box.dark li b{color:var(--paper)}
+
+  .pending{background:var(--butter); color:var(--carbon); border-radius:14px; padding:24px; margin:24px 0 0}
+  .pending h3{margin:0 0 8px; font-size:18px; font-weight:900}
+  .pending p{margin:0 0 10px; font-size:15px}
+  .pending p:last-child{margin:0}
+  .pending code{font-family:var(--mono); font-size:13px; background:rgba(16,16,16,.12);
+    padding:2px 6px; border-radius:4px}
+
+  footer{margin:56px 0 0; background:var(--carbon); color:var(--paper); padding:30px 0}
+  footer .wrap{display:flex; flex-wrap:wrap; gap:14px; justify-content:space-between; align-items:baseline}
+  footer .t{font-family:'Lilita One','Arial Black',sans-serif; font-size:22px; color:var(--butter)}
+  footer .m{font-size:12px; font-weight:700; letter-spacing:.1em; color:#8a8a84}
+</style>
+
+<header>
+  <div class="wrap">
+    <div class="kicker">RETAINER MONTH 01 &middot; SHOT LIST</div>
+    <h1>SHOOT THE TRUCK<br><em>LIKE IT'S BUSY.</em></h1>
+    <p class="sub">One session at the truck. Everything below is built to come home with
+      12 finished photos and 4 vertical reels &mdash; and to look like a Friday night, not a set.</p>
+    <div class="facts">
+      <div class="fact"><b>6 hrs</b> on location</div>
+      <div class="fact"><b>12</b> edited photos</div>
+      <div class="fact"><b>4</b> vertical reels</div>
+      <div class="fact"><b>8</b> designed assets after</div>
+      <div class="fact">Hard flash &middot; true color</div>
+    </div>
+  </div>
+  <div class="ticker"><div>REAL MESS &nbsp;~&nbsp; HARD FLASH &nbsp;~&nbsp; TRUE COLOR &nbsp;~&nbsp; CLOSE ENOUGH TO GRAB &nbsp;~&nbsp; DEE'SERTS ARE NOT OPTIONAL</div></div>
+</header>
+
+<div class="wrap">
+
+  <section>
+    <div class="eyebrow">HOW THE DAY RUNS</div>
+    <h2>LIGHT DECIDES THE ORDER</h2>
+    <p class="lead">Food first while the kitchen is calm and the grill is clean, exterior last when the
+      truck lights beat the sky. Blue hour is the one slot that cannot move &mdash; it lasts about
+      25 minutes, so everything before it is timed to protect it.</p>
+
+    <div class="day">
+      <div class="slot">
+        <div class="t">0:00<span>30 MIN</span></div>
+        <div><h3>Set up and clean down</h3>
+          <p>Wipe the serving window and counter edges, kill stray tape and stickers, lay props by color,
+            tape a white card inside the window for bounce. Test flash against the truck's own signage.</p></div>
+      </div>
+      <div class="slot">
+        <div class="t">0:30<span>90 MIN</span></div>
+        <div><h3>Hero food on the counter</h3>
+          <p>Shots 01&ndash;05. Kitchen builds one dish at a time; shoot each within 90 seconds of the pass.
+            Two builds per item &mdash; the first is a rehearsal, the second is the frame.</p></div>
+      </div>
+      <div class="slot">
+        <div class="t">2:00<span>60 MIN</span></div>
+        <div><h3>Hands, griddle and the pass</h3>
+          <p>Shots 06&ndash;08 plus reels R1 and R2. Crew in brand tees, no watches, clean hands.
+            Shoot the smash sequence at least four times &mdash; the sizzle only reads once the griddle is right.</p></div>
+      </div>
+      <div class="slot">
+        <div class="t">3:00<span>45 MIN</span></div>
+        <div><h3>Dee'serts block</h3>
+          <p>Shot 09 and reel R3. Desserts arrive cold and go back cold &mdash; shoot this in one tight
+            block, not spread through the day.</p></div>
+      </div>
+      <div class="slot">
+        <div class="t">3:45<span>45 MIN</span></div>
+        <div><h3>Reset, eat, reload cards</h3>
+          <p>Back up everything shot so far to two drives. Re-dress the truck for evening: lights on,
+            menu board lit, bin emptied, floor swept.</p></div>
+      </div>
+      <div class="slot">
+        <div class="t">4:30<span>60 MIN</span></div>
+        <div><h3>Blue hour exterior</h3>
+          <p>Shots 10&ndash;12 and reel R4. Start 20 minutes before sunset and keep shooting past it.
+            This is the block that sells the brand &mdash; protect it.</p></div>
+      </div>
+      <div class="slot">
+        <div class="t">5:30<span>30 MIN</span></div>
+        <div><h3>Queue, crowd and buffer</h3>
+          <p>Real customers if the truck is trading, friends in frame if not. Also the catch-all for
+            anything the light or the kitchen stole earlier.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">THE 12 PHOTOS</div>
+    <h2>EVERY FRAME HAS A JOB</h2>
+    <p class="lead">Each shot below carries a Midjourney prompt. These are for the mood board and the
+      pre-light &mdash; you show the crew what the frame should feel like before the food is on the pass.
+      They are references, never the delivered asset.</p>
+
+    <div class="shots">
+
+      <div class="shot">
+        <div class="top">
+          <div class="num">01</div>
+          <div>
+            <h3>Oklahoma Onion, straight on</h3>
+            <div class="tags"><span class="tag k">HERO</span><span class="tag">4:5</span><span class="tag">MENU + DELIVERY</span></div>
+          </div>
+        </div>
+        <div class="body">The signature. Shot at burger height, not from above &mdash; the crushed onion
+          edge and the cheese skirt are the whole story. Grease sheen stays in.</div>
+        <div class="prompt">
+          <div class="lbl"><span>MIDJOURNEY</span><button class="copy" type="button">COPY</button></div>
+          <pre><code>extreme close-up of a smashed beef burger on a dark counter, crispy caramelized onion edges pressed into the patty, melted american cheese skirt, toasted brioche, direct on-camera flash, harsh shadow behind, glossy grease highlights, matte black food truck interior blurred behind, saturated yellow and red brand props, documentary food photography, 50mm, true color, gritty realism --ar 4:5 --style raw --v 7</code></pre>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="top">
+          <div class="num">02</div>
+          <div>
+            <h3>Loaded Smash fries, overhead</h3>
+            <div class="tags"><span class="tag k">HERO</span><span class="tag">1:1</span><span class="tag">DELIVERY APPS</span></div>
+          </div>
+        </div>
+        <div class="body">The only flat-lay in the set. Square crop so it survives the delivery apps
+          without a re-frame. Sauce goes on in frame, on the last take.</div>
+        <div class="prompt">
+          <div class="lbl"><span>MIDJOURNEY</span><button class="copy" type="button">COPY</button></div>
+          <pre><code>overhead flat lay of loaded fries in a red paper tray, smashed beef pieces, molten cheese sauce being poured, grilled onions, on a scratched stainless steel counter, direct hard flash, deep shadows, ultra saturated color, yellow and red packaging, street food truck, food photography, top down, true color --ar 1:1 --style raw --v 7</code></pre>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="top">
+          <div class="num">03</div>
+          <div>
+            <h3>Hot Smash with steam</h3>
+            <div class="tags"><span class="tag h">SPICY</span><span class="tag">4:5</span><span class="tag">SOCIAL</span></div>
+          </div>
+        </div>
+        <div class="body">Jalape&ntilde;os and steam. Backlight the steam with a bare speedlight camera-left
+          so it reads against the dark truck interior; flash still front-on for the food.</div>
+        <div class="prompt">
+          <div class="lbl"><span>MIDJOURNEY</span><button class="copy" type="button">COPY</button></div>
+          <pre><code>close-up of a spicy smash burger with sliced jalapenos and orange chili sauce, visible steam rising backlit against a dark background, direct flash on the food, wet glossy texture, red and orange accents, matte black surface, street food photography, shallow depth of field, true color, hard shadows --ar 4:5 --style raw --v 7</code></pre>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="top">
+          <div class="num">04</div>
+          <div>
+            <h3>The stack &mdash; double, cut</h3>
+            <div class="tags"><span class="tag k">HERO</span><span class="tag">4:5</span><span class="tag">CAMPAIGN</span></div>
+          </div>
+        </div>
+        <div class="body">One clean cross-section, cut with a hot knife right before the frame.
+          This is the image that ends up on the board and the poster, so shoot it wide enough to crop three ways.</div>
+        <div class="prompt">
+          <div class="lbl"><span>MIDJOURNEY</span><button class="copy" type="button">COPY</button></div>
+          <pre><code>cross section of a double smash burger cut clean in half, two thin crispy patties, melted cheese pulling, sauce dripping down the side, held upright on a dark counter, direct flash photography, harsh shadow, extreme detail on meat crust and sesame bun, saturated brand yellow background card, commercial food photography, true color --ar 4:5 --style raw --v 7</code></pre>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="top">
+          <div class="num">05</div>
+          <div>
+            <h3>Combo on the counter ledge</h3>
+            <div class="tags"><span class="tag b">COMBOS</span><span class="tag">4:5</span><span class="tag">MENU</span></div>
+          </div>
+        </div>
+        <div class="body">Burger, fries and a drink together on the truck's own serving ledge &mdash;
+          the frame that makes the combos card on the menu board real. Keep the truck edge in shot.</div>
+        <div class="prompt">
+          <div class="lbl"><span>MIDJOURNEY</span><button class="copy" type="button">COPY</button></div>
+          <pre><code>a burger, a tray of fries and a cold drink arranged on the stainless serving ledge of a food truck window, night, direct flash, hard shadows falling on the truck body, yellow signage glowing out of focus behind, saturated red and yellow packaging, street food documentary photography, 35mm, true color --ar 4:5 --style raw --v 7</code></pre>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="top">
+          <div class="num">06</div>
+          <div>
+            <h3>The smash &mdash; spatula on the griddle</h3>
+            <div class="tags"><span class="tag k">ACTION</span><span class="tag">4:5</span><span class="tag">SOCIAL</span></div>
+          </div>
+        </div>
+        <div class="body">The brand name, literally. Shoot low across the griddle so the press throws
+          smoke toward camera. Freeze it with flash &mdash; blur ruins it.</div>
+        <div class="prompt">
+          <div class="lbl"><span>MIDJOURNEY</span><button class="copy" type="button">COPY</button></div>
+          <pre><code>cooks hands pressing a ball of beef flat onto a scorching flat top griddle with a heavy metal spatula, smoke and steam bursting sideways, sizzling fat spitting, frozen by direct flash, low angle across the griddle, dark food truck kitchen, orange heat glow, black apron, gritty documentary photography, motion frozen, true color --ar 4:5 --style raw --v 7</code></pre>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="top">
+          <div class="num">07</div>
+          <div>
+            <h3>The pass &mdash; handed through the window</h3>
+            <div class="tags"><span class="tag k">ACTION</span><span class="tag">4:5</span><span class="tag">HERO SOCIAL</span></div>
+          </div>
+        </div>
+        <div class="body">Shot from outside, looking in. Cook's hand in the light of the truck, customer's
+          hand entering frame. Half the brand name is this gesture &mdash; give it three variations.</div>
+        <div class="prompt">
+          <div class="lbl"><span>MIDJOURNEY</span><button class="copy" type="button">COPY</button></div>
+          <pre><code>view from outside a food truck at night looking into the lit serving window, a cooks hand passing a wrapped burger out to a waiting customers hand, warm interior light, direct flash from outside, deep black night around the window frame, yellow signage, steam, street food documentary photography, 35mm, true color, high contrast --ar 4:5 --style raw --v 7</code></pre>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="top">
+          <div class="num">08</div>
+          <div>
+            <h3>Sauce macro</h3>
+            <div class="tags"><span class="tag">TEXTURE</span><span class="tag">1:1</span><span class="tag">DESIGN FILLER</span></div>
+          </div>
+        </div>
+        <div class="body">The texture frame that fills backgrounds for the 8 designed assets.
+          Shoot two: one Smash sauce, one cheese pull. No composition, just surface.</div>
+        <div class="prompt">
+          <div class="lbl"><span>MIDJOURNEY</span><button class="copy" type="button">COPY</button></div>
+          <pre><code>extreme macro of thick burger sauce and melted cheese dripping, glossy wet texture, tiny bubbles, direct ring flash, ultra saturated cream and red, filling the entire frame, abstract food texture, high detail, true color --ar 1:1 --style raw --v 7</code></pre>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="top">
+          <div class="num">09</div>
+          <div>
+            <h3>Dee'serts first</h3>
+            <div class="tags"><span class="tag k">DEE'S</span><span class="tag">4:5</span><span class="tag">PARTNER</span></div>
+          </div>
+        </div>
+        <div class="body">San Sebastian slice and the brownie bag, shot on the truck ledge so it reads
+          as one menu, not a guest slot. Softer than the burger frames &mdash; flash bounced, not direct.</div>
+        <div class="prompt">
+          <div class="lbl"><span>MIDJOURNEY</span><button class="copy" type="button">COPY</button></div>
+          <pre><code>a slice of burnt basque cheesecake with a caramelized top beside a paper bag of fudgy brownies, on a dark food truck counter at night, bounced flash, soft highlight with a hard shadow edge, cream and deep brown tones with one red accent, dessert photography, close crop, true color --ar 4:5 --style raw --v 7</code></pre>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="top">
+          <div class="num">10</div>
+          <div>
+            <h3>The truck, blue hour, wide</h3>
+            <div class="tags"><span class="tag b">THE MONEY SHOT</span><span class="tag">4:5 + 16:9</span><span class="tag">PROFILE</span></div>
+          </div>
+        </div>
+        <div class="body">Three-quarter angle, truck lights on, sky still deep blue. This becomes the
+          profile picture, the cover and the header. Shoot it on a tripod and bracket it.</div>
+        <div class="prompt">
+          <div class="lbl"><span>MIDJOURNEY</span><button class="copy" type="button">COPY</button></div>
+          <pre><code>a black street food truck at blue hour, three quarter angle, serving window glowing warm yellow, bold yellow signage lit up, deep blue sky above, wet asphalt reflecting the light, small queue of people silhouetted, urban Dubai street at night, cinematic documentary photography, 35mm, saturated true color, high contrast --ar 4:5 --style raw --v 7</code></pre>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="top">
+          <div class="num">11</div>
+          <div>
+            <h3>Signage detail, lit</h3>
+            <div class="tags"><span class="tag b">BRAND</span><span class="tag">1:1</span><span class="tag">DESIGN FILLER</span></div>
+          </div>
+        </div>
+        <div class="body">Tight on the logo and the menu board glow. Shot after dark so the yellow
+          burns against black &mdash; the frame every designed asset gets to sit on.</div>
+        <div class="prompt">
+          <div class="lbl"><span>MIDJOURNEY</span><button class="copy" type="button">COPY</button></div>
+          <pre><code>tight detail of bold yellow signage on a matte black food truck panel at night, lit menu board glowing beside it, rivets and worn paint texture, direct flash raking across the surface, pure black background, saturated yellow, graphic composition, true color --ar 1:1 --style raw --v 7</code></pre>
+        </div>
+      </div>
+
+      <div class="shot">
+        <div class="top">
+          <div class="num">12</div>
+          <div>
+            <h3>The queue</h3>
+            <div class="tags"><span class="tag">LIFESTYLE</span><span class="tag">4:5</span><span class="tag">SOCIAL PROOF</span></div>
+          </div>
+        </div>
+        <div class="body">People eating standing up, truck glowing behind them, faces mid-bite and not
+          posing. Get releases signed before you shoot, not after.</div>
+        <div class="prompt">
+          <div class="lbl"><span>MIDJOURNEY</span><button class="copy" type="button">COPY</button></div>
+          <pre><code>young people standing on a street at night eating burgers out of paper wrappers, laughing mid bite, a glowing food truck window behind them out of focus, direct on-camera flash, harsh flash shadows, candid unposed street photography, saturated color, film flash aesthetic, true color --ar 4:5 --style raw --v 7</code></pre>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">THE 4 REELS</div>
+    <h2>VERTICAL, LOUD, UNDER TEN SECONDS</h2>
+    <p class="lead">Each reel is one action shot in sequence &mdash; not a montage of everything.
+      Shoot every one at 60fps so it can be slowed, and capture clean audio of the griddle;
+      the sizzle carries these more than the picture does.</p>
+
+    <div class="shots">
+
+      <div class="shot reel">
+        <div class="top">
+          <div class="num">R1</div>
+          <div>
+            <h3>The Smash</h3>
+            <div class="tags"><span class="tag c">REEL</span><span class="tag">9:16</span><span class="tag">8 SEC</span></div>
+          </div>
+        </div>
+        <div class="body">Ball drops &rarr; spatula presses &rarr; smoke bursts &rarr; scrape &rarr; flip.
+          Locked-off low angle, one continuous take, no cuts. The whole brand in eight seconds.</div>
+        <div class="prompt">
+          <div class="lbl"><span>MIDJOURNEY</span><button class="copy" type="button">COPY</button></div>
+          <pre><code>vertical frame, low angle across a hot flat top griddle inside a dark food truck, a beef ball being pressed flat by a metal spatula, thick smoke and sizzling fat, orange heat glow on steel, hands in black gloves, frozen action, cinematic documentary still, saturated true color, high contrast --ar 9:16 --style raw --v 7</code></pre>
+        </div>
+      </div>
+
+      <div class="shot reel">
+        <div class="top">
+          <div class="num">R2</div>
+          <div>
+            <h3>The Pass</h3>
+            <div class="tags"><span class="tag c">REEL</span><span class="tag">9:16</span><span class="tag">6 SEC</span></div>
+          </div>
+        </div>
+        <div class="body">Customer POV walking up to the window, hand reaches in, burger comes out,
+          first bite. Shot on a gimbal in one move &mdash; the walk-up is what makes it feel real.</div>
+        <div class="prompt">
+          <div class="lbl"><span>MIDJOURNEY</span><button class="copy" type="button">COPY</button></div>
+          <pre><code>vertical point of view shot walking up to a glowing food truck serving window at night, hands reaching out to receive a wrapped burger, warm light spilling from the window into dark street, motion blur at the edges, first person perspective, street food at night, saturated color, cinematic --ar 9:16 --style raw --v 7</code></pre>
+        </div>
+      </div>
+
+      <div class="shot reel">
+        <div class="top">
+          <div class="num">R3</div>
+          <div>
+            <h3>Dee'serts First</h3>
+            <div class="tags"><span class="tag c">REEL</span><span class="tag">7 SEC</span><span class="tag">PARTNER</span></div>
+          </div>
+        </div>
+        <div class="body">Spoon cracks the br&ucirc;l&eacute;e top, then a slow tilt to the San Sebastian.
+          The one soft moment in the month's content &mdash; let it breathe, no fast cuts.</div>
+        <div class="prompt">
+          <div class="lbl"><span>MIDJOURNEY</span><button class="copy" type="button">COPY</button></div>
+          <pre><code>vertical close up of a spoon cracking through the caramelized sugar top of a creme brulee, shards breaking, soft custard beneath, dark moody background with one warm light, shallow depth of field, dessert film still, rich cream and amber tones, true color --ar 9:16 --style raw --v 7</code></pre>
+        </div>
+      </div>
+
+      <div class="shot reel">
+        <div class="top">
+          <div class="num">R4</div>
+          <div>
+            <h3>The Truck Comes Alive</h3>
+            <div class="tags"><span class="tag c">REEL</span><span class="tag">9:16</span><span class="tag">TIMELAPSE</span></div>
+          </div>
+        </div>
+        <div class="body">Locked tripod through blue hour: sky drains, lights kick on, first customer
+          arrives. Start it 40 minutes before sunset &mdash; you only get this once per shoot day.</div>
+        <div class="prompt">
+          <div class="lbl"><span>MIDJOURNEY</span><button class="copy" type="button">COPY</button></div>
+          <pre><code>vertical wide shot of a black food truck on a city street as the sky turns from dusk to night, interior and sign lights switching on, deep blue sky fading to black, warm yellow glow spilling onto pavement, a person approaching the window, long exposure feel, cinematic urban night, saturated true color --ar 9:16 --style raw --v 7</code></pre>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">BEFORE YOU DRIVE OUT</div>
+    <h2>KIT, PROPS AND THE RULES</h2>
+
+    <div class="cols">
+      <div class="box">
+        <h3>Kit</h3>
+        <ul>
+          <li><b>Two speedlights</b> &mdash; one on camera bare for the flash look, one off to backlight steam</li>
+          <li><b>35mm and 50mm</b> &mdash; the whole list shoots on these two</li>
+          <li><b>Tripod</b> for shots 10 and R4</li>
+          <li><b>White and black cards</b> &mdash; bounce inside the window, negative fill outside</li>
+          <li><b>Spray bottle</b> (water + glycerin) for drink condensation</li>
+          <li><b>Two drives</b> &mdash; back up at the 3:45 reset, not at the end</li>
+        </ul>
+      </div>
+      <div class="box">
+        <h3>Props, in brand color</h3>
+        <ul>
+          <li><b>Butter yellow</b> trays and background cards</li>
+          <li><b>Ketchup red</b> paper wraps and sauce cups</li>
+          <li><b>Carbon</b> counter surface &mdash; the truck's own steel works if clean</li>
+          <li>Branded napkins, one loud sticker per frame &mdash; never two</li>
+          <li>Crew in plain black tees, no watches, short nails</li>
+          <li>Nothing on the counter that is not in the six-color palette</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="box dark" style="margin-top:18px">
+      <h3>The three rules that hold the look together</h3>
+      <ul>
+        <li><b>Hard flash, always front.</b> Direct on-camera flash is the signature. If a frame
+          looks soft and pretty, it is off brand &mdash; put the light back on the lens.</li>
+        <li><b>True color, no grading toward orange.</b> Set a grey card at the top of each block.
+          The palette does the work; the grade should not invent a mood.</li>
+        <li><b>One chaotic element per frame.</b> A drip, a crumb, a bitten edge, spilled fries.
+          One. Two reads as a mess, none reads as a stock photo.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <div class="pending">
+      <h3>Once the truck photos land</h3>
+      <p>These prompts describe a generic black-and-yellow truck because I have not seen yours yet
+        &mdash; the photos did not come through with your message. Send them and I will rewrite
+        every exterior prompt around the real vehicle: its actual color, window position, signage
+        placement and the surface it parks on.</p>
+      <p>They also unlock the better Midjourney method: paste a photo URL of the truck at the
+        <em>front</em> of the prompt as an image reference, or use <code>--sref</code> with a frame
+        you like, so the generated boards show <em>your</em> truck instead of a stand-in. That turns
+        this from a mood board into a genuine pre-visualisation the crew can match on the day.</p>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="t">SAY LESS, ADD FRIES.</div>
+    <div class="m">SMASH &amp; PASS &times; DEE'S TREATS &middot; RETAINER SHOOT 01</div>
+  </div>
+</footer>
+
+<script>
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var pre = btn.closest(".prompt").querySelector("code");
+      var text = pre ? pre.textContent : "";
+      var done = function () {
+        var old = btn.textContent;
+        btn.textContent = "COPIED";
+        setTimeout(function () { btn.textContent = old; }, 1400);
+      };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done, function () {});
+          return;
+        }
+      } catch (e) {}
+      try {
+        var ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        done();
+      } catch (e) {}
+    });
+  });
+</script>
