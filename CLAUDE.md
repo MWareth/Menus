@@ -39,11 +39,33 @@ props. Real mess / hard flash / true color. Food should feel close enough to gra
 "ERTS" in Lilita, brown `#543521`). Logo assets: `smash-n-pass-brand-deck/logo.png`
 and `dees-mark.png`.
 
+## The truck (reference photos in `shoot-lists/location/`)
+
+A **butter-yellow trailer**, not black — dark red type on the yellow body, warm LED
+rope light outlining the service side as a rounded rectangle with bulb dots, roof-mounted
+3D yellow channel letters (`SMASH [red burger] PASS`) on a black backing board.
+Black-framed serving window with a stainless ledge; stainless extraction hood visible inside.
+Side copy reads `BURGERS / PASTA / FRIES`.
+
+**Location:** a Dubai community park — artificial green turf, wooden picket fence, trees,
+festoon bulbs strung overhead. Warm and family-facing, not a gritty street corner.
+Yellow-against-green is the site's strongest contrast.
+
+**Tagline ticker painted along the bottom of the truck** (the caption bank — reuse these,
+don't invent new lines):
+LOWKEY HUNGRY · HIGHKEY OBSESSED · THIS HITS DIFFERENT · ATE, LEFT NO CRUMBS ·
+SAY LESS, ADD FRIES · MAIN CHARACTER MEAL · FOR THE PLOT · NO CAP, THIS SLAPS ·
+IT'S GIVING EXTRA SAUCE · NO THOUGHTS, JUST FRIES · RENT-FREE IN YOUR CRAVINGS
+
+**Shooting there:** the yellow body throws a heavy color cast on food — custom white
+balance, ½ CTO on the key, black card to cut the bounce. Blue hour is the money window.
+
 ## Work in this repo
 
 - `brand/` — the proposal (source of truth for all visuals)
 - `smash-n-pass-brand-deck/` — 8-slide brand & menu presentation
 - `smash-and-pass-x-dees-treats/` — the 50/50 dessert menu and font studies
+- `shoot-lists/` — retainer shoot 01 shot list + truck reference photos
 
 ## House rules
 
