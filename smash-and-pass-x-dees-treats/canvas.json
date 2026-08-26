@@ -1,11 +1,20 @@
 {
+  "pages": [
+    { "id": "page-1", "name": "Menu" },
+    { "id": "page-2", "name": "Type" }
+  ],
   "artboards": [
-    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 794, "h": 1123, "title": "The 50/50 Split" },
-    { "file": "DirectionB.dc.html", "x": 914, "y": 0, "w": 794, "h": 1123, "title": "B - One Shared Board" },
-    { "file": "DirectionC.dc.html", "x": 1828, "y": 0, "w": 794, "h": 1123, "title": "C - Stacked Halves" }
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 794, "h": 1123, "title": "The 50/50 Split", "page": "page-1" },
+    { "file": "DirectionB.dc.html", "x": 914, "y": 0, "w": 794, "h": 1123, "title": "B - One Shared Board", "page": "page-1" },
+    { "file": "DirectionC.dc.html", "x": 1828, "y": 0, "w": 794, "h": 1123, "title": "C - Stacked Halves", "page": "page-1" },
+    { "file": "TypeA.dc.html", "x": 0, "y": 0, "w": 640, "h": 430, "title": "Type A - Carnival Loud", "page": "page-2" },
+    { "file": "TypeB.dc.html", "x": 760, "y": 0, "w": 640, "h": 430, "title": "Type B - Bakery Soft", "page": "page-2" },
+    { "file": "TypeC.dc.html", "x": 0, "y": 570, "w": 640, "h": 430, "title": "Type C - Retro Diner", "page": "page-2" },
+    { "file": "TypeD.dc.html", "x": 760, "y": 570, "w": 640, "h": 430, "title": "Type D - Two Voices", "page": "page-2" }
   ],
   "annotations": [
-    { "id": "concept-note", "x": -330, "y": 0, "w": 270, "text": "MAIN (left): the 50/50 split menu - each brand gets one half of the sheet, torn down the middle.\n\nItem names and prices are sample copy - click any line to retype it. The [ADDRESS] / [INSTAGRAM] / [PHONE] slots in the footer are yours to fill.\n\nB and C are rough alternates: one shared board, or stacked halves. Tell me which direction you like and I will build it out fully." }
+    { "id": "concept-note", "x": -330, "y": 0, "w": 270, "page": "page-1", "text": "MAIN (left): the 50/50 split menu - each brand gets one half of the sheet, torn down the middle.\n\nItem names and prices are sample copy - click any line to retype it. The [ADDRESS] / [INSTAGRAM] / [PHONE] slots in the footer are yours to fill.\n\nB and C are rough alternates: one shared board, or stacked halves. Tell me which direction you like and I will build it out fully." },
+    { "id": "type-note", "x": -330, "y": 0, "w": 270, "page": "page-2", "text": "Four font directions for the brand, each shown as a real menu specimen.\n\nA is what the menu uses today. D gives each brand its own voice - slab for Smash and Pass, hand-painted script for Dee's - tied together by one body face.\n\nTell me the letter you like and I will apply it across the whole menu. (Use the pages menu in the toolbar to flip back to the Menu page.)" }
   ],
-  "launch": { "view": "canvas" }
+  "launch": { "view": "canvas", "page": "page-2" }
 }
