@@ -1,0 +1,11 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 794, "h": 1123, "title": "The 50/50 Split" },
+    { "file": "DirectionB.dc.html", "x": 914, "y": 0, "w": 794, "h": 1123, "title": "B - One Shared Board" },
+    { "file": "DirectionC.dc.html", "x": 1828, "y": 0, "w": 794, "h": 1123, "title": "C - Stacked Halves" }
+  ],
+  "annotations": [
+    { "id": "concept-note", "x": -330, "y": 0, "w": 270, "text": "MAIN (left): the 50/50 split menu - each brand gets one half of the sheet, torn down the middle.\n\nItem names and prices are sample copy - click any line to retype it. The [ADDRESS] / [INSTAGRAM] / [PHONE] slots in the footer are yours to fill.\n\nB and C are rough alternates: one shared board, or stacked halves. Tell me which direction you like and I will build it out fully." }
+  ],
+  "launch": { "view": "canvas" }
+}
