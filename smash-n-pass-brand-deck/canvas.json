@@ -1,0 +1,16 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html",     "x": 0,    "y": 0,    "w": 1280, "h": 720, "title": "01 - Cover" },
+    { "file": "Route.dc.html",    "x": 1400, "y": 0,    "w": 1280, "h": 720, "title": "02 - The Route" },
+    { "file": "Colors.dc.html",   "x": 2800, "y": 0,    "w": 1280, "h": 720, "title": "03 - The Colors" },
+    { "file": "Type.dc.html",     "x": 4200, "y": 0,    "w": 1280, "h": 720, "title": "04 - The Type" },
+    { "file": "Voice.dc.html",    "x": 0,    "y": 880,  "w": 1280, "h": 720, "title": "05 - The Voice" },
+    { "file": "Board.dc.html",    "x": 1400, "y": 880,  "w": 1280, "h": 720, "title": "06 - The Board" },
+    { "file": "Deeserts.dc.html", "x": 2800, "y": 880,  "w": 1280, "h": 720, "title": "07 - dee'serts" },
+    { "file": "Next.dc.html",     "x": 4200, "y": 880,  "w": 1280, "h": 720, "title": "08 - What's Left" }
+  ],
+  "annotations": [
+    { "id": "deck-note", "x": -360, "y": 0, "w": 300, "text": "Brand and menu deck - 8 slides at 1280x720, read left to right, top row then bottom.\n\nBuilt on the locked brand: Route 01 Messy Editorial 70/20/10, the six-color palette, Lilita One headers on Archivo.\n\nThe cover uses the real logo and Dee's mark. [DATE] on slide 01 and the combo prices on slide 08 are the open slots.\n\nExport PDF from the toolbar gives you all eight slides in one file." }
+  ],
+  "launch": { "view": "canvas" }
+}
