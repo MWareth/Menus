@@ -6,13 +6,19 @@ Single self-contained page. State lives in the `<script id="app-state">` JSON bl
 write republishes the whole page via the `artifact` capability, so all viewers share one record.
 
 ## How it works
-- **Deliveries** (Dee's side) — qty, cost/unit, made-on date. Locks on save; price, cost and
-  shelf life are *snapshotted* onto the batch so later Setup edits never rewrite history.
+- **Recipes** (Dee's side) — cost is built per whole batch (tray/cake) from supermarket pack
+  prices: `line = recipe qty / pack qty × pack price`. Yield (pieces per batch ÷ pieces per
+  portion) gives portions; `unit cost = batch cost / portions + packaging`. Live recalculation
+  as you type; saved only on demand.
+- **Deliveries** (Dee's side) — logged in whole batches ("2 trays"), converted to portions
+  automatically. Locks on save; unit price, unit cost and shelf life are *snapshotted* onto the
+  batch so later recipe edits never rewrite history.
 - **Sales** (truck side) — append-only entries against a batch. Cannot oversell.
 - **Expiry** — per-item shelf life (default 2 days). Batch expires on `madeOn + shelf`.
   Status: IN DATE / EXPIRES TOMORROW / LAST DAY / EXPIRED. Unsold at expiry = waste.
 - **Money** — revenue, cost, profit, waste, and the configurable split (% and profit-vs-revenue basis).
-- **Setup** (admin) — items, prices, ingredient costs, shelf life, team, PINs, split, housekeeping.
+- **Setup** (admin) — item names, prices, shelf life, team, PINs, split, housekeeping.
+  (Ingredients, yield and packaging live on the Recipes tab.)
 
 ## Roles
 | Role | Deliveries | Sales | Setup |
@@ -29,6 +35,12 @@ write republishes the whole page via the `artifact` capability, so all viewers s
   opened to see them.
 - **One writer at a time.** Concurrent saves conflict; the loser reloads to the winner's version.
 - Seed PINs are all `1234` — change them in Setup before sharing.
+
+## Costing reference
+Lazy Cake is seeded from the real sheet: batch AED 123.51, 26 pcs @ 2 pcs/portion = 13 portions,
+AED 9.50 ingredient + 0.25 packaging = 9.75/unit, sells 26 → 16.25 profit, 62.5% margin.
+**Open question:** the menu board says Lazy Cake is *4 pcs* per portion; the cost sheet says 2.
+At 4 pcs the yield halves to 6.5 portions and margin drops to ~26%.
 
 ## Editing
 Edit `index.html`, republish to the same artifact URL. Note the page rewrites its own source on

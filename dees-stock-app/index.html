@@ -159,6 +159,27 @@
   .sp .v{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:25px;margin-top:3px}
   .subhead{font-size:12px;font-weight:900;letter-spacing:.14em;color:var(--ink-3);
     margin:22px 0 10px;padding-top:4px;border-top:1px solid var(--line)}
+  /* ---------- recipe editor ---------- */
+  .ing{display:grid;grid-template-columns:1fr 78px 58px 86px 78px 92px 40px;gap:8px;align-items:end;margin-bottom:8px}
+  .ing input{border:1.5px solid var(--line);border-radius:9px;padding:9px 10px;min-height:42px;width:100%;background:#fff}
+  .ing input:focus{outline:2px solid var(--gold);outline-offset:-1px;border-color:var(--gold)}
+  .ing .lbl{font-size:10px;font-weight:900;letter-spacing:.09em;color:var(--ink-3);display:block;margin-bottom:4px}
+  .ing .out{background:var(--shade);border:1.5px solid var(--line);border-radius:9px;padding:9px 10px;
+    min-height:42px;display:flex;align-items:center;justify-content:flex-end;font-weight:900;color:var(--brown)}
+  .ing .x{background:none;border:1.5px solid var(--line);border-radius:9px;min-height:42px;color:var(--ink-3);font-weight:900}
+  .ing .x:hover{border-color:#F0B6B0;color:var(--bad)}
+  @media(max-width:760px){
+    .ing{grid-template-columns:1fr 1fr;gap:8px}
+    .ing .out{justify-content:flex-start}
+  }
+  .costcard{background:var(--char);color:var(--paper);border-radius:12px;padding:16px;margin-top:14px}
+  .costcard .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:12px}
+  .cc{text-align:center}
+  .cc .k{font-size:10px;font-weight:900;letter-spacing:.1em;color:#8C8279}
+  .cc .v{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:19px;margin-top:3px}
+  .cc.good .v{color:#7BD69B} .cc.bad .v{color:#FF8D82} .cc.hi .v{color:var(--butter)}
+  .recipe-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .recipe-h h3{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:20px;margin:0}
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -171,15 +192,29 @@
   "split": { "deesPct": 50, "basis": "profit" },
   "defaultShelf": 2,
   "items": [
-    { "id": "i1", "name": "Lazy Cake", "note": "4 pcs", "price": 26, "cost": null, "shelf": 2, "active": true },
-    { "id": "i2", "name": "San Sebastian", "note": "slice", "price": 26, "cost": null, "shelf": 2, "active": true },
-    { "id": "i3", "name": "Crème Brûlée", "note": "", "price": 20, "cost": null, "shelf": 2, "active": true },
-    { "id": "i4", "name": "Brownie Bag", "note": "", "price": 26, "cost": null, "shelf": 2, "active": true },
-    { "id": "i5", "name": "Mini Pavlova", "note": "weekends only", "price": 60, "cost": null, "shelf": 1, "active": true }
+    { "id": "i1", "name": "Lazy Cake", "note": "", "price": 26, "shelf": 2, "active": true,
+      "batchWord": "tray", "yieldPieces": 26, "perPortion": 2, "packaging": 0.25,
+      "recipe": [
+        { "n": "Leibniz biscuits", "q": 500, "u": "g",  "pp": 14.29, "pq": 200 },
+        { "n": "Milk",             "q": 250, "u": "ml", "pp": 9.91,  "pq": 1000 },
+        { "n": "Sugar",            "q": 120, "u": "g",  "pp": 5.5,   "pq": 1000 },
+        { "n": "Vanilla",          "q": 20,  "u": "g",  "pp": 3.78,  "pq": 20 },
+        { "n": "Cocoa powder",     "q": 60,  "u": "g",  "pp": 15.3,  "pq": 100 },
+        { "n": "Lurpak butter",    "q": 150, "u": "g",  "pp": 24.3,  "pq": 100 },
+        { "n": "Chocolate slab",   "q": 140, "u": "g",  "pp": 8.81,  "pq": 35 }
+      ] },
+    { "id": "i2", "name": "San Sebastian", "note": "slice", "price": 26, "shelf": 2, "active": true,
+      "batchWord": "cake", "yieldPieces": 0, "perPortion": 1, "packaging": 0.25, "recipe": [] },
+    { "id": "i3", "name": "Crème Brûlée", "note": "", "price": 20, "shelf": 2, "active": true,
+      "batchWord": "batch", "yieldPieces": 0, "perPortion": 1, "packaging": 0.25, "recipe": [] },
+    { "id": "i4", "name": "Brownie Bag", "note": "", "price": 26, "shelf": 2, "active": true,
+      "batchWord": "tray", "yieldPieces": 0, "perPortion": 1, "packaging": 0.25, "recipe": [] },
+    { "id": "i5", "name": "Mini Pavlova", "note": "weekends only", "price": 60, "shelf": 1, "active": true,
+      "batchWord": "batch", "yieldPieces": 0, "perPortion": 1, "packaging": 0.25, "recipe": [] }
   ],
   "team": [
     { "id": "u1", "name": "Marwan", "role": "admin", "pin": "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117" },
-    { "id": "u2", "name": "Dee", "role": "dees", "pin": "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117" },
+    { "id": "u2", "name": "Dina", "role": "dees", "pin": "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117" },
     { "id": "u3", "name": "Truck Team", "role": "truck", "pin": "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117" }
   ],
   "batches": [],
@@ -262,6 +297,30 @@
         return x.toString(16).padStart(2, "0");
       }).join("");
     });
+  }
+
+  /* ============ recipe costing ============
+     Costed per BATCH (one cake / tray), from supermarket pack prices.
+     line cost = recipe qty / pack qty x pack price
+     portions  = pieces per batch / pieces per portion
+     unit cost = batch cost / portions + packaging                        */
+  function lineCost(r) {
+    var q = +r.q, pq = +r.pq, pp = +r.pp;
+    if (!(pq > 0) || isNaN(q) || isNaN(pp)) return 0;
+    return (q / pq) * pp;
+  }
+  function batchCost(it) {
+    return (it.recipe || []).reduce(function (a, r) { return a + lineCost(r); }, 0);
+  }
+  function portionsPer(it) {
+    var p = +it.perPortion || 1, y = +it.yieldPieces || 0;
+    if (!(y > 0) || !(p > 0)) return 0;
+    return y / p;
+  }
+  function costed(it) { return (it.recipe || []).length > 0 && portionsPer(it) > 0; }
+  function unitCostOf(it) {
+    if (!costed(it)) return null;
+    return batchCost(it) / portionsPer(it) + (+it.packaging || 0);
   }
 
   /* ============ batch maths ============ */
@@ -412,6 +471,7 @@
       "</div></header>";
 
     var tabs = [["today", "TODAY", alerts], ["out", "DELIVERIES", 0], ["sell", "SALES", 0], ["money", "MONEY", 0]];
+    if (perm.canDeliver) tabs.push(["recipes", "RECIPES", 0]);
     if (perm.canSetup) tabs.push(["setup", "SETUP", 0]);
     html += '<nav class="tabs"><div class="wrap">';
     tabs.forEach(function (t) {
@@ -423,14 +483,15 @@
     html += '<main><div class="wrap">';
     if (readOnly) html += '<div class="banner info"><b>View only.</b> You can see everything here but not record anything — you need edit access to this board.</div>';
     if (S.defaultPins) html += '<div class="banner warn"><b>Everyone still has PIN 1234.</b> Change them in Setup before you share this link.</div>';
-    var noCost = S.items.filter(function (i) { return i.active && i.cost == null; }).length;
-    if (noCost) html += '<div class="banner warn"><b>' + noCost + " item" + (noCost > 1 ? "s have" : " has") +
-      " no ingredient cost yet.</b> Cost and profit stay incomplete until you set them in Setup.</div>";
+    var noCost = S.items.filter(function (i) { return i.active && !costed(i); }).length;
+    if (noCost && perm.canDeliver) html += '<div class="banner warn"><b>' + noCost + " item" + (noCost > 1 ? "s have" : " has") +
+      " no recipe costed yet.</b> Add ingredients and yield on the Recipes tab — cost, profit and the split stay incomplete until you do.</div>";
 
     if (tab === "today") html += viewToday(perm);
     else if (tab === "out") html += viewOut(perm);
     else if (tab === "sell") html += viewSell(perm);
     else if (tab === "money") html += viewMoney();
+    else if (tab === "recipes") html += viewRecipes(perm);
     else if (tab === "setup") html += viewSetup(perm);
     html += "</div></main>";
 
@@ -543,7 +604,8 @@
         '<span class="qty num">' + left + " / " + b.qty + "</span>" +
         '<span class="pill p-' + st + '">' + STATUS_LABEL[st] + "</span>" +
         (b.voided ? "" : '<span class="pill p-lock">LOCKED</span>') + "</div>";
-      h += '<div class="meta">Made <b>' + niceDate(b.madeOn) + "</b> · expires <b>" + niceDate(exp) + "</b>" +
+      h += '<div class="meta">' + (b.batches ? "<b>" + b.batches + " " + esc(b.batchWord || "batch") + (b.batches > 1 ? "s" : "") + "</b> · " : "") +
+        "Made <b>" + niceDate(b.madeOn) + "</b> · expires <b>" + niceDate(exp) + "</b>" +
         (st === "expired" ? " (" + Math.abs(d) + "d ago)" : d >= 0 && !b.voided && left > 0 ? " (" + (d === 0 ? "today" : d + "d") + ")" : "") +
         " · in by <b>" + esc(uname(b.by)) + "</b></div>";
       h += '<div class="meta">Sold <b>' + s + "</b> · cost " +
@@ -575,8 +637,7 @@
       }).join("");
       h += '<div class="card"><div class="grid2">' +
         '<div class="field"><label for="d-item">ITEM</label><select id="d-item">' + opts + "</select></div>" +
-        '<div class="field"><label for="d-qty">QUANTITY</label><input id="d-qty" type="number" min="1" step="1" value="1"></div>' +
-        '<div class="field"><label for="d-cost">COST PER UNIT (' + cur() + ')</label><input id="d-cost" type="number" min="0" step="0.01" placeholder="ingredients"></div>' +
+        '<div class="field"><label for="d-qty">HOW MANY <span id="d-word">TRAYS</span></label><input id="d-qty" type="number" min="1" step="1" value="1"></div>' +
         '<div class="field"><label for="d-date">MADE ON</label><input id="d-date" type="date" value="' + todayStr() + '"></div>' +
         "</div>" +
         '<p class="hint" id="d-preview"></p>' +
@@ -618,6 +679,67 @@
       h += "</tbody></table></div>";
     }
     return h;
+  }
+
+  /* ---------- recipes ---------- */
+  function viewRecipes(perm) {
+    var editable = perm.canDeliver && !readOnly;
+    var h = '<h2 class="sec">Recipes &amp; cost</h2>' +
+      '<p class="sub">Cost is worked out per whole ' + esc(S.items[0] ? (S.items[0].batchWord || "batch") : "batch") +
+      ', from supermarket pack prices — then divided by how many portions it cuts into. ' +
+      'Numbers update as you type; nothing is saved until you press save.</p>';
+    if (!editable) h += '<div class="banner info">Only Dee\'s side and admins can change recipes.</div>';
+
+    S.items.forEach(function (it) {
+      var ro = editable ? "" : " disabled";
+      h += '<div class="card" data-recipe="' + it.id + '">';
+      h += '<div class="recipe-h"><h3>' + esc(it.name) + "</h3>" +
+        '<span class="pill ' + (costed(it) ? "p-fresh" : "p-today") + '">' +
+        (costed(it) ? "COSTED" : "NEEDS RECIPE") + "</span></div>";
+
+      h += '<div class="ing"><span><span class="lbl">INGREDIENT</span></span>' +
+        '<span><span class="lbl">RECIPE QTY</span></span><span><span class="lbl">UNIT</span></span>' +
+        '<span><span class="lbl">PACK PRICE</span></span><span><span class="lbl">PACK QTY</span></span>' +
+        '<span><span class="lbl">COST USED</span></span><span></span></div>';
+      (it.recipe || []).forEach(function (r, ix) {
+        h += '<div class="ing" data-row="' + ix + '">' +
+          '<input data-f="n" value="' + esc(r.n) + '" placeholder="ingredient"' + ro + ">" +
+          '<input data-f="q" type="number" min="0" step="any" value="' + r.q + '"' + ro + ">" +
+          '<input data-f="u" value="' + esc(r.u || "") + '" placeholder="g"' + ro + ">" +
+          '<input data-f="pp" type="number" min="0" step="0.01" value="' + r.pp + '"' + ro + ">" +
+          '<input data-f="pq" type="number" min="0" step="any" value="' + r.pq + '"' + ro + ">" +
+          '<span class="out">0</span>' +
+          (editable ? '<button class="x" type="button" data-delrow="' + it.id + ":" + ix + '" aria-label="Remove">×</button>' : "<span></span>") +
+          "</div>";
+      });
+      if (!(it.recipe || []).length) h += '<p class="hint" style="margin:4px 0 10px">No ingredients yet.</p>';
+      if (editable) h += '<button class="btn ghost sm" type="button" data-addrow="' + it.id + '">+ ADD INGREDIENT</button>';
+
+      h += '<div class="grid2" style="margin-top:16px">' +
+        '<div class="field"><label>PIECES PER ' + esc((it.batchWord || "batch").toUpperCase()) + '</label>' +
+        '<input data-f="yieldPieces" type="number" min="0" step="any" value="' + (it.yieldPieces || 0) + '"' + ro + "></div>" +
+        '<div class="field"><label>PIECES PER PORTION SOLD</label>' +
+        '<input data-f="perPortion" type="number" min="1" step="any" value="' + (it.perPortion || 1) + '"' + ro + "></div>" +
+        '<div class="field"><label>PACKAGING PER PORTION (' + cur() + ')</label>' +
+        '<input data-f="packaging" type="number" min="0" step="0.01" value="' + (it.packaging || 0) + '"' + ro + "></div>" +
+        '<div class="field"><label>SELLING PRICE (' + cur() + ')</label>' +
+        '<input data-f="price" type="number" min="0" step="0.01" value="' + it.price + '"' + ro + "></div>" +
+        '<div class="field"><label>CALL ONE BATCH A…</label>' +
+        '<input data-f="batchWord" value="' + esc(it.batchWord || "batch") + '" placeholder="tray, cake"' + ro + "></div>" +
+        "</div>";
+
+      h += '<div class="costcard"><div class="grid">' +
+        cc("batch", "BATCH COST") + cc("yield", "YIELD") + cc("ing", "INGREDIENT / UNIT") +
+        cc("pack", "PACKAGING") + cc("price", "SELLS AT") + cc("profit", "GROSS PROFIT") + cc("margin", "MARGIN") +
+        "</div></div>";
+      h += '<p class="hint" style="margin-top:10px">Direct cost only — excludes labour, utilities, delivery and wastage.</p>';
+      if (editable) h += '<div class="acts"><button class="btn dark sm" type="button" data-saverecipe="' + it.id + '">SAVE RECIPE</button></div>';
+      h += "</div>";
+    });
+    return h;
+  }
+  function cc(k, label) {
+    return '<div class="cc"><div class="k">' + label + '</div><div class="v num" data-cc="' + k + '">—</div></div>';
   }
 
   /* ---------- money ---------- */
@@ -676,7 +798,6 @@
         '<div class="field"><label>NAME</label><input data-f="name" value="' + esc(it.name) + '"></div>' +
         '<div class="field"><label>NOTE</label><input data-f="note" value="' + esc(it.note || "") + '" placeholder="4 pcs, weekends…"></div>' +
         '<div class="field"><label>SELL PRICE (' + cur() + ')</label><input data-f="price" type="number" min="0" step="0.01" value="' + it.price + '"></div>' +
-        '<div class="field"><label>INGREDIENT COST (' + cur() + ')</label><input data-f="cost" type="number" min="0" step="0.01" value="' + (it.cost == null ? "" : it.cost) + '" placeholder="not set"></div>' +
         '<div class="field"><label>SHELF LIFE (DAYS)</label><input data-f="shelf" type="number" min="0" step="1" value="' + it.shelf + '"></div>' +
         '<div class="field"><label>ON THE MENU</label><select data-f="active"><option value="1"' + (it.active ? " selected" : "") + ">Yes</option><option value=\"0\"" + (!it.active ? " selected" : "") + ">No</option></select></div>" +
         '</div><div class="acts"><button class="btn dark sm" type="button" data-saveitem="' + it.id + '">SAVE ITEM</button>' +
@@ -771,7 +892,8 @@
       deliver: addDelivery,
       additem: function () {
         save(function (n) {
-          n.items.push({ id: id("i"), name: "New item", note: "", price: 0, cost: null, shelf: n.defaultShelf || 2, active: true });
+          n.items.push({ id: id("i"), name: "New item", note: "", price: 0, shelf: n.defaultShelf || 2,
+            active: true, batchWord: "batch", yieldPieces: 0, perPortion: 1, packaging: 0.25, recipe: [] });
         }, "Item added.");
       },
       adduser: function () {
@@ -802,24 +924,96 @@
     if (busy) app.querySelectorAll(".btn").forEach(function (b) { b.disabled = true; });
 
     var di = document.getElementById("d-item"), dq = document.getElementById("d-qty"),
-        dc = document.getElementById("d-cost"), pv = document.getElementById("d-preview");
+        pv = document.getElementById("d-preview");
     if (pv) {
       var upd = function () {
-        var it = item(di.value), q = parseInt(dq.value, 10) || 0;
-        var c = dc.value === "" ? (it ? it.cost : null) : parseFloat(dc.value);
-        var shelf = it ? it.shelf : 2;
+        var it = item(di.value), n = parseInt(dq.value, 10) || 0;
+        var wordEl = document.getElementById("d-word");
+        if (it && wordEl) wordEl.textContent = (it.batchWord || "batch").toUpperCase() + "S";
         var dd = document.getElementById("d-date").value || todayStr();
-        pv.innerHTML = q > 0 && it
-          ? "Locks as <b>" + q + " × " + esc(it.name) + "</b> · total cost <b>" +
-            (c == null || isNaN(c) ? "not set" : cur() + " " + money(q * c)) + "</b> · expires <b>" +
-            niceDate(addDays(dd, shelf)) + "</b> (" + shelf + " day" + (shelf === 1 ? "" : "s") + ")"
-          : "";
+        if (!it || !(n > 0)) { pv.innerHTML = ""; return; }
+        if (!costed(it)) {
+          pv.innerHTML = "<b>" + esc(it.name) + " has no recipe yet.</b> Add its ingredients and yield on the Recipes tab first — otherwise this delivery goes in with no cost.";
+          return;
+        }
+        var per = portionsPer(it), uc = unitCostOf(it);
+        var units = Math.round(n * per);
+        pv.innerHTML = "Locks as <b>" + n + " " + esc(it.batchWord || "batch") + (n > 1 ? "s" : "") +
+          " = " + units + " portions</b> · cost <b>" + cur() + " " + money(units * uc) +
+          "</b> (" + cur() + " " + money(uc) + " each) · expires <b>" + niceDate(addDays(dd, it.shelf)) +
+          "</b> (" + it.shelf + " day" + (it.shelf === 1 ? "" : "s") + ")";
       };
-      [di, dq, dc, document.getElementById("d-date")].forEach(function (el) {
+      [di, dq, document.getElementById("d-date")].forEach(function (el) {
         if (el) { el.oninput = upd; el.onchange = upd; }
       });
       upd();
     }
+
+    app.querySelectorAll("[data-saverecipe]").forEach(function (b) {
+      b.onclick = function () { saveRecipe(b.getAttribute("data-saverecipe")); };
+    });
+    app.querySelectorAll("[data-addrow]").forEach(function (b) {
+      b.onclick = function () {
+        var iid = b.getAttribute("data-addrow");
+        save(function (n) {
+          var t = n.items.filter(function (i) { return i.id === iid; })[0];
+          t.recipe = t.recipe || [];
+          t.recipe.push({ n: "", q: 0, u: "g", pp: 0, pq: 100 });
+        }, "Ingredient row added.");
+      };
+    });
+    app.querySelectorAll("[data-delrow]").forEach(function (b) {
+      b.onclick = function () {
+        var p = b.getAttribute("data-delrow").split(":");
+        save(function (n) {
+          var t = n.items.filter(function (i) { return i.id === p[0]; })[0];
+          t.recipe.splice(+p[1], 1);
+        }, "Ingredient removed.");
+      };
+    });
+    app.querySelectorAll("[data-recipe]").forEach(function (card) {
+      var recalc = function () { liveCost(card); };
+      card.querySelectorAll("input").forEach(function (el) { el.oninput = recalc; });
+      recalc();
+    });
+  }
+
+  /* live recalculation inside a recipe card, no save */
+  function liveCost(card) {
+    var g = function (el) { var v = parseFloat(el.value); return isNaN(v) ? 0 : v; };
+    var total = 0;
+    card.querySelectorAll("[data-row]").forEach(function (row) {
+      var q = g(row.querySelector('[data-f="q"]')),
+          pp = g(row.querySelector('[data-f="pp"]')),
+          pq = g(row.querySelector('[data-f="pq"]'));
+      var c = pq > 0 ? (q / pq) * pp : 0;
+      total += c;
+      row.querySelector(".out").textContent = money(c);
+    });
+    var pieces = g(card.querySelector('[data-f="yieldPieces"]')),
+        per = g(card.querySelector('[data-f="perPortion"]')),
+        pack = g(card.querySelector('[data-f="packaging"]')),
+        price = g(card.querySelector('[data-f="price"]'));
+    var portions = per > 0 ? pieces / per : 0;
+    var ing = portions > 0 ? total / portions : null;
+    var unit = ing == null ? null : ing + pack;
+    var profit = unit == null ? null : price - unit;
+    var margin = profit == null || !price ? null : (profit / price) * 100;
+    var set = function (k, v, cls) {
+      var el = card.querySelector('[data-cc="' + k + '"]');
+      if (!el) return;
+      el.textContent = v;
+      var box = el.closest(".cc");
+      box.classList.remove("good", "bad", "hi");
+      if (cls) box.classList.add(cls);
+    };
+    set("batch", money(total), "hi");
+    set("yield", portions ? (pieces + " pcs / " + (Math.round(portions * 100) / 100) + " portions") : "set yield", portions ? "" : "bad");
+    set("ing", ing == null ? "—" : money(ing));
+    set("pack", money(pack));
+    set("price", money(price));
+    set("profit", profit == null ? "—" : money(profit), profit == null ? "" : profit >= 0 ? "good" : "bad");
+    set("margin", margin == null ? "—" : (Math.round(margin * 10) / 10) + "%", margin == null ? "" : margin >= 0 ? "good" : "bad");
   }
 
   function logSale(bid, n) {
@@ -836,36 +1030,67 @@
   function addDelivery() {
     var iid = document.getElementById("d-item").value;
     var it = item(iid);
-    var qty = parseInt(document.getElementById("d-qty").value, 10);
-    var costRaw = document.getElementById("d-cost").value;
+    var n = parseInt(document.getElementById("d-qty").value, 10);
     var madeOn = document.getElementById("d-date").value || todayStr();
     if (!it) { toast("Pick an item.", true); return; }
-    if (!(qty > 0)) { toast("Quantity must be a whole number above zero.", true); return; }
-    var unitCost = costRaw === "" ? (it.cost == null ? null : it.cost) : parseFloat(costRaw);
-    if (unitCost != null && (isNaN(unitCost) || unitCost < 0)) { toast("Cost cannot be negative.", true); return; }
-    if (!confirm(qty + " × " + it.name + " — this locks once saved. Continue?")) return;
-    save(function (n) {
-      n.batches.push({
-        id: id("b"), itemId: iid, qty: qty, unitCost: unitCost, unitPrice: it.price,
-        shelf: it.shelf, madeOn: madeOn, by: me.id, at: new Date().toISOString(), sales: []
+    if (!(n > 0)) { toast("Enter a whole number of batches above zero.", true); return; }
+    var word = it.batchWord || "batch";
+    var per = portionsPer(it);
+    var units = costed(it) ? Math.round(n * per) : n;
+    var uc = unitCostOf(it);
+    if (!costed(it) && !confirm(it.name + " has no recipe costed. Log " + n + " portions with NO cost recorded?")) return;
+    if (costed(it) && !confirm(n + " " + word + (n > 1 ? "s" : "") + " = " + units + " portions of " + it.name +
+        " at " + cur() + " " + money(uc) + " each. This locks once saved. Continue?")) return;
+    save(function (nx) {
+      nx.batches.push({
+        id: id("b"), itemId: iid, qty: units, unitCost: uc, unitPrice: it.price,
+        batches: n, batchWord: word, shelf: it.shelf, madeOn: madeOn,
+        by: me.id, at: new Date().toISOString(), sales: []
       });
     }, "Delivery locked in.");
+  }
+
+  function saveRecipe(iid) {
+    var card = app.querySelector('[data-recipe="' + iid + '"]');
+    var val = function (el) { var v = parseFloat(el.value); return isNaN(v) ? 0 : v; };
+    var rows = [];
+    var bad = false;
+    card.querySelectorAll("[data-row]").forEach(function (row) {
+      var nm = row.querySelector('[data-f="n"]').value.trim();
+      var q = val(row.querySelector('[data-f="q"]'));
+      var pp = val(row.querySelector('[data-f="pp"]'));
+      var pq = val(row.querySelector('[data-f="pq"]'));
+      var u = row.querySelector('[data-f="u"]').value.trim();
+      if (!nm) return;
+      if (pq <= 0) { bad = true; return; }
+      rows.push({ n: nm, q: q, u: u, pp: pp, pq: pq });
+    });
+    if (bad) { toast("Pack quantity must be above zero — that is what the price divides by.", true); return; }
+    var pieces = val(card.querySelector('[data-f="yieldPieces"]'));
+    var per = val(card.querySelector('[data-f="perPortion"]'));
+    var pack = val(card.querySelector('[data-f="packaging"]'));
+    var price = val(card.querySelector('[data-f="price"]'));
+    var word = card.querySelector('[data-f="batchWord"]').value.trim() || "batch";
+    if (per <= 0) { toast("Pieces per portion must be above zero.", true); return; }
+    if (pieces > 0 && per > pieces) { toast("A portion cannot be more pieces than the whole batch makes.", true); return; }
+    save(function (nx) {
+      var t = nx.items.filter(function (i) { return i.id === iid; })[0];
+      t.recipe = rows; t.yieldPieces = pieces; t.perPortion = per;
+      t.packaging = pack; t.price = price; t.batchWord = word;
+    }, "Recipe saved.");
   }
 
   function saveItem(iid) {
     var card = app.querySelector('[data-item="' + iid + '"]');
     var g = function (f) { return card.querySelector('[data-f="' + f + '"]').value; };
     var price = parseFloat(g("price")), shelf = parseInt(g("shelf"), 10);
-    var costRaw = g("cost").trim();
-    var cost = costRaw === "" ? null : parseFloat(costRaw);
     if (!g("name").trim()) { toast("Item needs a name.", true); return; }
     if (isNaN(price) || price < 0) { toast("Price must be zero or more.", true); return; }
     if (isNaN(shelf) || shelf < 0) { toast("Shelf life must be zero or more days.", true); return; }
-    if (cost != null && (isNaN(cost) || cost < 0)) { toast("Cost must be zero or more.", true); return; }
     save(function (n) {
       var t = n.items.filter(function (i) { return i.id === iid; })[0];
       t.name = g("name").trim(); t.note = g("note").trim();
-      t.price = price; t.cost = cost; t.shelf = shelf; t.active = g("active") === "1";
+      t.price = price; t.shelf = shelf; t.active = g("active") === "1";
     }, "Item saved.");
   }
 
