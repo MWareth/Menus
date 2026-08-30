@@ -143,6 +143,7 @@
   .person[aria-pressed="true"]{border-color:var(--gold);background:#FDF7EA}
   .person .nm{font-weight:900;font-size:15px}
   .person .rl{font-size:11.5px;font-weight:700;letter-spacing:.08em;color:var(--ink-3)}
+  .lockgroup{font-size:10.5px;font-weight:900;letter-spacing:.16em;color:var(--ink-3);margin:4px 0 8px}
   .err{color:var(--bad);font-size:13.5px;font-weight:700;margin-top:8px}
 
   /* ---------- misc ---------- */
@@ -192,7 +193,7 @@
   "split": { "deesPct": 50, "basis": "profit" },
   "defaultShelf": 2,
   "items": [
-    { "id": "i1", "name": "Lazy Cake", "note": "", "price": 26, "shelf": 2, "active": true,
+    { "id": "i1", "name": "Lazy Cake", "note": "2 pcs", "price": 26, "shelf": 2, "active": true,
       "batchWord": "tray", "yieldPieces": 26, "perPortion": 2, "packaging": 0.25,
       "recipe": [
         { "n": "Leibniz biscuits", "q": 500, "u": "g",  "pp": 14.29, "pq": 200 },
@@ -213,13 +214,15 @@
       "batchWord": "batch", "yieldPieces": 0, "perPortion": 1, "packaging": 0.25, "recipe": [] }
   ],
   "team": [
-    { "id": "u1", "name": "Marwan", "role": "admin", "pin": "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117" },
-    { "id": "u2", "name": "Dina", "role": "dees", "pin": "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117" },
-    { "id": "u3", "name": "Truck Team", "role": "truck", "pin": "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117" }
+    { "id": "u1", "name": "Marwan", "role": "admin", "side": "dees", "pin": "ba000d3fa8b9e7758aeacaf7e8882d5df77d83bf1445a174d38b751cb0c0004b" },
+    { "id": "u2", "name": "Dina", "role": "dees", "pin": "5e66d2663a72c3fbac50719d9672eafe5aee147ffbf6f0d24815928068f8f10b" },
+    { "id": "u3", "name": "Marwan Majid", "role": "truck", "pin": "a635091d64a82e52633fcd6a111195a670b128c80cd175f105e5bac1eaf7b88c" },
+    { "id": "u4", "name": "Tarek", "role": "truck", "pin": "11fbc22729a0858c3d99001c9187181dd520514ace6136dce43a44c7681ae521" },
+    { "id": "u5", "name": "Truck Cashier", "role": "truck", "pin": "f16e34225021f39639cfa33ca88dd9778940f7c88b25d34cc2a0cff2d774c427" }
   ],
   "batches": [],
-  "seq": 1,
-  "defaultPins": true
+  "seq": 5,
+  "defaultPins": false
 }
 </script>
 
@@ -503,14 +506,22 @@
   function renderLock() {
     var h = '<div class="lock"><div class="lockbox">' +
       "<h1>Dee'serts Stock</h1>" +
-      "<p>Pick your name and enter your PIN.</p><div class=\"people\">";
-    S.team.forEach(function (u) {
-      h += '<button class="person" type="button" data-person="' + u.id + '" aria-pressed="' + (lockSel === u.id) + '">' +
-        '<span class="avatar">' + esc(initials(u.name)) + "</span>" +
-        '<span><span class="nm">' + esc(u.name) + '</span><br><span class="rl">' +
-        (ROLES[u.role] ? ROLES[u.role].label : "TEAM") + "</span></span></button>";
+      "<p>Pick your name and enter your PIN.</p>";
+    var groups = [
+      ["DEE'S TEAM", S.team.filter(function (u) { return (u.side || u.role) === "dees" || u.role === "admin"; })],
+      ["TRUCK TEAM", S.team.filter(function (u) { return u.role === "truck"; })]
+    ];
+    groups.forEach(function (g) {
+      if (!g[1].length) return;
+      h += '<div class="lockgroup">' + g[0] + '</div><div class="people">';
+      g[1].forEach(function (u) {
+        h += '<button class="person" type="button" data-person="' + u.id + '" aria-pressed="' + (lockSel === u.id) + '">' +
+          '<span class="avatar">' + esc(initials(u.name)) + "</span>" +
+          '<span><span class="nm">' + esc(u.name) + '</span><br><span class="rl">' +
+          (ROLES[u.role] ? ROLES[u.role].label : "TEAM") + "</span></span></button>";
+      });
+      h += "</div>";
     });
-    h += "</div>";
     if (lockSel) {
       h += '<div class="field"><label for="pin">PIN</label>' +
         '<input id="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="••••"></div>' +
@@ -796,7 +807,7 @@
     S.items.forEach(function (it) {
       h += '<div class="card" data-item="' + it.id + '"><div class="grid2">' +
         '<div class="field"><label>NAME</label><input data-f="name" value="' + esc(it.name) + '"></div>' +
-        '<div class="field"><label>NOTE</label><input data-f="note" value="' + esc(it.note || "") + '" placeholder="4 pcs, weekends…"></div>' +
+        '<div class="field"><label>NOTE</label><input data-f="note" value="' + esc(it.note || "") + '" placeholder="2 pcs, weekends…"></div>' +
         '<div class="field"><label>SELL PRICE (' + cur() + ')</label><input data-f="price" type="number" min="0" step="0.01" value="' + it.price + '"></div>' +
         '<div class="field"><label>SHELF LIFE (DAYS)</label><input data-f="shelf" type="number" min="0" step="1" value="' + it.shelf + '"></div>' +
         '<div class="field"><label>ON THE MENU</label><select data-f="active"><option value="1"' + (it.active ? " selected" : "") + ">Yes</option><option value=\"0\"" + (!it.active ? " selected" : "") + ">No</option></select></div>" +

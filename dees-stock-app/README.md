@@ -20,6 +20,17 @@ write republishes the whole page via the `artifact` capability, so all viewers s
 - **Setup** (admin) — item names, prices, shelf life, team, PINs, split, housekeeping.
   (Ingredients, yield and packaging live on the Recipes tab.)
 
+## Team & PINs
+Lock screen groups people by side. PINs are SHA-256 hashed with a `deeserts:` prefix.
+
+| Person | Side | Role | PIN |
+|---|---|---|---|
+| Marwan | Dee's | admin | 4071 |
+| Dina | Dee's | dees | 2258 |
+| Marwan Majid | Truck | truck | 6390 |
+| Tarek | Truck | truck | 5184 |
+| Truck Cashier | Truck | truck | 7726 |
+
 ## Roles
 | Role | Deliveries | Sales | Setup |
 |---|---|---|---|
@@ -34,13 +45,13 @@ write republishes the whole page via the `artifact` capability, so all viewers s
 - **No push notifications.** Expiry "reminders" are the on-screen alert board; the page must be
   opened to see them.
 - **One writer at a time.** Concurrent saves conflict; the loser reloads to the winner's version.
-- Seed PINs are all `1234` — change them in Setup before sharing.
 
 ## Costing reference
 Lazy Cake is seeded from the real sheet: batch AED 123.51, 26 pcs @ 2 pcs/portion = 13 portions,
 AED 9.50 ingredient + 0.25 packaging = 9.75/unit, sells 26 → 16.25 profit, 62.5% margin.
-**Open question:** the menu board says Lazy Cake is *4 pcs* per portion; the cost sheet says 2.
-At 4 pcs the yield halves to 6.5 portions and margin drops to ~26%.
+Portion is confirmed at **2 pcs** (not 4) — set on the item note, the recipe yield and the
+brand deck's dee'serts slide. The standalone menu board (outside this repo) still says 4 pcs
+and needs the same correction.
 
 ## Editing
 Edit `index.html`, republish to the same artifact URL. Note the page rewrites its own source on
