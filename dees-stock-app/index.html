@@ -1,0 +1,899 @@
+<title>Dee'serts Stock</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Cairo:wght@400;600;700;900&display=swap">
+<style id="app-style">
+  :root{
+    --brown:#4A2C2A; --cream:#FAF3E7; --gold:#C99334; --char:#1C1917;
+    --butter:#FFD21C; --ketchup:#F02820; --paper:#FFF9EE;
+    --ok:#2F7D4F; --warn:#C2650B; --bad:#C0271C;
+    --ink:#2B1E1A; --ink-2:#6B584D; --ink-3:#9A8A7C;
+    --line:#E6DBC8; --card:#FFFFFF; --shade:#F5EDDD;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--cream);color:var(--ink);
+    font-family:Cairo,'Segoe UI',system-ui,sans-serif;font-size:16px;line-height:1.55}
+  img{max-width:100%}
+  [hidden]{display:none!important}
+  button{font:inherit;cursor:pointer}
+  input,select{font:inherit;color:inherit}
+  .num{font-variant-numeric:tabular-nums}
+  .disp{font-family:'Baloo 2',Cairo,sans-serif;font-weight:800}
+
+  .wrap{max-width:880px;margin:0 auto;padding:0 16px}
+
+  /* ---------- top bar ---------- */
+  .bar{background:var(--char);color:var(--paper);position:sticky;top:0;z-index:50}
+  .bar .wrap{display:flex;align-items:center;gap:12px;min-height:60px}
+  .brand{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:19px;color:var(--butter);
+    line-height:1;margin-right:auto}
+  .brand span{display:block;font-family:Cairo,sans-serif;font-weight:700;font-size:10px;
+    letter-spacing:.18em;color:#8C8279;margin-top:3px}
+  .who{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#CBBFB4}
+  .avatar{width:30px;height:30px;border-radius:50%;background:var(--gold);color:#2B1E1A;
+    display:grid;place-items:center;font-weight:900;font-size:12px}
+  .out{background:none;border:1.5px solid #46403A;color:#CBBFB4;border-radius:999px;
+    padding:5px 11px;font-size:11px;font-weight:900;letter-spacing:.08em}
+  .out:hover{border-color:var(--butter);color:var(--butter)}
+
+  /* ---------- tabs ---------- */
+  .tabs{background:var(--char);border-top:1px solid #2C2724;position:sticky;top:60px;z-index:49;
+    overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs .wrap{display:flex;gap:2px;padding:0 12px}
+  .tab{background:none;border:0;color:#8C8279;padding:13px 14px;font-size:13px;font-weight:900;
+    letter-spacing:.06em;white-space:nowrap;border-bottom:3px solid transparent;min-height:46px}
+  .tab[aria-current="true"]{color:var(--butter);border-bottom-color:var(--butter)}
+  .tab:focus-visible{outline:2px solid var(--butter);outline-offset:-4px}
+  .tab .dot{display:inline-block;min-width:17px;height:17px;line-height:17px;border-radius:999px;
+    background:var(--ketchup);color:#fff;font-size:10px;margin-left:6px;padding:0 4px}
+
+  main{padding:20px 0 60px}
+  h2.sec{font-family:'Baloo 2',sans-serif;font-weight:700;font-size:22px;margin:0 0 4px}
+  p.sub{margin:0 0 18px;color:var(--ink-2);font-size:15px}
+
+  /* ---------- cards & banners ---------- */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+  .banner{border-radius:12px;padding:14px 16px;margin-bottom:14px;font-size:14.5px;line-height:1.5}
+  .banner b{font-weight:900}
+  .banner.warn{background:#FDF1DC;border:1px solid #EBC98A;color:#6A4708}
+  .banner.bad{background:#FCE9E7;border:1px solid #F0B6B0;color:#7C1E16}
+  .banner.info{background:var(--shade);border:1px solid var(--line);color:var(--ink-2)}
+
+  /* ---------- stats ---------- */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .stat .k{font-size:11px;font-weight:900;letter-spacing:.14em;color:var(--ink-3)}
+  .stat .v{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:26px;line-height:1.15;margin-top:4px}
+  .stat .n{font-size:12.5px;color:var(--ink-2);margin-top:2px}
+  .stat.good .v{color:var(--ok)} .stat.bad .v{color:var(--bad)} .stat.warn .v{color:var(--warn)}
+
+  /* ---------- batch rows ---------- */
+  .rows{display:flex;flex-direction:column;gap:10px}
+  .row{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;
+    display:grid;grid-template-columns:6px 1fr;align-items:stretch}
+  .row .stripe{background:var(--line)}
+  .row.s-fresh .stripe{background:var(--ok)}
+  .row.s-soon .stripe{background:var(--warn)}
+  .row.s-today .stripe{background:var(--ketchup)}
+  .row.s-expired .stripe{background:var(--bad)}
+  .row.s-done .stripe{background:var(--ink-3)}
+  .row.s-void .stripe{background:var(--ink-3)}
+  .row .in{padding:14px 16px;min-width:0}
+  .rt{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .rt .nm{font-weight:900;font-size:17px}
+  .rt .qty{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:17px;color:var(--brown)}
+  .meta{font-size:13px;color:var(--ink-2);margin-top:4px}
+  .meta b{color:var(--ink);font-weight:700}
+  .pill{display:inline-block;font-size:10.5px;font-weight:900;letter-spacing:.07em;
+    padding:3px 9px;border-radius:999px;vertical-align:middle}
+  .p-fresh{background:#E4F1E8;color:#1F5D39}
+  .p-soon{background:#FBEBD3;color:#8A4A06}
+  .p-today{background:#FDE3E0;color:#93221A}
+  .p-expired{background:var(--bad);color:#fff}
+  .p-done{background:var(--shade);color:var(--ink-2)}
+  .p-void{background:var(--shade);color:var(--ink-3)}
+  .p-lock{background:var(--char);color:var(--butter)}
+
+  .bar-track{height:7px;border-radius:4px;background:var(--shade);margin-top:10px;overflow:hidden}
+  .bar-fill{height:100%;background:var(--gold);border-radius:4px}
+
+  .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+
+  /* ---------- buttons ---------- */
+  .btn{border:0;border-radius:10px;padding:11px 16px;font-size:14px;font-weight:900;
+    min-height:44px;letter-spacing:.02em}
+  .btn:focus-visible{outline:2px solid var(--char);outline-offset:2px}
+  .btn.pri{background:var(--butter);color:var(--char)}
+  .btn.pri:hover{background:#F0C316}
+  .btn.dark{background:var(--char);color:var(--paper)}
+  .btn.dark:hover{background:#332C28}
+  .btn.ghost{background:transparent;color:var(--ink-2);border:1.5px solid var(--line)}
+  .btn.ghost:hover{border-color:var(--ink-3);color:var(--ink)}
+  .btn.danger{background:transparent;color:var(--bad);border:1.5px solid #F0B6B0}
+  .btn.danger:hover{background:#FCE9E7}
+  .btn.sm{padding:8px 12px;font-size:13px;min-height:38px}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+
+  /* ---------- forms ---------- */
+  .field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+  .field label{font-size:12px;font-weight:900;letter-spacing:.1em;color:var(--ink-3)}
+  .field input,.field select{border:1.5px solid var(--line);border-radius:10px;padding:11px 13px;
+    background:#fff;min-height:44px;width:100%}
+  .field input:focus,.field select:focus{outline:2px solid var(--gold);outline-offset:-1px;border-color:var(--gold)}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0 12px}
+  .hint{font-size:12.5px;color:var(--ink-3)}
+
+  /* ---------- table ---------- */
+  .tw{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+  table{border-collapse:collapse;width:100%;min-width:520px}
+  th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--line);font-size:14.5px}
+  th{font-size:11px;font-weight:900;letter-spacing:.1em;color:var(--ink-3);background:var(--shade)}
+  tr:last-child td{border-bottom:0}
+  td.r,th.r{text-align:right}
+
+  /* ---------- lock screen ---------- */
+  .lock{min-height:100vh;display:grid;place-items:center;padding:24px;background:var(--char)}
+  .lockbox{background:var(--card);border-radius:18px;padding:30px 26px;width:100%;max-width:390px}
+  .lockbox h1{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:27px;margin:0 0 4px}
+  .lockbox p{margin:0 0 20px;color:var(--ink-2);font-size:14.5px}
+  .people{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+  .person{display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:11px;
+    border:1.5px solid var(--line);background:#fff;text-align:left;width:100%;min-height:52px}
+  .person[aria-pressed="true"]{border-color:var(--gold);background:#FDF7EA}
+  .person .nm{font-weight:900;font-size:15px}
+  .person .rl{font-size:11.5px;font-weight:700;letter-spacing:.08em;color:var(--ink-3)}
+  .err{color:var(--bad);font-size:13.5px;font-weight:700;margin-top:8px}
+
+  /* ---------- misc ---------- */
+  .empty{text-align:center;padding:34px 20px;color:var(--ink-3);font-size:15px}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:200;
+    background:var(--char);color:var(--paper);padding:12px 20px;border-radius:999px;
+    font-size:14px;font-weight:700;box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:90vw}
+  .toast.bad{background:var(--bad)}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .sp{border-radius:12px;padding:16px;text-align:center}
+  .sp.d{background:var(--brown);color:var(--cream)}
+  .sp.t{background:var(--butter);color:var(--char)}
+  .sp .k{font-size:11px;font-weight:900;letter-spacing:.12em;opacity:.8}
+  .sp .v{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:25px;margin-top:3px}
+  .subhead{font-size:12px;font-weight:900;letter-spacing:.14em;color:var(--ink-3);
+    margin:22px 0 10px;padding-top:4px;border-top:1px solid var(--line)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div id="app"></div>
+
+<script id="app-state" type="application/json">
+{
+  "v": 1,
+  "currency": "AED",
+  "split": { "deesPct": 50, "basis": "profit" },
+  "defaultShelf": 2,
+  "items": [
+    { "id": "i1", "name": "Lazy Cake", "note": "4 pcs", "price": 26, "cost": null, "shelf": 2, "active": true },
+    { "id": "i2", "name": "San Sebastian", "note": "slice", "price": 26, "cost": null, "shelf": 2, "active": true },
+    { "id": "i3", "name": "Crème Brûlée", "note": "", "price": 20, "cost": null, "shelf": 2, "active": true },
+    { "id": "i4", "name": "Brownie Bag", "note": "", "price": 26, "cost": null, "shelf": 2, "active": true },
+    { "id": "i5", "name": "Mini Pavlova", "note": "weekends only", "price": 60, "cost": null, "shelf": 1, "active": true }
+  ],
+  "team": [
+    { "id": "u1", "name": "Marwan", "role": "admin", "pin": "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117" },
+    { "id": "u2", "name": "Dee", "role": "dees", "pin": "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117" },
+    { "id": "u3", "name": "Truck Team", "role": "truck", "pin": "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117" }
+  ],
+  "batches": [],
+  "seq": 1,
+  "defaultPins": true
+}
+</script>
+
+<script id="app-code">
+(function () {
+  "use strict";
+
+  /* ============ state ============ */
+  var S = JSON.parse(document.getElementById("app-state").textContent);
+  var app = document.getElementById("app");
+  var artifact = null;
+  var readOnly = false;
+  var busy = false;
+  var tab = "today";
+  var me = null;
+  var lockSel = null;
+  var lockErr = "";
+
+  var ROLES = {
+    admin: { label: "ADMIN", canDeliver: true, canSell: true, canSetup: true },
+    dees:  { label: "DEE'S", canDeliver: true, canSell: false, canSetup: false },
+    truck: { label: "TRUCK", canDeliver: false, canSell: true, canSetup: false }
+  };
+
+  /* ============ helpers ============ */
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function id(p) { S.seq = (S.seq || 1) + 1; return p + S.seq; }
+  function money(n) {
+    if (n == null || isNaN(n)) return "—";
+    var v = Math.round(n * 100) / 100;
+    return v.toLocaleString("en-US", { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
+  }
+  function cur() { return esc(S.currency || "AED"); }
+  function todayStr() {
+    var d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  function addDays(ds, n) {
+    var p = ds.split("-");
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    d.setDate(d.getDate() + n);
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  function daysBetween(a, b) {
+    var pa = a.split("-"), pb = b.split("-");
+    var da = Date.UTC(+pa[0], +pa[1] - 1, +pa[2]), db = Date.UTC(+pb[0], +pb[1] - 1, +pb[2]);
+    return Math.round((db - da) / 86400000);
+  }
+  function niceDate(ds) {
+    var p = ds.split("-");
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  }
+  function item(iid) {
+    for (var i = 0; i < S.items.length; i++) if (S.items[i].id === iid) return S.items[i];
+    return null;
+  }
+  function user(uid) {
+    for (var i = 0; i < S.team.length; i++) if (S.team[i].id === uid) return S.team[i];
+    return null;
+  }
+  function uname(uid) { var u = user(uid); return u ? u.name : "—"; }
+  function initials(n) {
+    return n.trim().split(/\s+/).slice(0, 2).map(function (w) { return w[0]; }).join("").toUpperCase();
+  }
+  function hash(pin) {
+    var data = new TextEncoder().encode("deeserts:" + pin);
+    return crypto.subtle.digest("SHA-256", data).then(function (b) {
+      return Array.prototype.map.call(new Uint8Array(b), function (x) {
+        return x.toString(16).padStart(2, "0");
+      }).join("");
+    });
+  }
+
+  /* ============ batch maths ============ */
+  function sold(b) {
+    var t = 0;
+    for (var i = 0; i < (b.sales || []).length; i++) t += b.sales[i].qty;
+    return t;
+  }
+  function remaining(b) { return b.qty - sold(b); }
+  function expiresOn(b) { return addDays(b.madeOn, b.shelf); }
+  function status(b) {
+    if (b.voided) return "void";
+    var left = remaining(b);
+    if (left <= 0) return "done";
+    var d = daysBetween(todayStr(), expiresOn(b));
+    if (d < 0) return "expired";
+    if (d === 0) return "today";
+    if (d === 1) return "soon";
+    return "fresh";
+  }
+  var STATUS_LABEL = {
+    fresh: "IN DATE", soon: "EXPIRES TOMORROW", today: "LAST DAY",
+    expired: "EXPIRED", done: "SOLD OUT", "void": "VOIDED"
+  };
+  function live() {
+    return S.batches.filter(function (b) { return !b.voided; });
+  }
+  function totals(days) {
+    var cutoff = days ? addDays(todayStr(), -days + 1) : null;
+    var t = { cost: 0, revenue: 0, waste: 0, unitsOut: 0, unitsSold: 0, unitsWasted: 0, unknownCost: 0 };
+    live().forEach(function (b) {
+      if (cutoff && b.madeOn < cutoff) return;
+      var s = sold(b);
+      t.unitsOut += b.qty; t.unitsSold += s;
+      t.revenue += s * (b.unitPrice || 0);
+      if (b.unitCost == null) t.unknownCost += b.qty;
+      else t.cost += b.qty * b.unitCost;
+      if (status(b) === "expired") {
+        var left = remaining(b);
+        t.unitsWasted += left;
+        if (b.unitCost != null) t.waste += left * b.unitCost;
+      }
+    });
+    t.profit = t.revenue - t.cost;
+    return t;
+  }
+
+  /* ============ persistence ============ */
+  function buildDoc(next) {
+    var css = document.getElementById("app-style").textContent.trim();
+    var js = document.getElementById("app-code").textContent.trim();
+    var json = JSON.stringify(next).replace(/</g, "\\u003c");
+    var close = "<" + "/script>";
+    return '<!doctype html>\n<html lang="en">\n<head>\n' +
+      '<meta charset="utf-8">\n' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1">\n' +
+      "<title>Dee'serts Stock</title>\n" +
+      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Cairo:wght@400;600;700;900&display=swap">\n' +
+      '<style id="app-style">' + css + "<" + "/style>\n" +
+      "</head>\n<body>\n" +
+      '<div id="app"><' + "/div>\n" +
+      '<script id="app-state" type="application/json">\n' + json + "\n" + close + "\n" +
+      '<script id="app-code">\n' + js + "\n" + close + "\n" +
+      "</body>\n</html>";
+  }
+
+  function save(mutate, okMsg) {
+    if (readOnly) { toast("This view is read-only.", true); return; }
+    if (!artifact) { toast("Still connecting — try again in a moment.", true); return; }
+    if (busy) return;
+    var next = clone(S);
+    var restoreSeq = S.seq;
+    S.seq = next.seq = restoreSeq;
+    try { mutate(next); } catch (e) { toast(e.message || "Could not save.", true); return; }
+    next.seq = S.seq;
+    next.updatedAt = new Date().toISOString();
+    busy = true; render();
+    try { sessionStorage.setItem("deeserts.flash", okMsg || "Saved."); } catch (e) {}
+    artifact.publish(buildDoc(next)).catch(function (err) {
+      busy = false;
+      try { sessionStorage.removeItem("deeserts.flash"); } catch (e) {}
+      var code = err && err.code;
+      if (code === "conflict") { toast("Someone saved first — reloading their version."); return; }
+      if (code === "not_writer" || code === "not_granted" || code === "not_declared" ||
+          code === "capability_disabled" || code === "capability_removed" || code === "consent_required") {
+        readOnly = true; render();
+        toast("You have view-only access to this board.", true);
+        return;
+      }
+      if (code === "rate_limited") { toast("Saving too fast — wait a moment.", true); render(); return; }
+      if (code === "too_large") { toast("The board is full. Archive old batches in Setup.", true); render(); return; }
+      toast("Could not save. Try again.", true);
+      render();
+    });
+  }
+
+  var toastT = null;
+  function toast(msg, bad) {
+    var el = document.querySelector(".toast");
+    if (el) el.remove();
+    el = document.createElement("div");
+    el.className = "toast" + (bad ? " bad" : "");
+    el.setAttribute("role", "status");
+    el.textContent = msg;
+    document.body.appendChild(el);
+    clearTimeout(toastT);
+    toastT = setTimeout(function () { el.remove(); }, 3200);
+  }
+
+  /* ============ session ============ */
+  function loadSession() {
+    try {
+      var uid = sessionStorage.getItem("deeserts.uid");
+      if (uid && user(uid)) me = user(uid);
+      var f = sessionStorage.getItem("deeserts.flash");
+      if (f) { sessionStorage.removeItem("deeserts.flash"); setTimeout(function () { toast(f); }, 60); }
+      var t = sessionStorage.getItem("deeserts.tab");
+      if (t) tab = t;
+    } catch (e) {}
+  }
+  function setTab(t) {
+    tab = t;
+    try { sessionStorage.setItem("deeserts.tab", t); } catch (e) {}
+    render();
+    window.scrollTo(0, 0);
+  }
+  function signOut() {
+    me = null;
+    try { sessionStorage.removeItem("deeserts.uid"); } catch (e) {}
+    render();
+  }
+
+  /* ============ render ============ */
+  function render() {
+    if (!me) { renderLock(); return; }
+    var perm = ROLES[me.role] || ROLES.truck;
+    var alerts = live().filter(function (b) {
+      var s = status(b);
+      return s === "expired" || s === "today";
+    }).length;
+
+    var html = "";
+    html += '<header class="bar"><div class="wrap">' +
+      '<div class="brand">Dee\'serts<span>STOCK &amp; SALES</span></div>' +
+      '<div class="who"><div class="avatar">' + esc(initials(me.name)) + "</div>" +
+      "<div>" + esc(me.name) + "<br><span style=\"font-size:10px;letter-spacing:.1em\">" + perm.label + "</span></div>" +
+      '</div><button class="out" type="button" data-act="signout">EXIT</button>' +
+      "</div></header>";
+
+    var tabs = [["today", "TODAY", alerts], ["out", "DELIVERIES", 0], ["sell", "SALES", 0], ["money", "MONEY", 0]];
+    if (perm.canSetup) tabs.push(["setup", "SETUP", 0]);
+    html += '<nav class="tabs"><div class="wrap">';
+    tabs.forEach(function (t) {
+      html += '<button class="tab" type="button" data-tab="' + t[0] + '" aria-current="' + (tab === t[0]) + '">' +
+        t[1] + (t[2] ? '<span class="dot">' + t[2] + "</span>" : "") + "</button>";
+    });
+    html += "</div></nav>";
+
+    html += '<main><div class="wrap">';
+    if (readOnly) html += '<div class="banner info"><b>View only.</b> You can see everything here but not record anything — you need edit access to this board.</div>';
+    if (S.defaultPins) html += '<div class="banner warn"><b>Everyone still has PIN 1234.</b> Change them in Setup before you share this link.</div>';
+    var noCost = S.items.filter(function (i) { return i.active && i.cost == null; }).length;
+    if (noCost) html += '<div class="banner warn"><b>' + noCost + " item" + (noCost > 1 ? "s have" : " has") +
+      " no ingredient cost yet.</b> Cost and profit stay incomplete until you set them in Setup.</div>";
+
+    if (tab === "today") html += viewToday(perm);
+    else if (tab === "out") html += viewOut(perm);
+    else if (tab === "sell") html += viewSell(perm);
+    else if (tab === "money") html += viewMoney();
+    else if (tab === "setup") html += viewSetup(perm);
+    html += "</div></main>";
+
+    app.innerHTML = html;
+    wire();
+  }
+
+  /* ---------- lock ---------- */
+  function renderLock() {
+    var h = '<div class="lock"><div class="lockbox">' +
+      "<h1>Dee'serts Stock</h1>" +
+      "<p>Pick your name and enter your PIN.</p><div class=\"people\">";
+    S.team.forEach(function (u) {
+      h += '<button class="person" type="button" data-person="' + u.id + '" aria-pressed="' + (lockSel === u.id) + '">' +
+        '<span class="avatar">' + esc(initials(u.name)) + "</span>" +
+        '<span><span class="nm">' + esc(u.name) + '</span><br><span class="rl">' +
+        (ROLES[u.role] ? ROLES[u.role].label : "TEAM") + "</span></span></button>";
+    });
+    h += "</div>";
+    if (lockSel) {
+      h += '<div class="field"><label for="pin">PIN</label>' +
+        '<input id="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="••••"></div>' +
+        '<button class="btn pri" type="button" data-act="login" style="width:100%">ENTER</button>';
+    }
+    if (lockErr) h += '<div class="err">' + esc(lockErr) + "</div>";
+    h += "</div></div>";
+    app.innerHTML = h;
+    wire();
+    var p = document.getElementById("pin");
+    if (p) {
+      p.focus();
+      p.addEventListener("keydown", function (e) { if (e.key === "Enter") doLogin(); });
+    }
+  }
+  function doLogin() {
+    var el = document.getElementById("pin");
+    if (!el) return;
+    var u = user(lockSel);
+    hash(el.value.trim()).then(function (h) {
+      if (u && h === u.pin) {
+        me = u;
+        lockErr = "";
+        try { sessionStorage.setItem("deeserts.uid", u.id); } catch (e) {}
+        render();
+      } else {
+        lockErr = "That PIN doesn't match.";
+        renderLock();
+      }
+    });
+  }
+
+  /* ---------- today ---------- */
+  function viewToday(perm) {
+    var t = todayStr();
+    var open = live().filter(function (b) { return remaining(b) > 0; });
+    var expired = open.filter(function (b) { return status(b) === "expired"; });
+    var lastDay = open.filter(function (b) { return status(b) === "today"; });
+    var tomorrow = open.filter(function (b) { return status(b) === "soon"; });
+    var onHand = open.reduce(function (a, b) { return a + remaining(b); }, 0);
+    var todaySold = 0;
+    live().forEach(function (b) {
+      (b.sales || []).forEach(function (s) { if ((s.at || "").slice(0, 10) === t) todaySold += s.qty; });
+    });
+
+    var h = '<h2 class="sec">Today</h2><p class="sub">' + niceDate(t) + " · what is on the truck right now.</p>";
+    h += '<div class="stats">' +
+      stat("ON HAND", onHand, onHand + " unit" + (onHand === 1 ? "" : "s") + " unsold", "") +
+      stat("SOLD TODAY", todaySold, "logged by the truck", "good") +
+      stat("LAST DAY", lastDay.length, "sell these first", lastDay.length ? "warn" : "") +
+      stat("EXPIRED", expired.length, "batches to write off", expired.length ? "bad" : "") +
+      "</div>";
+
+    if (expired.length) {
+      h += '<div class="banner bad"><b>' + expired.length + " batch" + (expired.length > 1 ? "es have" : " has") +
+        " passed its date.</b> Pull them off the counter and write them off — they still count as cost.</div>";
+    }
+    if (lastDay.length) {
+      h += '<div class="banner warn"><b>' + lastDay.length + " batch" + (lastDay.length > 1 ? "es are" : " is") +
+        " on its last day.</b> Anything unsold tonight becomes waste tomorrow.</div>";
+    }
+
+    var order = { expired: 0, today: 1, soon: 2, fresh: 3 };
+    var sorted = open.slice().sort(function (a, b) {
+      var d = order[status(a)] - order[status(b)];
+      return d !== 0 ? d : (expiresOn(a) < expiresOn(b) ? -1 : 1);
+    });
+    h += '<div class="subhead">IN STOCK</div>';
+    h += sorted.length ? rows(sorted, perm, true) :
+      '<div class="empty">Nothing in stock. Dee logs a delivery to start.</div>';
+    if (tomorrow.length) h += '<p class="hint" style="margin-top:12px">' + tomorrow.length +
+      " batch" + (tomorrow.length > 1 ? "es expire" : " expires") + " tomorrow.</p>";
+    return h;
+  }
+  function stat(k, v, n, cls) {
+    return '<div class="stat ' + cls + '"><div class="k">' + k + '</div><div class="v num">' + v +
+      '</div><div class="n">' + esc(n) + "</div></div>";
+  }
+
+  /* ---------- rows ---------- */
+  function rows(list, perm, withSell) {
+    var h = '<div class="rows">';
+    list.forEach(function (b) {
+      var it = item(b.itemId);
+      var st = status(b);
+      var s = sold(b), left = remaining(b);
+      var exp = expiresOn(b);
+      var d = daysBetween(todayStr(), exp);
+      h += '<div class="row s-' + st + '"><div class="stripe"></div><div class="in">' +
+        '<div class="rt"><span class="nm">' + esc(it ? it.name : "Deleted item") + "</span>" +
+        '<span class="qty num">' + left + " / " + b.qty + "</span>" +
+        '<span class="pill p-' + st + '">' + STATUS_LABEL[st] + "</span>" +
+        (b.voided ? "" : '<span class="pill p-lock">LOCKED</span>') + "</div>";
+      h += '<div class="meta">Made <b>' + niceDate(b.madeOn) + "</b> · expires <b>" + niceDate(exp) + "</b>" +
+        (st === "expired" ? " (" + Math.abs(d) + "d ago)" : d >= 0 && !b.voided && left > 0 ? " (" + (d === 0 ? "today" : d + "d") + ")" : "") +
+        " · in by <b>" + esc(uname(b.by)) + "</b></div>";
+      h += '<div class="meta">Sold <b>' + s + "</b> · cost " +
+        (b.unitCost == null ? "<b>not set</b>" : "<b>" + cur() + " " + money(b.qty * b.unitCost) + "</b>") +
+        " · sells at <b>" + cur() + " " + money(b.unitPrice) + "</b></div>";
+      if (b.voided) h += '<div class="meta">Voided by <b>' + esc(uname(b.voidedBy)) + "</b>" +
+        (b.voidReason ? ": " + esc(b.voidReason) : "") + "</div>";
+      var pct = b.qty ? Math.round((s / b.qty) * 100) : 0;
+      h += '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>';
+      if (withSell && !b.voided && left > 0 && perm.canSell && !readOnly) {
+        h += '<div class="acts">' +
+          '<button class="btn pri sm" type="button" data-sell="' + b.id + '" data-n="1">SOLD 1</button>' +
+          '<button class="btn dark sm" type="button" data-sell="' + b.id + '" data-n="2">SOLD 2</button>' +
+          '<button class="btn ghost sm" type="button" data-sellmany="' + b.id + '">OTHER…</button>' +
+          "</div>";
+      }
+      h += "</div></div>";
+    });
+    return h + "</div>";
+  }
+
+  /* ---------- deliveries ---------- */
+  function viewOut(perm) {
+    var h = '<h2 class="sec">Deliveries out</h2>' +
+      '<p class="sub">What Dee sends to the truck. Every delivery locks the moment it is saved — quantity, cost and date cannot be edited afterwards.</p>';
+    if (perm.canDeliver && !readOnly) {
+      var opts = S.items.filter(function (i) { return i.active; }).map(function (i) {
+        return '<option value="' + i.id + '">' + esc(i.name) + (i.note ? " (" + esc(i.note) + ")" : "") + "</option>";
+      }).join("");
+      h += '<div class="card"><div class="grid2">' +
+        '<div class="field"><label for="d-item">ITEM</label><select id="d-item">' + opts + "</select></div>" +
+        '<div class="field"><label for="d-qty">QUANTITY</label><input id="d-qty" type="number" min="1" step="1" value="1"></div>' +
+        '<div class="field"><label for="d-cost">COST PER UNIT (' + cur() + ')</label><input id="d-cost" type="number" min="0" step="0.01" placeholder="ingredients"></div>' +
+        '<div class="field"><label for="d-date">MADE ON</label><input id="d-date" type="date" value="' + todayStr() + '"></div>' +
+        "</div>" +
+        '<p class="hint" id="d-preview"></p>' +
+        '<button class="btn pri" type="button" data-act="deliver" style="margin-top:8px">SAVE DELIVERY &amp; LOCK</button>' +
+        "</div>";
+    } else if (!readOnly) {
+      h += '<div class="banner info">Only Dee\'s side can log deliveries. You can see every batch below.</div>';
+    }
+    var all = S.batches.slice().sort(function (a, b) { return a.at < b.at ? 1 : -1; });
+    h += '<div class="subhead">ALL DELIVERIES (' + all.length + ")</div>";
+    h += all.length ? rows(all, perm, false) : '<div class="empty">No deliveries logged yet.</div>';
+    return h;
+  }
+
+  /* ---------- sales ---------- */
+  function viewSell(perm) {
+    var open = live().filter(function (b) { return remaining(b) > 0 && status(b) !== "expired"; });
+    var h = '<h2 class="sec">Sales</h2>' +
+      '<p class="sub">Tap what has sold. Entries are added to the batch and cannot be edited — log a correction as a new entry if you miscount.</p>';
+    if (!perm.canSell) h += '<div class="banner info">Only the truck side can record sales.</div>';
+    h += open.length ? rows(open, perm, true) :
+      '<div class="empty">Nothing available to sell. Anything expired shows on Today.</div>';
+
+    var log = [];
+    live().forEach(function (b) {
+      (b.sales || []).forEach(function (s) {
+        log.push({ at: s.at, qty: s.qty, by: s.by, item: (item(b.itemId) || {}).name || "—" });
+      });
+    });
+    log.sort(function (a, b) { return a.at < b.at ? 1 : -1; });
+    if (log.length) {
+      h += '<div class="subhead">RECENT ENTRIES</div><div class="tw"><table><thead><tr>' +
+        "<th>WHEN</th><th>ITEM</th><th class=\"r\">QTY</th><th>BY</th></tr></thead><tbody>";
+      log.slice(0, 25).forEach(function (r) {
+        var dt = new Date(r.at);
+        h += "<tr><td>" + esc(dt.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })) +
+          "</td><td>" + esc(r.item) + '</td><td class="r num">' + r.qty + "</td><td>" + esc(uname(r.by)) + "</td></tr>";
+      });
+      h += "</tbody></table></div>";
+    }
+    return h;
+  }
+
+  /* ---------- money ---------- */
+  function viewMoney() {
+    var t = totals(null);
+    var pct = S.split.deesPct;
+    var basis = S.split.basis === "revenue" ? t.revenue : t.profit;
+    var deesCut = basis * (pct / 100), truckCut = basis * (1 - pct / 100);
+    var h = '<h2 class="sec">Money</h2><p class="sub">Everything logged so far, using the price and cost locked onto each batch.</p>';
+    h += '<div class="stats">' +
+      stat("REVENUE", cur() + " " + money(t.revenue), t.unitsSold + " units sold", "good") +
+      stat("COST", cur() + " " + money(t.cost), t.unitsOut + " units delivered", "") +
+      stat("PROFIT", cur() + " " + money(t.profit), "revenue less cost", t.profit >= 0 ? "good" : "bad") +
+      stat("WASTE", cur() + " " + money(t.waste), t.unitsWasted + " units expired unsold", t.waste > 0 ? "bad" : "") +
+      "</div>";
+    if (t.unknownCost) h += '<div class="banner warn"><b>' + t.unknownCost +
+      " units have no cost recorded.</b> Profit and waste below are understated until those batches' items have an ingredient cost.</div>";
+
+    h += '<div class="subhead">THE ' + pct + "/" + (100 - pct) + " SPLIT · ON " + (S.split.basis === "revenue" ? "REVENUE" : "PROFIT") + "</div>";
+    h += '<div class="split">' +
+      '<div class="sp d"><div class="k">DEE\'S TREATS</div><div class="v num">' + cur() + " " + money(deesCut) + "</div></div>" +
+      '<div class="sp t"><div class="k">SMASH &amp; PASS</div><div class="v num">' + cur() + " " + money(truckCut) + "</div></div>" +
+      "</div>";
+    h += '<p class="hint" style="margin-top:10px">Split basis and percentage are set in Setup. Confirm with the other side which one your deal actually means — splitting revenue and splitting profit give very different numbers.</p>';
+
+    h += '<div class="subhead">BY ITEM</div><div class="tw"><table><thead><tr><th>ITEM</th>' +
+      '<th class="r">OUT</th><th class="r">SOLD</th><th class="r">WASTED</th><th class="r">REVENUE</th><th class="r">COST</th><th class="r">PROFIT</th>' +
+      "</tr></thead><tbody>";
+    S.items.forEach(function (it) {
+      var o = 0, s = 0, w = 0, rev = 0, cost = 0, any = false;
+      live().forEach(function (b) {
+        if (b.itemId !== it.id) return;
+        any = true;
+        var sd = sold(b);
+        o += b.qty; s += sd; rev += sd * (b.unitPrice || 0);
+        if (b.unitCost != null) cost += b.qty * b.unitCost;
+        if (status(b) === "expired") w += remaining(b);
+      });
+      if (!any) return;
+      h += "<tr><td>" + esc(it.name) + '</td><td class="r num">' + o + '</td><td class="r num">' + s +
+        '</td><td class="r num">' + w + '</td><td class="r num">' + money(rev) +
+        '</td><td class="r num">' + money(cost) + '</td><td class="r num">' + money(rev - cost) + "</td></tr>";
+    });
+    h += "</tbody></table></div>";
+    return h;
+  }
+
+  /* ---------- setup ---------- */
+  function viewSetup(perm) {
+    if (!perm.canSetup) return '<div class="empty">Setup is admin only.</div>';
+    var h = '<h2 class="sec">Setup</h2><p class="sub">Edit anything here. Changes apply to <em>future</em> deliveries only — batches already logged keep the price, cost and shelf life they were saved with.</p>';
+
+    h += '<div class="subhead">ITEMS</div>';
+    S.items.forEach(function (it) {
+      h += '<div class="card" data-item="' + it.id + '"><div class="grid2">' +
+        '<div class="field"><label>NAME</label><input data-f="name" value="' + esc(it.name) + '"></div>' +
+        '<div class="field"><label>NOTE</label><input data-f="note" value="' + esc(it.note || "") + '" placeholder="4 pcs, weekends…"></div>' +
+        '<div class="field"><label>SELL PRICE (' + cur() + ')</label><input data-f="price" type="number" min="0" step="0.01" value="' + it.price + '"></div>' +
+        '<div class="field"><label>INGREDIENT COST (' + cur() + ')</label><input data-f="cost" type="number" min="0" step="0.01" value="' + (it.cost == null ? "" : it.cost) + '" placeholder="not set"></div>' +
+        '<div class="field"><label>SHELF LIFE (DAYS)</label><input data-f="shelf" type="number" min="0" step="1" value="' + it.shelf + '"></div>' +
+        '<div class="field"><label>ON THE MENU</label><select data-f="active"><option value="1"' + (it.active ? " selected" : "") + ">Yes</option><option value=\"0\"" + (!it.active ? " selected" : "") + ">No</option></select></div>" +
+        '</div><div class="acts"><button class="btn dark sm" type="button" data-saveitem="' + it.id + '">SAVE ITEM</button>' +
+        '<button class="btn danger sm" type="button" data-delitem="' + it.id + '">REMOVE</button></div></div>';
+    });
+    h += '<button class="btn ghost" type="button" data-act="additem">+ ADD ITEM</button>';
+
+    h += '<div class="subhead">TEAM</div>';
+    S.team.forEach(function (u) {
+      h += '<div class="card" data-user="' + u.id + '"><div class="grid2">' +
+        '<div class="field"><label>NAME</label><input data-f="name" value="' + esc(u.name) + '"></div>' +
+        '<div class="field"><label>SIDE</label><select data-f="role">' +
+        '<option value="dees"' + (u.role === "dees" ? " selected" : "") + ">Dee's — logs deliveries</option>" +
+        '<option value="truck"' + (u.role === "truck" ? " selected" : "") + ">Truck — logs sales</option>" +
+        '<option value="admin"' + (u.role === "admin" ? " selected" : "") + ">Admin — everything</option>" +
+        "</select></div>" +
+        '<div class="field"><label>NEW PIN (BLANK = KEEP)</label><input data-f="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="••••"></div>' +
+        '</div><div class="acts"><button class="btn dark sm" type="button" data-saveuser="' + u.id + '">SAVE PERSON</button>' +
+        (S.team.length > 1 ? '<button class="btn danger sm" type="button" data-deluser="' + u.id + '">REMOVE</button>' : "") +
+        "</div></div>";
+    });
+    h += '<button class="btn ghost" type="button" data-act="adduser">+ ADD PERSON</button>';
+
+    h += '<div class="subhead">THE SPLIT</div><div class="card"><div class="grid2">' +
+      '<div class="field"><label for="sp-pct">DEE\'S SHARE (%)</label><input id="sp-pct" type="number" min="0" max="100" step="1" value="' + S.split.deesPct + '"></div>' +
+      '<div class="field"><label for="sp-basis">SPLIT ON</label><select id="sp-basis">' +
+      '<option value="profit"' + (S.split.basis === "profit" ? " selected" : "") + ">Profit (after cost)</option>" +
+      '<option value="revenue"' + (S.split.basis === "revenue" ? " selected" : "") + ">Revenue (before cost)</option>" +
+      "</select></div>" +
+      '<div class="field"><label for="sp-cur">CURRENCY</label><input id="sp-cur" value="' + cur() + '"></div>' +
+      "</div>" +
+      '<button class="btn dark sm" type="button" data-act="savesplit">SAVE</button></div>';
+
+    var oldOnes = S.batches.filter(function (b) {
+      return daysBetween(todayStr(), expiresOn(b)) < -30;
+    }).length;
+    h += '<div class="subhead">HOUSEKEEPING</div><div class="card">' +
+      "<p style=\"margin:0 0 12px;font-size:14.5px;color:var(--ink-2)\">The whole board is saved inside this page, so it should not grow forever. " +
+      (oldOnes ? "<b>" + oldOnes + " batches</b> expired more than 30 days ago." : "Nothing is older than 30 days yet.") + "</p>" +
+      '<button class="btn danger sm" type="button" data-act="archive"' + (oldOnes ? "" : " disabled") + ">CLEAR BATCHES OVER 30 DAYS OLD</button></div>";
+    return h;
+  }
+
+  /* ============ actions ============ */
+  function wire() {
+    app.querySelectorAll("[data-tab]").forEach(function (b) {
+      b.onclick = function () { setTab(b.getAttribute("data-tab")); };
+    });
+    app.querySelectorAll("[data-person]").forEach(function (b) {
+      b.onclick = function () { lockSel = b.getAttribute("data-person"); lockErr = ""; renderLock(); };
+    });
+    app.querySelectorAll("[data-sell]").forEach(function (b) {
+      b.onclick = function () { logSale(b.getAttribute("data-sell"), +b.getAttribute("data-n")); };
+    });
+    app.querySelectorAll("[data-sellmany]").forEach(function (b) {
+      b.onclick = function () {
+        var bid = b.getAttribute("data-sellmany");
+        var bt = S.batches.filter(function (x) { return x.id === bid; })[0];
+        var ans = prompt("How many sold? (up to " + remaining(bt) + ")", "1");
+        if (ans == null) return;
+        var n = parseInt(ans, 10);
+        if (!(n > 0)) { toast("Enter a whole number above zero.", true); return; }
+        logSale(bid, n);
+      };
+    });
+    app.querySelectorAll("[data-saveitem]").forEach(function (b) {
+      b.onclick = function () { saveItem(b.getAttribute("data-saveitem")); };
+    });
+    app.querySelectorAll("[data-delitem]").forEach(function (b) {
+      b.onclick = function () {
+        var iid = b.getAttribute("data-delitem");
+        var used = S.batches.some(function (x) { return x.itemId === iid; });
+        if (used) { toast("This item has deliveries against it — set it to 'not on the menu' instead.", true); return; }
+        if (!confirm("Remove this item?")) return;
+        save(function (n) { n.items = n.items.filter(function (i) { return i.id !== iid; }); }, "Item removed.");
+      };
+    });
+    app.querySelectorAll("[data-saveuser]").forEach(function (b) {
+      b.onclick = function () { saveUser(b.getAttribute("data-saveuser")); };
+    });
+    app.querySelectorAll("[data-deluser]").forEach(function (b) {
+      b.onclick = function () {
+        var uid = b.getAttribute("data-deluser");
+        if (uid === me.id) { toast("You cannot remove yourself.", true); return; }
+        if (!confirm("Remove this person? Their past entries stay on the board.")) return;
+        save(function (n) { n.team = n.team.filter(function (u) { return u.id !== uid; }); }, "Person removed.");
+      };
+    });
+    var acts = {
+      signout: signOut,
+      login: doLogin,
+      deliver: addDelivery,
+      additem: function () {
+        save(function (n) {
+          n.items.push({ id: id("i"), name: "New item", note: "", price: 0, cost: null, shelf: n.defaultShelf || 2, active: true });
+        }, "Item added.");
+      },
+      adduser: function () {
+        save(function (n) {
+          n.team.push({ id: id("u"), name: "New person", role: "truck", pin: "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117" });
+          n.defaultPins = true;
+        }, "Person added with PIN 1234 — change it.");
+      },
+      savesplit: function () {
+        var pct = parseFloat(document.getElementById("sp-pct").value);
+        var basis = document.getElementById("sp-basis").value;
+        var c = document.getElementById("sp-cur").value.trim().slice(0, 6) || "AED";
+        if (!(pct >= 0 && pct <= 100)) { toast("Share must be between 0 and 100.", true); return; }
+        save(function (n) { n.split = { deesPct: pct, basis: basis }; n.currency = c; }, "Split saved.");
+      },
+      archive: function () {
+        if (!confirm("Permanently remove batches that expired over 30 days ago? Their totals go with them.")) return;
+        save(function (n) {
+          n.batches = n.batches.filter(function (b) { return daysBetween(todayStr(), addDays(b.madeOn, b.shelf)) >= -30; });
+        }, "Old batches cleared.");
+      }
+    };
+    app.querySelectorAll("[data-act]").forEach(function (b) {
+      var fn = acts[b.getAttribute("data-act")];
+      if (fn) b.onclick = fn;
+      if (busy) b.disabled = true;
+    });
+    if (busy) app.querySelectorAll(".btn").forEach(function (b) { b.disabled = true; });
+
+    var di = document.getElementById("d-item"), dq = document.getElementById("d-qty"),
+        dc = document.getElementById("d-cost"), pv = document.getElementById("d-preview");
+    if (pv) {
+      var upd = function () {
+        var it = item(di.value), q = parseInt(dq.value, 10) || 0;
+        var c = dc.value === "" ? (it ? it.cost : null) : parseFloat(dc.value);
+        var shelf = it ? it.shelf : 2;
+        var dd = document.getElementById("d-date").value || todayStr();
+        pv.innerHTML = q > 0 && it
+          ? "Locks as <b>" + q + " × " + esc(it.name) + "</b> · total cost <b>" +
+            (c == null || isNaN(c) ? "not set" : cur() + " " + money(q * c)) + "</b> · expires <b>" +
+            niceDate(addDays(dd, shelf)) + "</b> (" + shelf + " day" + (shelf === 1 ? "" : "s") + ")"
+          : "";
+      };
+      [di, dq, dc, document.getElementById("d-date")].forEach(function (el) {
+        if (el) { el.oninput = upd; el.onchange = upd; }
+      });
+      upd();
+    }
+  }
+
+  function logSale(bid, n) {
+    var b = S.batches.filter(function (x) { return x.id === bid; })[0];
+    if (!b) return;
+    if (n > remaining(b)) { toast("Only " + remaining(b) + " left in that batch.", true); return; }
+    save(function (nx) {
+      var t = nx.batches.filter(function (x) { return x.id === bid; })[0];
+      t.sales = t.sales || [];
+      t.sales.push({ qty: n, by: me.id, at: new Date().toISOString() });
+    }, n + " sold — logged.");
+  }
+
+  function addDelivery() {
+    var iid = document.getElementById("d-item").value;
+    var it = item(iid);
+    var qty = parseInt(document.getElementById("d-qty").value, 10);
+    var costRaw = document.getElementById("d-cost").value;
+    var madeOn = document.getElementById("d-date").value || todayStr();
+    if (!it) { toast("Pick an item.", true); return; }
+    if (!(qty > 0)) { toast("Quantity must be a whole number above zero.", true); return; }
+    var unitCost = costRaw === "" ? (it.cost == null ? null : it.cost) : parseFloat(costRaw);
+    if (unitCost != null && (isNaN(unitCost) || unitCost < 0)) { toast("Cost cannot be negative.", true); return; }
+    if (!confirm(qty + " × " + it.name + " — this locks once saved. Continue?")) return;
+    save(function (n) {
+      n.batches.push({
+        id: id("b"), itemId: iid, qty: qty, unitCost: unitCost, unitPrice: it.price,
+        shelf: it.shelf, madeOn: madeOn, by: me.id, at: new Date().toISOString(), sales: []
+      });
+    }, "Delivery locked in.");
+  }
+
+  function saveItem(iid) {
+    var card = app.querySelector('[data-item="' + iid + '"]');
+    var g = function (f) { return card.querySelector('[data-f="' + f + '"]').value; };
+    var price = parseFloat(g("price")), shelf = parseInt(g("shelf"), 10);
+    var costRaw = g("cost").trim();
+    var cost = costRaw === "" ? null : parseFloat(costRaw);
+    if (!g("name").trim()) { toast("Item needs a name.", true); return; }
+    if (isNaN(price) || price < 0) { toast("Price must be zero or more.", true); return; }
+    if (isNaN(shelf) || shelf < 0) { toast("Shelf life must be zero or more days.", true); return; }
+    if (cost != null && (isNaN(cost) || cost < 0)) { toast("Cost must be zero or more.", true); return; }
+    save(function (n) {
+      var t = n.items.filter(function (i) { return i.id === iid; })[0];
+      t.name = g("name").trim(); t.note = g("note").trim();
+      t.price = price; t.cost = cost; t.shelf = shelf; t.active = g("active") === "1";
+    }, "Item saved.");
+  }
+
+  function saveUser(uid) {
+    var card = app.querySelector('[data-user="' + uid + '"]');
+    var g = function (f) { return card.querySelector('[data-f="' + f + '"]').value; };
+    var name = g("name").trim(), role = g("role"), pin = g("pin").trim();
+    if (!name) { toast("Person needs a name.", true); return; }
+    if (pin && !/^\d{4,8}$/.test(pin)) { toast("PIN must be 4–8 digits.", true); return; }
+    var apply = function (h) {
+      save(function (n) {
+        var t = n.team.filter(function (u) { return u.id === uid; })[0];
+        t.name = name; t.role = role;
+        if (h) t.pin = h;
+        var DEF = "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117";
+        n.defaultPins = n.team.some(function (u) { return u.pin === DEF; });
+      }, "Person saved.");
+    };
+    if (pin) hash(pin).then(apply); else apply(null);
+  }
+
+  /* ============ boot ============ */
+  loadSession();
+  render();
+  claude.use("artifact").then(function (a) {
+    artifact = a;
+    if (!a) { readOnly = true; }
+    render();
+  }).catch(function () { readOnly = true; render(); });
+})();
+</script>
