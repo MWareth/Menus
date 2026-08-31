@@ -41,6 +41,14 @@ Usernames are editable per person in Setup (2–20 chars, lowercase letters/digi
 must be unique). The PINs above are starters — everyone changes their own on the **MY PIN**
 tab (current PIN + new PIN twice). An admin can still reset a forgotten one in Setup.
 
+## Tabs
+`STOCK` (landing) · `DELIVERIES` · `SALES` · `MONEY` · `RECIPES` (Dee's side) ·
+`SETUP` (admin) · `MY PIN`.
+
+The flow is Deliveries → Stock → Sales: a logged delivery becomes stock, stock gets sold down.
+STOCK opens with on-hand / sold-today / last-day / expired counters, then a by-item summary
+(on hand, batch count, first to expire), then every batch sorted most-urgent first.
+
 ## Roles
 | Role | Deliveries | Sales | Setup |
 |---|---|---|---|

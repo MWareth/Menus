@@ -259,7 +259,7 @@
   var artifact = null;
   var readOnly = false;
   var busy = false;
-  var tab = "today";
+  var tab = "stock";
   var me = null;
   var lockErr = "";
 
@@ -561,7 +561,7 @@
       '<button class="out" type="button" data-act="signout">EXIT</button>' +
       "</div></div></header>";
 
-    var tabs = [["today", "TODAY", alerts], ["out", "DELIVERIES", 0], ["sell", "SALES", 0], ["money", "MONEY", 0]];
+    var tabs = [["stock", "STOCK", alerts], ["out", "DELIVERIES", 0], ["sell", "SALES", 0], ["money", "MONEY", 0]];
     if (perm.canDeliver) tabs.push(["recipes", "RECIPES", 0]);
     if (perm.canSetup) tabs.push(["setup", "SETUP", 0]);
     tabs.push(["account", "MY PIN", 0]);
@@ -581,15 +581,15 @@
 
     var allowed = {};
     tabs.forEach(function (t) { allowed[t[0]] = true; });
-    if (!allowed[tab]) tab = "today";
-    if (tab === "today") html += viewToday(perm);
+    if (!allowed[tab]) tab = "stock";
+    if (tab === "stock") html += viewStock(perm);
     else if (tab === "out") html += viewOut(perm);
     else if (tab === "sell") html += viewSell(perm);
     else if (tab === "money") html += viewMoney();
     else if (tab === "recipes") html += viewRecipes(perm);
     else if (tab === "setup") html += viewSetup(perm);
     else if (tab === "account") html += viewAccount();
-    else html += viewToday(perm);
+    else html += viewStock(perm);
     html += "</div></main>";
 
     app.innerHTML = html;
@@ -664,8 +664,8 @@
     });
   }
 
-  /* ---------- today ---------- */
-  function viewToday(perm) {
+  /* ---------- stock ---------- */
+  function viewStock(perm) {
     var t = todayStr();
     var open = live().filter(function (b) { return remaining(b) > 0; });
     var expired = open.filter(function (b) { return status(b) === "expired"; });
@@ -677,7 +677,8 @@
       (b.sales || []).forEach(function (s) { if ((s.at || "").slice(0, 10) === t) todaySold += s.qty; });
     });
 
-    var h = '<h2 class="sec">Today</h2><p class="sub">' + niceDate(t) + " · what is on the truck right now.</p>";
+    var h = '<h2 class="sec">In stock</h2><p class="sub">' + niceDate(t) +
+      " · everything delivered and not yet sold.</p>";
     h += '<div class="stats">' +
       stat("ON HAND", onHand, onHand + " unit" + (onHand === 1 ? "" : "s") + " unsold", "") +
       stat("SOLD TODAY", todaySold, "logged by the truck", "good") +
@@ -699,7 +700,32 @@
       var d = order[status(a)] - order[status(b)];
       return d !== 0 ? d : (expiresOn(a) < expiresOn(b) ? -1 : 1);
     });
-    h += '<div class="subhead">IN STOCK</div>';
+    if (open.length) {
+      var byItem = {};
+      open.forEach(function (b) {
+        var k = b.itemId;
+        if (!byItem[k]) byItem[k] = { n: 0, soonest: null, batches: 0 };
+        byItem[k].n += remaining(b);
+        byItem[k].batches += 1;
+        var e = expiresOn(b);
+        if (!byItem[k].soonest || e < byItem[k].soonest) byItem[k].soonest = e;
+      });
+      h += '<div class="subhead">BY ITEM</div><div class="tw"><table><thead><tr><th>ITEM</th>' +
+        '<th class="r">ON HAND</th><th class="r">BATCHES</th><th>FIRST TO EXPIRE</th>' +
+        "</tr></thead><tbody>";
+      Object.keys(byItem).forEach(function (k) {
+        var g = byItem[k], it = item(k);
+        var d = daysBetween(t, g.soonest);
+        var when = d < 0 ? "expired" : d === 0 ? "today" : d === 1 ? "tomorrow" : niceDate(g.soonest);
+        var cls = d <= 0 ? "p-today" : d === 1 ? "p-soon" : "p-fresh";
+        h += "<tr><td>" + esc(it ? it.name : "Deleted item") + '</td><td class="r num">' + g.n +
+          '</td><td class="r num">' + g.batches + '</td><td><span class="pill ' + cls + '">' +
+          esc(when.toUpperCase()) + "</span></td></tr>";
+      });
+      h += "</tbody></table></div>";
+    }
+
+    h += '<div class="subhead">EVERY BATCH</div>';
     h += sorted.length ? rows(sorted, perm, true) :
       '<div class="empty">Nothing in stock. Dee logs a delivery to start.</div>';
     if (tomorrow.length) h += '<p class="hint" style="margin-top:12px">' + tomorrow.length +
