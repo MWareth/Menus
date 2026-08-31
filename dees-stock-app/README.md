@@ -103,6 +103,20 @@ reintroduce a native modal.
 
 Unit cost includes packaging (0.45 / 1.09 / 0.25 / 0.25 / 1.68).
 
+## The 50/50 settlement
+Dee's fronts every ingredient cost `C`; the truck takes all the cash `R`. For Dee's to end on
+its share `d` of the profit, the truck hands over `C×(1−d) + R×d` — its share of what Dee's
+spent, plus Dee's share of what the truck holds. At 50/50 that is simply half of each, and it
+leaves both sides on exactly `profit/2` whether profit is positive or negative.
+
+The Money tab opens with the outstanding figure, the four lines it is built from, a
+**stock built — who paid for it** table (per person: deliveries, portions, cost borne, the
+truck's share of it), and a payments log. `RECORD A PAYMENT` (Dee's side / admin) reduces the
+balance; payments live in `state.payments`.
+
+Baking paper is an ingredient line at AED 1.15 per batch on cheesecake, brownies, lazy cake and
+pavlova — not the crème brûlée, which is baked in ramekins.
+
 ## Corrections
 Nothing is edited or deleted — mistakes are reversed on the record:
 - **FIX COUNT** on a batch asks what has *actually* sold and appends the difference as a

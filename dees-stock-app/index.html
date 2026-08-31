@@ -151,6 +151,18 @@
   .modalacts{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap}
   .modalacts .btn{flex:1 1 auto}
 
+  /* ---------- settlement ---------- */
+  .settle{background:var(--brown);color:var(--cream);border-radius:16px;padding:22px;margin-bottom:14px}
+  .settle .k{font-size:11px;font-weight:900;letter-spacing:.14em;color:#CBB6A6}
+  .settle .big{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:clamp(30px,8vw,42px);
+    line-height:1.05;margin:6px 0 2px;color:var(--gold)}
+  .settle .who2{font-size:15px;font-weight:700;color:var(--cream)}
+  .settle.clear .big{color:#7BD69B}
+  .calc{margin-top:18px;border-top:1px solid #6B4A42;padding-top:14px}
+  .crow{display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-size:14px;color:#CBB6A6}
+  .crow b{color:var(--cream);font-weight:900}
+  .crow.tot{border-top:1px solid #6B4A42;margin-top:6px;padding-top:11px;font-size:15px;color:var(--cream);font-weight:900}
+
   /* ---------- misc ---------- */
   .empty{text-align:center;padding:34px 20px;color:var(--ink-3);font-size:15px}
   .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:200;
@@ -279,6 +291,13 @@
           "u": "g",
           "pp": 8.81,
           "pq": 35
+        },
+        {
+          "n": "Baking paper",
+          "q": 1,
+          "u": "sheet",
+          "pp": 1.15,
+          "pq": 1
         }
       ]
     },
@@ -328,6 +347,13 @@
           "u": "ml",
           "pp": 37.95,
           "pq": 1000
+        },
+        {
+          "n": "Baking paper",
+          "q": 1,
+          "u": "sheet",
+          "pp": 1.15,
+          "pq": 1
         }
       ]
     },
@@ -381,7 +407,7 @@
       "shelf": 2,
       "active": true,
       "batchWord": "tray",
-      "yieldPieces": 16,
+      "yieldPieces": 40,
       "perPortion": 4,
       "packaging": 0.25,
       "recipe": [
@@ -440,6 +466,13 @@
           "u": "g",
           "pp": 29,
           "pq": 285
+        },
+        {
+          "n": "Baking paper",
+          "q": 1,
+          "u": "sheet",
+          "pp": 1.15,
+          "pq": 1
         }
       ]
     },
@@ -517,6 +550,13 @@
           "u": "g",
           "pp": 13.99,
           "pq": 250
+        },
+        {
+          "n": "Baking paper",
+          "q": 1,
+          "u": "sheet",
+          "pp": 1.15,
+          "pq": 1
         }
       ]
     }
@@ -579,12 +619,17 @@
           "by": "u1",
           "at": "2026-08-31T11:21:45.441Z"
         }
-      ]
+      ],
+      "voided": true,
+      "voidedBy": "u1",
+      "voidReason": "Testing",
+      "voidedAt": "2026-08-31T11:28:34.341Z"
     }
   ],
   "seq": 7,
   "defaultPins": false,
-  "updatedAt": "2026-08-31T11:21:45.441Z"
+  "updatedAt": "2026-08-31T11:28:34.341Z",
+  "payments": []
 }
 </script>
 
@@ -741,6 +786,27 @@
     });
     t.profit = t.revenue - t.cost;
     return t;
+  }
+
+  /* ============ the 50/50 settlement ============
+     Dee's fronts every ingredient cost C. The truck takes all the cash R.
+     For Dee's to end on its share d of the profit, the truck must hand over
+     C x (1-d) + R x d  — its share of what Dee's spent, plus Dee's share of
+     what the truck holds. At 50/50 that is simply half of each.            */
+  function payments() { return S.payments || []; }
+  function paidSoFar() {
+    return payments().reduce(function (a, p) { return a + (+p.amount || 0); }, 0);
+  }
+  function settlement() {
+    var t = totals(null);
+    var d = (S.split.deesPct || 0) / 100;
+    var costShare = t.cost * (1 - d);   // truck's share of what Dee's spent
+    var revShare = t.revenue * d;       // Dee's share of what the truck took
+    var owed = costShare + revShare;
+    var paid = paidSoFar();
+    return { cost: t.cost, revenue: t.revenue, profit: t.profit, d: d,
+             costShare: costShare, revShare: revShare, owed: owed,
+             paid: paid, outstanding: owed - paid, unknownCost: t.unknownCost };
   }
 
   /* ============ persistence ============ */
@@ -1260,7 +1326,33 @@
     var pct = S.split.deesPct;
     var basis = S.split.basis === "revenue" ? t.revenue : t.profit;
     var deesCut = basis * (pct / 100), truckCut = basis * (1 - pct / 100);
+    var S1 = settlement();
+    var out = S1.outstanding;
+    var owes = out >= 0 ? "SMASH &amp; PASS owes DEE'S TREATS" : "DEE'S TREATS owes SMASH &amp; PASS";
     var h = '<h2 class="sec">Money</h2><p class="sub">Everything logged so far, using the price and cost locked onto each batch.</p>';
+
+    h += '<div class="settle' + (Math.abs(out) < 0.005 ? " clear" : "") + '">' +
+      '<div class="k">OUTSTANDING RIGHT NOW</div>' +
+      '<div class="big num">' + cur() + " " + money(Math.abs(out)) + "</div>" +
+      '<div class="who2">' + (Math.abs(out) < 0.005 ? "All square — nothing owed either way." : owes) + "</div>";
+    h += '<div class="calc">' +
+      '<div class="crow"><span>Dee\'s paid for ingredients &amp; packaging</span><span class="num">' +
+        cur() + " " + money(S1.cost) + "</span></div>" +
+      '<div class="crow"><span>Truck\'s ' + Math.round((1 - S1.d) * 100) + '% share of that cost</span><span class="num">+ ' +
+        cur() + " " + money(S1.costShare) + "</span></div>" +
+      '<div class="crow"><span>Truck collected in sales</span><span class="num">' +
+        cur() + " " + money(S1.revenue) + "</span></div>" +
+      '<div class="crow"><span>Dee\'s ' + Math.round(S1.d * 100) + '% share of those takings</span><span class="num">+ ' +
+        cur() + " " + money(S1.revShare) + "</span></div>" +
+      (S1.paid ? '<div class="crow"><span>Already paid across</span><span class="num">- ' +
+        cur() + " " + money(S1.paid) + "</span></div>" : "") +
+      '<div class="crow tot"><span>' + (out >= 0 ? "Truck pays Dee\'s" : "Dee\'s pays truck") +
+        '</span><span class="num">' + cur() + " " + money(Math.abs(out)) + "</span></div>" +
+      "</div></div>";
+    h += '<p class="hint" style="margin-bottom:18px">Settling that amount leaves each side holding its ' +
+      Math.round(S1.d * 100) + "/" + Math.round((1 - S1.d) * 100) +
+      " share of the profit — " + cur() + " " + money(S1.profit * S1.d) + " to Dee's, " +
+      cur() + " " + money(S1.profit * (1 - S1.d)) + " to the truck.</p>";
     h += '<div class="stats">' +
       stat("REVENUE", cur() + " " + money(t.revenue), t.unitsSold + " units sold", "good") +
       stat("COST", cur() + " " + money(t.cost), t.unitsOut + " units delivered", "") +
@@ -1276,6 +1368,41 @@
       '<div class="sp t"><div class="k">SMASH &amp; PASS</div><div class="v num">' + cur() + " " + money(truckCut) + "</div></div>" +
       "</div>";
     h += '<p class="hint" style="margin-top:10px">Split basis and percentage are set in Setup. Confirm with the other side which one your deal actually means — splitting revenue and splitting profit give very different numbers.</p>';
+
+    var byWho = {};
+    live().forEach(function (b) {
+      if (b.unitCost == null) return;
+      if (!byWho[b.by]) byWho[b.by] = { units: 0, cost: 0, drops: {} };
+      byWho[b.by].units += b.qty;
+      byWho[b.by].cost += b.qty * b.unitCost;
+      byWho[b.by].drops[b.drop || b.id] = 1;
+    });
+    var whoKeys = Object.keys(byWho);
+    if (whoKeys.length) {
+      h += '<div class="subhead">STOCK BUILT — WHO PAID FOR IT</div><div class="tw"><table><thead><tr>' +
+        '<th>MADE BY</th><th class="r">DELIVERIES</th><th class="r">PORTIONS</th><th class="r">COST BORNE</th>' +
+        '<th class="r">TRUCK SHARE</th></tr></thead><tbody>';
+      whoKeys.forEach(function (k) {
+        var g = byWho[k];
+        h += "<tr><td>" + esc(uname(k)) + '</td><td class="r num">' + Object.keys(g.drops).length +
+          '</td><td class="r num">' + g.units + '</td><td class="r num">' + money(g.cost) +
+          '</td><td class="r num">' + money(g.cost * (1 - S1.d)) + "</td></tr>";
+      });
+      h += "</tbody></table></div>";
+    }
+
+    if (ROLES[me.role].canDeliver && !readOnly) {
+      h += '<div style="margin-top:12px"><button class="btn dark sm" type="button" data-act="pay">RECORD A PAYMENT</button></div>';
+    }
+    if (payments().length) {
+      h += '<div class="subhead">PAYMENTS</div><div class="tw"><table><thead><tr>' +
+        '<th>WHEN</th><th class="r">AMOUNT</th><th>NOTE</th><th>LOGGED BY</th></tr></thead><tbody>';
+      payments().slice().reverse().forEach(function (pm) {
+        h += "<tr><td>" + esc(stamp(pm.at)) + '</td><td class="r num">' + cur() + " " + money(pm.amount) +
+          "</td><td>" + esc(pm.note || "—") + "</td><td>" + esc(uname(pm.by)) + "</td></tr>";
+      });
+      h += "</tbody></table></div>";
+    }
 
     h += '<div class="subhead">BY ITEM</div><div class="tw"><table><thead><tr><th>ITEM</th>' +
       '<th class="r">OUT</th><th class="r">SOLD</th><th class="r">WASTED</th><th class="r">REVENUE</th><th class="r">COST</th><th class="r">PROFIT</th>' +
@@ -1508,6 +1635,21 @@
       signout: signOut,
       login: doLogin,
       changepin: changePin,
+      pay: function () {
+        var due = Math.max(0, Math.round(settlement().outstanding * 100) / 100);
+        ask({ title: "Record a payment",
+              body: "Money handed from the truck to Dee's. It comes off the outstanding balance.\n\n" +
+                    "Outstanding right now: " + cur() + " " + money(due),
+              ok: "RECORD IT",
+              input: { label: "AMOUNT (" + cur() + ")", value: Math.round(due) || 0, min: 1 } })
+          .then(function (amt) {
+            if (amt == null) return;
+            save(function (n) {
+              n.payments = n.payments || [];
+              n.payments.push({ id: id("p"), amount: amt, by: me.id, at: new Date().toISOString() });
+            }, cur() + " " + money(amt) + " recorded.");
+          });
+      },
       addrow2: addDeliveryRow,
       deliver: addDelivery,
       additem: function () {
