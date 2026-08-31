@@ -155,6 +155,24 @@
   .sp .v{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:25px;margin-top:3px}
   .subhead{font-size:12px;font-weight:900;letter-spacing:.14em;color:var(--ink-3);
     margin:22px 0 10px;padding-top:4px;border-top:1px solid var(--line)}
+  /* ---------- multi-item delivery ---------- */
+  .drow{display:grid;grid-template-columns:1fr 84px auto 42px;gap:8px;align-items:center;margin-bottom:9px}
+  .drow select,.drow input{border:1.5px solid var(--line);border-radius:10px;padding:10px 11px;
+    min-height:44px;width:100%;background:#fff}
+  .drow select:focus,.drow input:focus{outline:2px solid var(--gold);outline-offset:-1px;border-color:var(--gold)}
+  .drow .w{font-size:12.5px;font-weight:900;letter-spacing:.06em;color:var(--ink-3);white-space:nowrap}
+  .drow .x{background:none;border:1.5px solid var(--line);border-radius:10px;min-height:44px;
+    color:var(--ink-3);font-weight:900}
+  .drow .x:hover{border-color:#F0B6B0;color:var(--bad)}
+  .drow .x:disabled{opacity:.3;cursor:not-allowed}
+  @media(max-width:560px){
+    .drow{grid-template-columns:1fr 72px 42px;grid-template-areas:"i i i" "n w x"}
+    .drow select{grid-area:i}.drow input{grid-area:n}.drow .w{grid-area:w}.drow .x{grid-area:x}
+  }
+  .dline{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:13.5px;
+    border-bottom:1px dashed var(--line)}
+  .dline:last-child{border-bottom:0;font-weight:900;color:var(--ink);padding-top:9px}
+
   /* ---------- recipe editor ---------- */
   .ing{display:grid;grid-template-columns:1fr 78px 58px 86px 78px 92px 40px;gap:8px;align-items:end;margin-bottom:8px}
   .ing input{border:1.5px solid var(--line);border-radius:9px;padding:9px 10px;min-height:42px;width:100%;background:#fff}
@@ -188,8 +206,8 @@
   "split": { "deesPct": 50, "basis": "profit" },
   "defaultShelf": 2,
   "items": [
-    { "id": "i1", "name": "Lazy Cake", "note": "2 pcs", "price": 26, "shelf": 2, "active": true,
-      "batchWord": "tray", "yieldPieces": 26, "perPortion": 2, "packaging": 0.25,
+    { "id": "i1", "name": "Lazy Cake", "note": "4 pcs", "price": 26, "shelf": 2, "active": true,
+      "batchWord": "tray", "yieldPieces": 26, "perPortion": 4, "packaging": 0.25,
       "recipe": [
         { "n": "Leibniz biscuits", "q": 500, "u": "g",  "pp": 14.29, "pq": 200 },
         { "n": "Milk",             "q": 250, "u": "ml", "pp": 9.91,  "pq": 1000 },
@@ -270,6 +288,12 @@
     var da = Date.UTC(+pa[0], +pa[1] - 1, +pa[2]), db = Date.UTC(+pb[0], +pb[1] - 1, +pb[2]);
     return Math.round((db - da) / 86400000);
   }
+  function stamp(iso) {
+    if (!iso) return "—";
+    var d = new Date(iso);
+    if (isNaN(d)) return "—";
+    return d.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  }
   function niceDate(ds) {
     var p = ds.split("-");
     var d = new Date(+p[0], +p[1] - 1, +p[2]);
@@ -312,7 +336,12 @@
   function portionsPer(it) {
     var p = +it.perPortion || 1, y = +it.yieldPieces || 0;
     if (!(y > 0) || !(p > 0)) return 0;
-    return y / p;
+    return Math.floor(y / p);
+  }
+  function leftoverPcs(it) {
+    var p = +it.perPortion || 1, y = +it.yieldPieces || 0;
+    if (!(y > 0) || !(p > 0)) return 0;
+    return y - Math.floor(y / p) * p;
   }
   function costed(it) { return (it.recipe || []).length > 0 && portionsPer(it) > 0; }
   function unitCostOf(it) {
@@ -486,6 +515,9 @@
     if (noCost && perm.canDeliver) html += '<div class="banner warn"><b>' + noCost + " item" + (noCost > 1 ? "s have" : " has") +
       " no recipe costed yet.</b> Add ingredients and yield on the Recipes tab — cost, profit and the split stay incomplete until you do.</div>";
 
+    var allowed = {};
+    tabs.forEach(function (t) { allowed[t[0]] = true; });
+    if (!allowed[tab]) tab = "today";
     if (tab === "today") html += viewToday(perm);
     else if (tab === "out") html += viewOut(perm);
     else if (tab === "sell") html += viewSell(perm);
@@ -493,6 +525,7 @@
     else if (tab === "recipes") html += viewRecipes(perm);
     else if (tab === "setup") html += viewSetup(perm);
     else if (tab === "account") html += viewAccount();
+    else html += viewToday(perm);
     html += "</div></main>";
 
     app.innerHTML = html;
@@ -631,7 +664,7 @@
       h += '<div class="meta">' + (b.batches ? "<b>" + b.batches + " " + esc(b.batchWord || "batch") + (b.batches > 1 ? "s" : "") + "</b> · " : "") +
         "Made <b>" + niceDate(b.madeOn) + "</b> · expires <b>" + niceDate(exp) + "</b>" +
         (st === "expired" ? " (" + Math.abs(d) + "d ago)" : d >= 0 && !b.voided && left > 0 ? " (" + (d === 0 ? "today" : d + "d") + ")" : "") +
-        " · in by <b>" + esc(uname(b.by)) + "</b></div>";
+        " · logged <b>" + esc(stamp(b.at)) + "</b> by <b>" + esc(uname(b.by)) + "</b></div>";
       h += '<div class="meta">Sold <b>' + s + "</b> · cost " +
         (b.unitCost == null ? "<b>not set</b>" : "<b>" + cur() + " " + money(b.qty * b.unitCost) + "</b>") +
         " · sells at <b>" + cur() + " " + money(b.unitPrice) + "</b></div>";
@@ -656,16 +689,13 @@
     var h = '<h2 class="sec">Deliveries out</h2>' +
       '<p class="sub">What Dee sends to the truck. Every delivery locks the moment it is saved — quantity, cost and date cannot be edited afterwards.</p>';
     if (perm.canDeliver && !readOnly) {
-      var opts = S.items.filter(function (i) { return i.active; }).map(function (i) {
-        return '<option value="' + i.id + '">' + esc(i.name) + (i.note ? " (" + esc(i.note) + ")" : "") + "</option>";
-      }).join("");
-      h += '<div class="card"><div class="grid2">' +
-        '<div class="field"><label for="d-item">ITEM</label><select id="d-item">' + opts + "</select></div>" +
-        '<div class="field"><label for="d-qty">HOW MANY <span id="d-word">TRAYS</span></label><input id="d-qty" type="number" min="1" step="1" value="1"></div>' +
-        '<div class="field"><label for="d-date">MADE ON</label><input id="d-date" type="date" value="' + todayStr() + '"></div>' +
-        "</div>" +
-        '<p class="hint" id="d-preview"></p>' +
-        '<button class="btn pri" type="button" data-act="deliver" style="margin-top:8px">SAVE DELIVERY &amp; LOCK</button>' +
+      h += '<div class="card">' +
+        '<div class="field" style="max-width:220px"><label for="d-date">MADE ON</label>' +
+        '<input id="d-date" type="date" value="' + todayStr() + '"></div>' +
+        '<div id="d-rows"></div>' +
+        '<button class="btn ghost sm" type="button" data-act="addrow2">+ ADD ANOTHER ITEM</button>' +
+        '<div id="d-preview" style="margin-top:14px"></div>' +
+        '<button class="btn pri" type="button" data-act="deliver" style="margin-top:14px">SAVE DELIVERY &amp; LOCK</button>' +
         "</div>";
     } else if (!readOnly) {
       h += '<div class="banner info">Only Dee\'s side can log deliveries. You can see every batch below.</div>';
@@ -707,6 +737,10 @@
 
   /* ---------- recipes ---------- */
   function viewRecipes(perm) {
+    if (!perm.canDeliver) {
+      return '<h2 class="sec">Recipes &amp; cost</h2>' +
+        '<div class="banner info">Recipes are kept to Dee\'s side. The truck sees the cost totals on Money and on each delivery, not the ingredients behind them.</div>';
+    }
     var editable = perm.canDeliver && !readOnly;
     var h = '<h2 class="sec">Recipes &amp; cost</h2>' +
       '<p class="sub">Cost is worked out per whole ' + esc(S.items[0] ? (S.items[0].batchWord || "batch") : "batch") +
@@ -756,7 +790,8 @@
         cc("batch", "BATCH COST") + cc("yield", "YIELD") + cc("ing", "INGREDIENT / UNIT") +
         cc("pack", "PACKAGING") + cc("price", "SELLS AT") + cc("profit", "GROSS PROFIT") + cc("margin", "MARGIN") +
         "</div></div>";
-      h += '<p class="hint" style="margin-top:10px">Direct cost only — excludes labour, utilities, delivery and wastage.</p>';
+      h += '<p class="hint" style="margin-top:10px" data-spare></p>';
+      h += '<p class="hint" style="margin-top:6px">Direct cost only — excludes labour, utilities, delivery and wastage.</p>';
       if (editable) h += '<div class="acts"><button class="btn dark sm" type="button" data-saverecipe="' + it.id + '">SAVE RECIPE</button></div>';
       h += "</div>";
     });
@@ -865,7 +900,7 @@
     S.items.forEach(function (it) {
       h += '<div class="card" data-item="' + it.id + '"><div class="grid2">' +
         '<div class="field"><label>NAME</label><input data-f="name" value="' + esc(it.name) + '"></div>' +
-        '<div class="field"><label>NOTE</label><input data-f="note" value="' + esc(it.note || "") + '" placeholder="2 pcs, weekends…"></div>' +
+        '<div class="field"><label>NOTE</label><input data-f="note" value="' + esc(it.note || "") + '" placeholder="4 pcs, weekends…"></div>' +
         '<div class="field"><label>SELL PRICE (' + cur() + ')</label><input data-f="price" type="number" min="0" step="0.01" value="' + it.price + '"></div>' +
         '<div class="field"><label>SHELF LIFE (DAYS)</label><input data-f="shelf" type="number" min="0" step="1" value="' + it.shelf + '"></div>' +
         '<div class="field"><label>ON THE MENU</label><select data-f="active"><option value="1"' + (it.active ? " selected" : "") + ">Yes</option><option value=\"0\"" + (!it.active ? " selected" : "") + ">No</option></select></div>" +
@@ -958,6 +993,7 @@
       signout: signOut,
       login: doLogin,
       changepin: changePin,
+      addrow2: addDeliveryRow,
       deliver: addDelivery,
       additem: function () {
         save(function (n) {
@@ -994,30 +1030,10 @@
     });
     if (busy) app.querySelectorAll(".btn").forEach(function (b) { b.disabled = true; });
 
-    var di = document.getElementById("d-item"), dq = document.getElementById("d-qty"),
-        pv = document.getElementById("d-preview");
-    if (pv) {
-      var upd = function () {
-        var it = item(di.value), n = parseInt(dq.value, 10) || 0;
-        var wordEl = document.getElementById("d-word");
-        if (it && wordEl) wordEl.textContent = (it.batchWord || "batch").toUpperCase() + "S";
-        var dd = document.getElementById("d-date").value || todayStr();
-        if (!it || !(n > 0)) { pv.innerHTML = ""; return; }
-        if (!costed(it)) {
-          pv.innerHTML = "<b>" + esc(it.name) + " has no recipe yet.</b> Add its ingredients and yield on the Recipes tab first — otherwise this delivery goes in with no cost.";
-          return;
-        }
-        var per = portionsPer(it), uc = unitCostOf(it);
-        var units = Math.round(n * per);
-        pv.innerHTML = "Locks as <b>" + n + " " + esc(it.batchWord || "batch") + (n > 1 ? "s" : "") +
-          " = " + units + " portions</b> · cost <b>" + cur() + " " + money(units * uc) +
-          "</b> (" + cur() + " " + money(uc) + " each) · expires <b>" + niceDate(addDays(dd, it.shelf)) +
-          "</b> (" + it.shelf + " day" + (it.shelf === 1 ? "" : "s") + ")";
-      };
-      [di, dq, document.getElementById("d-date")].forEach(function (el) {
-        if (el) { el.oninput = upd; el.onchange = upd; }
-      });
-      upd();
+    var rowsBox = document.getElementById("d-rows");
+    if (rowsBox) {
+      if (!rowsBox.children.length) addDeliveryRow();
+      refreshPreview();
     }
 
     app.querySelectorAll("[data-saverecipe]").forEach(function (b) {
@@ -1079,7 +1095,20 @@
       if (cls) box.classList.add(cls);
     };
     set("batch", money(total), "hi");
-    set("yield", portions ? (pieces + " pcs / " + (Math.round(portions * 100) / 100) + " portions") : "set yield", portions ? "" : "bad");
+    var whole = per > 0 ? Math.floor(pieces / per) : 0;
+    var spare = per > 0 ? pieces - whole * per : 0;
+    portions = whole;
+    ing = portions > 0 ? total / portions : null;
+    unit = ing == null ? null : ing + pack;
+    profit = unit == null ? null : price - unit;
+    margin = profit == null || !price ? null : (profit / price) * 100;
+    set("yield", portions ? (pieces + " pcs / " + portions + " portions") : "set yield", portions ? "" : "bad");
+    var note = card.querySelector("[data-spare]");
+    if (note) note.innerHTML = portions
+      ? (spare
+          ? "<b>" + spare + " piece" + (spare > 1 ? "s" : "") + " left over per batch</b> — they are not sellable as a portion, so their cost sits on the " + portions + " portions that are."
+          : pieces + " pcs \u00f7 " + per + " divides evenly — nothing wasted.")
+      : "";
     set("ing", ing == null ? "—" : money(ing));
     set("pack", money(pack));
     set("price", money(price));
@@ -1098,27 +1127,109 @@
     }, n + " sold — logged.");
   }
 
+  function itemOptions(sel) {
+    return S.items.filter(function (i) { return i.active; }).map(function (i) {
+      return '<option value="' + i.id + '"' + (i.id === sel ? " selected" : "") + ">" +
+        esc(i.name) + (i.note ? " (" + esc(i.note) + ")" : "") + "</option>";
+    }).join("");
+  }
+
+  function addDeliveryRow() {
+    var box = document.getElementById("d-rows");
+    if (!box) return;
+    var row = document.createElement("div");
+    row.className = "drow";
+    row.innerHTML = '<select data-d="item">' + itemOptions(null) + "</select>" +
+      '<input data-d="n" type="number" min="1" step="1" value="1" aria-label="How many">' +
+      '<span class="w" data-d="word"></span>' +
+      '<button class="x" type="button" data-d="rm" aria-label="Remove this line">&times;</button>';
+    box.appendChild(row);
+    row.querySelector('[data-d="rm"]').onclick = function () {
+      row.remove();
+      if (!box.children.length) addDeliveryRow();
+      refreshPreview();
+    };
+    row.querySelectorAll("select,input").forEach(function (el) {
+      el.oninput = refreshPreview; el.onchange = refreshPreview;
+    });
+    refreshPreview();
+  }
+
+  /* read the form into a list of lines */
+  function readDeliveryRows() {
+    var out = [];
+    var box = document.getElementById("d-rows");
+    if (!box) return out;
+    Array.prototype.forEach.call(box.children, function (row) {
+      var it = item(row.querySelector('[data-d="item"]').value);
+      var n = parseInt(row.querySelector('[data-d="n"]').value, 10);
+      out.push({ it: it, n: n > 0 ? n : 0, row: row });
+    });
+    return out;
+  }
+
+  function refreshPreview() {
+    var box = document.getElementById("d-rows"), pv = document.getElementById("d-preview");
+    if (!box || !pv) return;
+    var lines = readDeliveryRows();
+    var madeOn = (document.getElementById("d-date") || {}).value || todayStr();
+    var only = box.children.length < 2;
+    var html = "", total = 0, units = 0, anyUncosted = false;
+    lines.forEach(function (L) {
+      var w = L.row.querySelector('[data-d="word"]');
+      if (L.it) w.textContent = (L.it.batchWord || "batch") + (L.n === 1 ? "" : "s");
+      L.row.querySelector('[data-d="rm"]').disabled = only;
+      if (!L.it || !L.n) return;
+      if (!costed(L.it)) {
+        anyUncosted = true;
+        html += '<div class="dline"><span>' + esc(L.it.name) + " — no recipe costed</span><span>no cost</span></div>";
+        return;
+      }
+      var u = L.n * portionsPer(L.it), c = u * unitCostOf(L.it);
+      units += u; total += c;
+      html += '<div class="dline"><span>' + L.n + " " + esc(L.it.batchWord || "batch") + (L.n > 1 ? "s" : "") +
+        " " + esc(L.it.name) + " = <b>" + u + " portions</b>, expires " + niceDate(addDays(madeOn, L.it.shelf)) +
+        "</span><span class=\"num\">" + cur() + " " + money(c) + "</span></div>";
+    });
+    if (html) html += '<div class="dline"><span>' + units + " portions in total</span><span class=\"num\">" +
+      cur() + " " + money(total) + "</span></div>";
+    if (anyUncosted) html += '<p class="hint" style="margin-top:8px">Items without a recipe go in with no cost recorded.</p>';
+    pv.innerHTML = html;
+  }
+
   function addDelivery() {
-    var iid = document.getElementById("d-item").value;
-    var it = item(iid);
-    var n = parseInt(document.getElementById("d-qty").value, 10);
     var madeOn = document.getElementById("d-date").value || todayStr();
-    if (!it) { toast("Pick an item.", true); return; }
-    if (!(n > 0)) { toast("Enter a whole number of batches above zero.", true); return; }
-    var word = it.batchWord || "batch";
-    var per = portionsPer(it);
-    var units = costed(it) ? Math.round(n * per) : n;
-    var uc = unitCostOf(it);
-    if (!costed(it) && !confirm(it.name + " has no recipe costed. Log " + n + " portions with NO cost recorded?")) return;
-    if (costed(it) && !confirm(n + " " + word + (n > 1 ? "s" : "") + " = " + units + " portions of " + it.name +
-        " at " + cur() + " " + money(uc) + " each. This locks once saved. Continue?")) return;
+    var lines = readDeliveryRows().filter(function (L) { return L.it && L.n > 0; });
+    if (!lines.length) { toast("Add at least one item with a quantity.", true); return; }
+    var summary = [], uncosted = [];
+    lines.forEach(function (L) {
+      var w = L.it.batchWord || "batch";
+      if (costed(L.it)) {
+        summary.push(L.n + " " + w + (L.n > 1 ? "s" : "") + " " + L.it.name +
+          " = " + (L.n * portionsPer(L.it)) + " portions");
+      } else {
+        summary.push(L.n + " " + L.it.name + " (no cost)");
+        uncosted.push(L.it.name);
+      }
+    });
+    var msg = summary.join("\n") + "\n\nThis locks once saved. Continue?";
+    if (uncosted.length) msg = "No recipe costed for: " + uncosted.join(", ") + "\n\n" + msg;
+    if (!confirm(msg)) return;
+    var at = new Date().toISOString();
     save(function (nx) {
-      nx.batches.push({
-        id: id("b"), itemId: iid, qty: units, unitCost: uc, unitPrice: it.price,
-        batches: n, batchWord: word, shelf: it.shelf, madeOn: madeOn,
-        by: me.id, at: new Date().toISOString(), sales: []
+      var drop = id("d");
+      lines.forEach(function (L) {
+        var per = portionsPer(L.it);
+        nx.batches.push({
+          id: id("b"), drop: drop, itemId: L.it.id,
+          qty: costed(L.it) ? L.n * per : L.n,
+          unitCost: unitCostOf(L.it), unitPrice: L.it.price,
+          batches: L.n, batchWord: L.it.batchWord || "batch",
+          shelf: L.it.shelf, madeOn: madeOn,
+          by: me.id, at: at, sales: []
+        });
       });
-    }, "Delivery locked in.");
+    }, lines.length > 1 ? lines.length + " items locked in." : "Delivery locked in.");
   }
 
   function saveRecipe(iid) {

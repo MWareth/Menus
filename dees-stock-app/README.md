@@ -10,12 +10,15 @@ write republishes the whole page via the `artifact` capability, so all viewers s
   prices: `line = recipe qty / pack qty × pack price`. Yield (pieces per batch ÷ pieces per
   portion) gives portions; `unit cost = batch cost / portions + packaging`. Live recalculation
   as you type; saved only on demand.
-- **Deliveries** (Dee's side) — logged in whole batches ("2 trays"), converted to portions
-  automatically. Locks on save; unit price, unit cost and shelf life are *snapshotted* onto the
-  batch so later recipe edits never rewrite history.
+- **Deliveries** (Dee's side) — one drop can carry several items (`+ ADD ANOTHER ITEM`); each
+  line is logged in whole batches ("2 trays") and converted to portions. All lines share one
+  timestamp and a `drop` id so they read as a single delivery. Locks on save; unit price, unit
+  cost and shelf life are *snapshotted* onto the batch so later recipe edits never rewrite history.
 - **Sales** (truck side) — append-only entries against a batch. Cannot oversell.
 - **Expiry** — per-item shelf life (default 2 days). Batch expires on `madeOn + shelf`.
   Status: IN DATE / EXPIRES TOMORROW / LAST DAY / EXPIRED. Unsold at expiry = waste.
+- **Portions are whole.** `portionsPer = floor(pieces / piecesPerPortion)`; any remainder is
+  flagged as left over per batch and its cost is carried by the sellable portions.
 - **Money** — revenue, cost, profit, waste, and the configurable split (% and profit-vs-revenue basis).
 - **Setup** (admin) — item names, prices, shelf life, team, PINs, split, housekeeping.
   (Ingredients, yield and packaging live on the Recipes tab.)
@@ -46,6 +49,18 @@ tab (current PIN + new PIN twice). An admin can still reset a forgotten one in S
 Everyone, whatever their role, can change their own PIN on the MY PIN tab.
 | `dees` | yes | no | no |
 | `truck` | no | yes | no |
+
+## Recipe confidentiality
+The truck role cannot open the Recipes tab: it is absent from the tab strip, the router falls
+back to Today for a disallowed tab (a stale `sessionStorage` tab on a shared phone was a real
+hole), and `viewRecipes` refuses anyone without `canDeliver`. The truck sees only totals — cost
+per delivery and the Money tab.
+
+**But the ingredient rows are still in the published page source.** The whole board is one HTML
+document, so anyone who can open the link can read the recipe by viewing source. Hiding it in
+the UI is not the same as protecting it. To make it genuinely private the recipe would have to
+be encrypted with a key only Dee's side holds (storing just the derived unit cost in clear), or
+moved out of the shared document entirely.
 
 ## Known limits
 - **Logins are accountability, not real security.** Usernames and hashed PINs live in the page
