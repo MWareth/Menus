@@ -62,6 +62,19 @@ the UI is not the same as protecting it. To make it genuinely private the recipe
 be encrypted with a key only Dee's side holds (storing just the derived unit cost in clear), or
 moved out of the shared document entirely.
 
+## Where the data lives
+There is no database. The board **is** the page: state sits in the `<script id="app-state">`
+JSON block, and every save calls `artifact.publish()` with a freshly rebuilt copy of the whole
+document, minting a new immutable version on claude.ai under the saver's own identity. Every
+open view live-reloads to it. That is why `buildDoc()` must stay in sync with the file's
+structure, and why the page must never grow unbounded (see Housekeeping in Setup).
+
+## Dialogs
+`window.confirm` and `window.prompt` are blocked in the sandboxed artifact frame — they return
+immediately, silently cancelling whatever they guard. This once made SAVE DELIVERY & LOCK do
+nothing at all. All five guarded actions use the in-page `ask()` dialog instead; never
+reintroduce a native modal.
+
 ## Known limits
 - **Logins are accountability, not real security.** Usernames and hashed PINs live in the page
   source, so a determined reader can crack a 4-digit PIN offline. Real access control is the

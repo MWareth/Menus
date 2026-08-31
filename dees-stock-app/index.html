@@ -141,6 +141,16 @@
   .lockbox p{margin:0 0 22px;color:var(--ink-2);font-size:14.5px;text-align:center}
   .err{color:var(--bad);font-size:13.5px;font-weight:700;margin-top:8px}
 
+  /* ---------- dialog (native confirm/prompt are blocked in the sandbox) ---------- */
+  .modal{position:fixed;inset:0;background:rgba(28,25,23,.6);display:grid;place-items:center;
+    z-index:300;padding:18px}
+  .modalbox{background:var(--card);border-radius:16px;padding:24px 22px;max-width:430px;width:100%;
+    box-shadow:0 22px 60px rgba(0,0,0,.32);max-height:86vh;overflow-y:auto}
+  .modalbox h3{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:20px;margin:0 0 8px}
+  .modalbox .msg{font-size:14.5px;line-height:1.55;color:var(--ink-2);white-space:pre-line}
+  .modalacts{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap}
+  .modalacts .btn{flex:1 1 auto}
+
   /* ---------- misc ---------- */
   .empty{text-align:center;padding:34px 20px;color:var(--ink-3);font-size:15px}
   .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:200;
@@ -440,6 +450,60 @@
       if (code === "too_large") { toast("The board is full. Archive old batches in Setup.", true); render(); return; }
       toast("Could not save. Try again.", true);
       render();
+    });
+  }
+
+  /* Sandboxed frames block window.confirm / window.prompt — they return without
+     asking, which silently cancels whatever they were guarding. Own dialog instead. */
+  function ask(opts) {
+    return new Promise(function (resolve) {
+      var back = document.createElement("div");
+      back.className = "modal";
+      var h = '<div class="modalbox" role="dialog" aria-modal="true" aria-label="' + esc(opts.title || "Confirm") + '">';
+      if (opts.title) h += "<h3>" + esc(opts.title) + "</h3>";
+      if (opts.body) h += '<div class="msg">' + esc(opts.body) + "</div>";
+      if (opts.input) h += '<div class="field" style="margin-top:16px"><label for="m-val">' +
+        esc(opts.input.label) + '</label><input id="m-val" type="number" inputmode="numeric" value="' +
+        esc(opts.input.value) + '" min="' + esc(opts.input.min) + '" max="' + esc(opts.input.max) + '"></div>';
+      h += '<div class="modalacts">' +
+        '<button class="btn ghost" type="button" data-m="no">Cancel</button>' +
+        '<button class="btn ' + (opts.danger ? "danger" : "pri") + '" type="button" data-m="yes">' +
+        esc(opts.ok || "Confirm") + "</button></div></div>";
+      back.innerHTML = h;
+      document.body.appendChild(back);
+
+      var done = false;
+      function finish(val) {
+        if (done) return;
+        done = true;
+        document.removeEventListener("keydown", onKey, true);
+        back.remove();
+        resolve(val);
+      }
+      function onKey(e) {
+        if (e.key === "Escape") { e.preventDefault(); finish(null); }
+        else if (e.key === "Enter" && !opts.input) { e.preventDefault(); accept(); }
+      }
+      function accept() {
+        if (!opts.input) { finish(true); return; }
+        var v = parseInt(back.querySelector("#m-val").value, 10);
+        if (!(v > 0)) { toast("Enter a whole number above zero.", true); return; }
+        if (opts.input.max != null && v > opts.input.max) {
+          toast("Only " + opts.input.max + " left in that batch.", true); return;
+        }
+        finish(v);
+      }
+      back.querySelector('[data-m="no"]').onclick = function () { finish(null); };
+      back.querySelector('[data-m="yes"]').onclick = accept;
+      back.onclick = function (e) { if (e.target === back) finish(null); };
+      document.addEventListener("keydown", onKey, true);
+      var f = back.querySelector("#m-val") || back.querySelector('[data-m="yes"]');
+      if (f) { f.focus(); if (f.select) f.select(); }
+      if (opts.input) {
+        back.querySelector("#m-val").addEventListener("keydown", function (e) {
+          if (e.key === "Enter") { e.preventDefault(); accept(); }
+        });
+      }
     });
   }
 
@@ -959,11 +1023,9 @@
       b.onclick = function () {
         var bid = b.getAttribute("data-sellmany");
         var bt = S.batches.filter(function (x) { return x.id === bid; })[0];
-        var ans = prompt("How many sold? (up to " + remaining(bt) + ")", "1");
-        if (ans == null) return;
-        var n = parseInt(ans, 10);
-        if (!(n > 0)) { toast("Enter a whole number above zero.", true); return; }
-        logSale(bid, n);
+        ask({ title: "How many sold?", ok: "LOG SALE",
+              input: { label: "PORTIONS (UP TO " + remaining(bt) + ")", value: 1, min: 1, max: remaining(bt) } })
+          .then(function (n) { if (n != null) logSale(bid, n); });
       };
     });
     app.querySelectorAll("[data-saveitem]").forEach(function (b) {
@@ -974,8 +1036,11 @@
         var iid = b.getAttribute("data-delitem");
         var used = S.batches.some(function (x) { return x.itemId === iid; });
         if (used) { toast("This item has deliveries against it — set it to 'not on the menu' instead.", true); return; }
-        if (!confirm("Remove this item?")) return;
-        save(function (n) { n.items = n.items.filter(function (i) { return i.id !== iid; }); }, "Item removed.");
+        ask({ title: "Remove this item?", body: "It disappears from the menu and from future deliveries.",
+              ok: "REMOVE", danger: true }).then(function (go) {
+          if (!go) return;
+          save(function (n) { n.items = n.items.filter(function (i) { return i.id !== iid; }); }, "Item removed.");
+        });
       };
     });
     app.querySelectorAll("[data-saveuser]").forEach(function (b) {
@@ -985,8 +1050,11 @@
       b.onclick = function () {
         var uid = b.getAttribute("data-deluser");
         if (uid === me.id) { toast("You cannot remove yourself.", true); return; }
-        if (!confirm("Remove this person? Their past entries stay on the board.")) return;
-        save(function (n) { n.team = n.team.filter(function (u) { return u.id !== uid; }); }, "Person removed.");
+        ask({ title: "Remove this person?", body: "They lose their login. Everything they already logged stays on the board.",
+              ok: "REMOVE", danger: true }).then(function (go) {
+          if (!go) return;
+          save(function (n) { n.team = n.team.filter(function (u) { return u.id !== uid; }); }, "Person removed.");
+        });
       };
     });
     var acts = {
@@ -1017,10 +1085,14 @@
         save(function (n) { n.split = { deesPct: pct, basis: basis }; n.currency = c; }, "Split saved.");
       },
       archive: function () {
-        if (!confirm("Permanently remove batches that expired over 30 days ago? Their totals go with them.")) return;
-        save(function (n) {
-          n.batches = n.batches.filter(function (b) { return daysBetween(todayStr(), addDays(b.madeOn, b.shelf)) >= -30; });
-        }, "Old batches cleared.");
+        ask({ title: "Clear old batches?",
+              body: "Batches that expired over 30 days ago are deleted permanently, and their totals go with them.",
+              ok: "CLEAR", danger: true }).then(function (go) {
+          if (!go) return;
+          save(function (n) {
+            n.batches = n.batches.filter(function (b) { return daysBetween(todayStr(), addDays(b.madeOn, b.shelf)) >= -30; });
+          }, "Old batches cleared.");
+        });
       }
     };
     app.querySelectorAll("[data-act]").forEach(function (b) {
@@ -1212,9 +1284,15 @@
         uncosted.push(L.it.name);
       }
     });
-    var msg = summary.join("\n") + "\n\nThis locks once saved. Continue?";
-    if (uncosted.length) msg = "No recipe costed for: " + uncosted.join(", ") + "\n\n" + msg;
-    if (!confirm(msg)) return;
+    var msg = summary.join("\n") + "\n\nQuantity, cost and date cannot be changed after this.";
+    if (uncosted.length) msg = "No recipe costed for: " + uncosted.join(", ") + " — they go in with no cost.\n\n" + msg;
+    ask({ title: "Lock this delivery?", body: msg, ok: "SAVE & LOCK" }).then(function (go) {
+      if (!go) return;
+      doSaveDelivery(lines, madeOn);
+    });
+  }
+
+  function doSaveDelivery(lines, madeOn) {
     var at = new Date().toISOString();
     save(function (nx) {
       var drop = id("d");
