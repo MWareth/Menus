@@ -20,16 +20,22 @@ write republishes the whole page via the `artifact` capability, so all viewers s
 - **Setup** (admin) — item names, prices, shelf life, team, PINs, split, housekeeping.
   (Ingredients, yield and packaging live on the Recipes tab.)
 
-## Team & PINs
-Lock screen groups people by side. PINs are SHA-256 hashed with a `deeserts:` prefix.
+## Team & logins
+Sign-in is a typed **username + PIN** — the team list is never shown on the lock screen, so
+both halves are needed. Username match is case-insensitive and the person's full name also
+works. PINs are SHA-256 hashed with a `deeserts:` prefix. Five wrong tries locks that browser
+for 30 seconds.
 
-| Person | Side | Role | PIN |
-|---|---|---|---|
-| Marwan | Dee's | admin | 4071 |
-| Dina | Dee's | dees | 2258 |
-| Marwan Majid | Truck | truck | 6390 |
-| Tarek | Truck | truck | 5184 |
-| Truck Cashier | Truck | truck | 7726 |
+| Username | Person | Side | Role | PIN |
+|---|---|---|---|---|
+| `marwan` | Marwan | Dee's | admin | 4071 |
+| `dina` | Dina | Dee's | dees | 2258 |
+| `majid` | Marwan Majid | Truck | truck | 6390 |
+| `tarek` | Tarek | Truck | truck | 5184 |
+| `cashier` | Truck Cashier | Truck | truck | 7726 |
+
+Usernames are editable per person in Setup (2–20 chars, lowercase letters/digits/`.`/`-`/`_`,
+must be unique).
 
 ## Roles
 | Role | Deliveries | Sales | Setup |
@@ -39,9 +45,9 @@ Lock screen groups people by side. PINs are SHA-256 hashed with a `deeserts:` pr
 | `truck` | no | yes | no |
 
 ## Known limits
-- **PINs are a name tag, not security.** SHA-256 hashed, but 4-digit PINs in a public page are
-  brute-forceable. Real access control is the artifact's own share permissions — anyone without
-  write access gets a read-only board.
+- **Logins are accountability, not real security.** Usernames and hashed PINs live in the page
+  source, so a determined reader can crack a 4-digit PIN offline. Real access control is the
+  artifact's own share permissions — anyone without write access gets a read-only board.
 - **No push notifications.** Expiry "reminders" are the on-screen alert board; the page must be
   opened to see them.
 - **One writer at a time.** Concurrent saves conflict; the loser reloads to the winner's version.
@@ -52,6 +58,10 @@ AED 9.50 ingredient + 0.25 packaging = 9.75/unit, sells 26 → 16.25 profit, 62.
 Portion is confirmed at **2 pcs** (not 4) — set on the item note, the recipe yield and the
 brand deck's dee'serts slide. The standalone menu board (outside this repo) still says 4 pcs
 and needs the same correction.
+
+## Header
+Dee's mark recoloured to brown (`dees-brown.png`, embedded in the CSS as a data URI) above a
+centred "Dee's Stock". The header scrolls; the tab strip is what sticks to the top.
 
 ## Editing
 Edit `index.html`, republish to the same artifact URL. Note the page rewrites its own source on

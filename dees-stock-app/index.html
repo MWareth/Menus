@@ -1,4 +1,4 @@
-<title>Dee'serts Stock</title>
+<title>Dee's Stock</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Cairo:wght@400;600;700;900&display=swap">
 <style id="app-style">
   :root{
@@ -23,21 +23,22 @@
   .wrap{max-width:880px;margin:0 auto;padding:0 16px}
 
   /* ---------- top bar ---------- */
-  .bar{background:var(--char);color:var(--paper);position:sticky;top:0;z-index:50}
-  .bar .wrap{display:flex;align-items:center;gap:12px;min-height:60px}
-  .brand{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:19px;color:var(--butter);
-    line-height:1;margin-right:auto}
-  .brand span{display:block;font-family:Cairo,sans-serif;font-weight:700;font-size:10px;
-    letter-spacing:.18em;color:#8C8279;margin-top:3px}
-  .who{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#CBBFB4}
-  .avatar{width:30px;height:30px;border-radius:50%;background:var(--gold);color:#2B1E1A;
-    display:grid;place-items:center;font-weight:900;font-size:12px}
-  .out{background:none;border:1.5px solid #46403A;color:#CBBFB4;border-radius:999px;
+  .bar{background:var(--paper);border-bottom:1px solid var(--line);padding:22px 0 16px}
+  .bar .wrap{display:flex;flex-direction:column;align-items:center;gap:9px;text-align:center}
+  .logo{width:126px;height:51px;flex-shrink:0;
+    background:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWgAAACSCAYAAABom1AeAAARx0lEQVR42u2dP2gk2bWHf6s3YDBOnw1GQSMQhmW7Z5yaSTQgBxt0a8A8eMEOKHsOHkIIhWJYJjGIRm6cOBvY2cDZqBsnZmAmUTJZTzcvGASiAy08FgeObJwsDupe66qmurqquv7cW/19INRS/6nqc2/97jmn7j33sy+/+FwAAOAfW5gAAACBBgAABBoAIHweYAIASKEraUdSR9K28/9b83sh6UbSHFMh0ABQPQNJh0aUexnfM5P0RtKVpDEmLIfPNmQWR7eBY+JRQIjC/HUOUU4T6+cINR50VnH+0MBxZ5Ie0cUgEC4l9Uv6rJ6k15KGkk4xbXG4SQiw2XQlTUsUZ5cTI/yAQANAAV5p/ZRGGn1J55gZgfaNHiYAzzmvqZ+eKMpvAwINABnoGuGsi0NMjkAnsdPwRQDgIy9qPl6f6wGBBoDsglk3zzA7Ag0A6TSVD97H9Ag0AKTzuKHj9kSaA4EGgFR2Gzz2DuZHoF06NDOAN9cE1yMCDQCeso0JEGgA8JNdTIBA+wL5NgBAoAEgCDqYAIEGAECgA4CbEgD3WWACBBoA/OQaEyDQQL4N/OQKEyDQAOAnTe4VuMD8CLQL8y4BPmXS0HFJryDQALCClw0d9xbTZ8enXb2TqlzNaSJoCcuquDXVx8fGi667LvSiZpvvKLoXtO1E052c53ptBhb7901d7fagYWNZQy3bF23mGMo10pjrHTwS3lUisGrfv1mKIFQpBmcNCPS4wnZ4YtpgX+XstdjL2GbXim68lt5WVQv0QFHt2aIG6y0x1MwY5qXnYs0c7HYK8hNJe0aEyxSCNEdlIemdpLclisBc0lNJr2uyXdl573X1pcw2O4m1lRXttfTpsy+/+LyKDvysRqPNJL2R9M2SjjtVcztsDyWdomnB06QQLBO6MsW6K+lVDd/taQkOlR0gDz1pizztlTv6L1Ogu4o2ouw3aIhhglAj0FCUowCEYFJiJHmuanf6XmdSgnX8TgLvU7mi/7JmcZxL+tCwONsw44O5sACKCsG5pB8kXQTgpfVNiuJS6+81eCrpoaRj3eVYm05vdB19OWlB/+o5bfaD027dKgR6YDxU3wx3Yb44QBFHI0QhsBf9+ZqfM5c0kvTIiPXTks6vyLS+oxYJ86p2+5DUdltrdubXHnsY/YbTGxAOvjoaRaPIqcrZuXtuwvB1vemZ8qdgLo2jtUmclCXQl4F05qbFmVWMYXjNPjsaRfv9a/mT6nue47VdM8D0N7AvzsoQ6MsNNR58Gn7+oOULMHynG5CjUZQLrZ/yWNfRyeM9D0yov6lRb29dgUacwXJofr8KVJxfbUhfPilJpKv2nruqbz52MOQR6HPEGRzv2Z2oPy3xswcVe+XdDfTSTlQ83bFOW0wyes/dQAd6bwR60PJQsG0MKv78i4TQbFrCcY+MF/WiYnHeRC5q6BdxzjK+7oW4mV9YoAk9itNp4Jj2ptd5hZ+fRG+N49p8sBX+vqq5wbXpXlqd1/FQ2VY5HhGZLyfLSsJLDFiYmaL5pHUydbyRY0VzWsviSNmmPtnl92kFZGyRocOU/vVQ5dWdoB/fCedpgXa3LGLP3SS8PmubbXJEk8lpXlUsaUCnDoqjWKhoxXRU0mdnnZfaMz/xAjJuVJElpH0h6aCkc6cfR5wofxGfUUXn8ozmWM+DxusIx4NO80bWqQnSdI2VdQvs4KV9yqSkgU+0S7Ue9Bbec2t4scJrmipfXreru6W2TfaDryu0y6bSV/03DOM8oRnW86DxnsPxoPO2lVv+0OaIu85Fs+dZ2xf1ogfiBrcP0R36UtCDXibQhB8VGZyOXmtIjghUM/CtC/qSUS+2CD+CxRb42QQB6iv/gglSdKs5bOi4O5h+Pe9uD9PU6k1MFeV7s4jQwHiGbSvws4q8d/wP6VqVDHxl8BjTZyMpxUH4Uc8gaInvYuHuaWZxNyLtYUtC6BJpYtefS6KbbH08aR406Y162Y/93RPLXpdxpGxzcunDxftfHXQwe3GPhPRGuaSFkAPEOBd7Jb8Oov7XxQzhCDSjW32Qiyvf8+oSPuemzoiji1NSXKAxXvvDy9C9vVULLJghUF1kAg0LNJ0bTyJ0L5qoJD9EHIEIdAeT1AaDYTXeHlFJcYcBPBdoQp36wNMr34MmKilOXXnoOaYuLtBQn6fMjt/FSJt1QFRSnO0ajzXD3MUEuoNJvPAEAZvWDQ6D5wJNeFgf2LqacHwb0xSmzhuFC8xdzIMGiIeiMw9D0u2AvUBfbWodhzp4x6WVDXepN/m7+vDZ1jNJz/VpGcquooJF7O5ejGNJb/XpTbIjRYWdNimiehugo7KMStvtAddN5XQy/s8H0grnzM1zV2q+CP5uDlv7QNrmtyPzc6nm5yPvqJ5ZFnMjeiEMShNJZyl26cbs13GivP11v+ODADo31NcRs1Q1Gxtv8KLBcw2pr2bdmfxA93dkb7td3wQi0O9WtN98yeO4iO8omlqbS7TJQYPlLMdrR/Ivh+rjQothTo/0+Qb1t6tAzvNQ6+/fODeOzamibcYeGidngkD7iW+zDSYFQtuXDZ7vsrnQvnlk3+R8/bjhga/OfjnOIlAe0FOU0psqSkNdKqrhbjfYKOIYzI2Tc+CIdWK7k4MGG8blZYHZUpmpWD53oc25YXimcOqApNVpt5ts2I2Y8+zzOHcEe4BAQ1ncYIJKuN6g7zpXlAYKfWaQFe9+LCq9NlFU1oF6nCbQTPKvhhA8zUPlr8PSoWlXXrSXBd7XpEfZxDzyU3PctlXUs9/nxHjYb3KKdTAe9MQJHVxx2BNlEusI33ylrilhZVykkM6Bmp/BUsf1daLV0/aWCvSth8Kc9kVGihL0r8SyaYDQ+WpDruW++ckk1L7O4piYUXXVKDNXNG1lQv8GCBp7LQ835Pv2Fe08PwhRoM9yvv5AYZUwvOV6rOQCp4xl+JxKerpBbfk6TaR9FOgic3KlZuflpsFsB4B8jI03fbzpIu2jQBetdBVSAZYF1yDASkZGo443wKP+epVA+yIaRc+DEBcY+Nor1I8UpT6GLb3Oe4pWKHrvQW8CpD1g0ymyTDpez2Kodk0Q+GTBzgNEA3S36ikUbpf0V9++wzAge26r3gJGtrb40Bx3nPP9tvytK/hPzPfY1d1CqtCm7R2ZiOETgfaFzhojciiN4Vs93HdupwgYn2bHzJStfOumc6L7q+2uzOA7L3BNzZfoQkgbTey51+JWgmg0TdEl577uUrKsoy086xRtwCeb9uRnCVRfsSvtXiuaHzzVXdW4wRq2tJ52KKmQe6tPHyR08Ka9uv2C7zsMrENee9YpuvJj6fSR8lcEs/iWpnvmiRdtw/+QoqSk8gO2aty1iZYWBb1t3xnY/v/AQ9GwdzNPc36h0OoeXHkWdr1SdPOlCfHYMQOsbcOi8199Sx2dGCEZNWTXJ7q/32HoaaxVJT/lCLh0l/LaDkwfOss86NsAO/aRmt1+qSg3Hnb+qZI3jK1CkB+rmipmPkSBLhdGIHJXMisoyHvmAu8tEbA2p0ikdtTy2E5LcfjUsQ8VrRCM74ac5HX5yCwgb8927tfmvJLsXlSMOynCUTbvPOwT9kbYxNj1piS72kGuIwqGtYndZQI99uxEe453PEsYLUPH140ze7GoZLYkdEwa9XedMK2J7+bzitK+M3jMHIfoOiV6de3aaVn/hxUkTbObeOqVtrFT+paHTrM9Uxg316bQEFtLQkSoBxYHVReZAIRKJ02g32KfWr09almXzzeYAAJmkSbQFB2ql5eYoJKBjz4MwbNFiFjPSJjCGDFh4APII9CEiIhJ6IwwAQTK9SqBJkSsF/L+1TDEBBAgt6sEWopWlEE9zBGTSiAShKAdtjSBJjdaL5SmrGbgO8YMEBAzOatMV+2oQm60XhCT8hnhaEBA3JugsUXnrpS81QFHYl50FZCug1C4yiPQdO76OcMEpTMWOX7wn5li9ZC26NzeMVe0ezGUS0i7asBm8klKeStH5ybVUa/HRz66fA7ox+Cx9zwqKtCS9BU2rJURkUsl0I/BRxJTyXkEOvTQO0SxO0WkS2cu6SGeNHimTeN1BdqG3k8DNUATixbK2ELsVKQ7qhDprxBp8ICJUtZAbBX4wNBEOtUAgTASNw6rEOlH4sYhNKtNB2kv2Cr4weNAwkTXAKHXF7E2b7ugDFVvoaODDYhQJiL37mM/P1j1oq01DmA9kGHIBgjQ67OCMmthh33YULQzaungNzOR14Gq3VEc8nGctZ//x+5P/3Pdg72RNJX0uaSfeWKAp5L+kPD//6n5HP8i6X0Fn/te0h8l/UTSr1rg3f2XpG8lfd/geXwv6U+mL/9Y0i8CF+bfKdr1/qOn52h14zvTj3+m9mP7emZH4LMvv/i8zBM4Mp2i16ABzlK8hUvVuyHuU1W/U3pX0jNJ+wprE1J749ZXz25g+nI/IJvOFC12CLEWdlfSE0l7gdm80nYpW6CbEuqZonmEq8SwjQIdkqjYjvo2oJA7hAFwqKiGw1jtoCtpR9LjAB2PuMP4cp12qUqg6+rceQ1wLumkxQKdJNadhjv4zISzPnvLefvzbsOD4EzRdmov1R5Rbotgl9rfqxboZUbeXUM4JpLeFfTCNkmgq7B9FtG4VjT/eyHpRu29OWVt2pG0XZNdr1pu0yK232vYCbHtU1STvBHoZYaWY2yZzu5iF3uU8eVtnqsuRoF0dKXYP6ktpLsNcRGMdAFRDru6NhV2LXx9uwOmShDvmdM+tTogTQs0AEDdzqBiTok7OLo0PlA+oN0AYAOYhxiVbNFuAAAINAAAINAAAAg0AAAg0AAACDQAACDQAACAQAMAINAA/2bAOQMUp4yC/QBJnCuqRfITRdW9QuBSUdnavyn7RgtdSf8t6TeSfq1o44q/q9nNB6AlsNQbqmK/Bk+3Yx4vtLxqoH1dlsJVnRzH70p6oeVlR4cKf7NiQKChRSQVpNk33vSuI4JfKaqJ4NasliO2y+ocp4liUmlXt7zs9hLBdM/ZVj3b011FNIu7U09X0ivdr5JmK5716AZQFlSzg7KE+YWy1+U9Nh7tNOX1M0fIkwR3lUB3JX2IvWYr9vyrHILqfv6lM0jEt1mzOewx3QLwoMEHdpS+w4gtai5Fhc1HRiB7zvNvdL/ofc8I6CPnc3Zjgnnj/B2vUpZU9/vISXU8WyHO8XMeO8LuivNB7H0IMyDQ4BVj4xVv6674/EVK6iHOm1j6wXqoPeORjp30iBXGVZ+5FxPbnvmfFehTc67bzu+TDOfspm9e0vSAQEMIjGLpA8tNhvfexv4+c7zUToFzcb1cO3D0zP+6jrftnvPAEeibjMfp0OxQJcyDhqpSHkmPi7x/kfD89Yr3u+mNt4o28Ex6rojYup71haI8+qWi9EmXpgcEGtrMkaTXSzxwmzPeN6I4VfLCEje9MTc/s4TnivJQ92dt9I1YfzDnD4BAQ2vYM8I21V3uWorSE0lbFFlR7En6OsUbHjr/s4tl+iWc71zRzctjRflwxbxqViMCAg3ecpPz9dYDjc8rTltcMjM/8Rt17uyQXSOWccFMEtBFge85UjSL42FsMDikC0AZcJMQfMJNG/R0f1qcS9L0NstOTPiTPObHKnc63FzRrJBdc7wOTQl40BAybl54YrzQR4oWp1iW5YvTbhJmEcfdAud7aX7SuHYGGG4YAgIN3pPVm5w7v4eOB5xX6Ladx0+N8Nvfk5znZBk43njaTcD9hO8DgECDt95xERG/ch4/cx7PcnjAM0VpjLnz2/W848Lv5s3jUwPHzrEvEkS6q2gZes+JCAAQaPCe7ZTnFk5KYJkgJlXF60v6QdGsj6kRR2UQ79slx8vi9T93Hl/Ejv9B92uEsMIQEGgIgjTBfJfi0b5JENNF7DX2ZuKJsqVCFile8nzFoDJWlCqZJRzfZSjqcUBJULAfquJHkn4u6X+1vHj9e0m/lPTHhLTA/ysqfH8u6aP535+Mx/pe0v9J+qukf0r61vxI0j8k/dh4uR9jn/lR0QYCf1Xy/Gn73O+XnPNHc65TSd85x38v6c+SfuucB8DaUG4UAMBTSHEAACDQAACAQAMAtIB/Aficzfo2vxLJAAAAAElFTkSuQmCC) center/contain no-repeat}
+  .brandline{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:23px;line-height:1;
+    color:var(--brown);letter-spacing:.01em}
+  .who{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700;color:var(--ink-2);
+    flex-wrap:wrap;justify-content:center;margin-top:2px}
+  .avatar{width:28px;height:28px;border-radius:50%;background:var(--gold);color:#2B1E1A;
+    display:grid;place-items:center;font-weight:900;font-size:11px}
+  .out{background:none;border:1.5px solid var(--line);color:var(--ink-3);border-radius:999px;
     padding:5px 11px;font-size:11px;font-weight:900;letter-spacing:.08em}
-  .out:hover{border-color:var(--butter);color:var(--butter)}
+  .out:hover{border-color:var(--brown);color:var(--brown)}
 
   /* ---------- tabs ---------- */
-  .tabs{background:var(--char);border-top:1px solid #2C2724;position:sticky;top:60px;z-index:49;
+  .tabs{background:var(--char);position:sticky;top:0;z-index:49;
     overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
   .tabs::-webkit-scrollbar{display:none}
   .tabs .wrap{display:flex;gap:2px;padding:0 12px}
@@ -135,15 +136,9 @@
   /* ---------- lock screen ---------- */
   .lock{min-height:100vh;display:grid;place-items:center;padding:24px;background:var(--char)}
   .lockbox{background:var(--card);border-radius:18px;padding:30px 26px;width:100%;max-width:390px}
-  .lockbox h1{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:27px;margin:0 0 4px}
-  .lockbox p{margin:0 0 20px;color:var(--ink-2);font-size:14.5px}
-  .people{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
-  .person{display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:11px;
-    border:1.5px solid var(--line);background:#fff;text-align:left;width:100%;min-height:52px}
-  .person[aria-pressed="true"]{border-color:var(--gold);background:#FDF7EA}
-  .person .nm{font-weight:900;font-size:15px}
-  .person .rl{font-size:11.5px;font-weight:700;letter-spacing:.08em;color:var(--ink-3)}
-  .lockgroup{font-size:10.5px;font-weight:900;letter-spacing:.16em;color:var(--ink-3);margin:4px 0 8px}
+  .lockbox .logo{margin:0 auto 14px}
+  .lockbox h1{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:26px;margin:0 0 4px;text-align:center}
+  .lockbox p{margin:0 0 22px;color:var(--ink-2);font-size:14.5px;text-align:center}
   .err{color:var(--bad);font-size:13.5px;font-weight:700;margin-top:8px}
 
   /* ---------- misc ---------- */
@@ -214,11 +209,11 @@
       "batchWord": "batch", "yieldPieces": 0, "perPortion": 1, "packaging": 0.25, "recipe": [] }
   ],
   "team": [
-    { "id": "u1", "name": "Marwan", "role": "admin", "side": "dees", "pin": "ba000d3fa8b9e7758aeacaf7e8882d5df77d83bf1445a174d38b751cb0c0004b" },
-    { "id": "u2", "name": "Dina", "role": "dees", "pin": "5e66d2663a72c3fbac50719d9672eafe5aee147ffbf6f0d24815928068f8f10b" },
-    { "id": "u3", "name": "Marwan Majid", "role": "truck", "pin": "a635091d64a82e52633fcd6a111195a670b128c80cd175f105e5bac1eaf7b88c" },
-    { "id": "u4", "name": "Tarek", "role": "truck", "pin": "11fbc22729a0858c3d99001c9187181dd520514ace6136dce43a44c7681ae521" },
-    { "id": "u5", "name": "Truck Cashier", "role": "truck", "pin": "f16e34225021f39639cfa33ca88dd9778940f7c88b25d34cc2a0cff2d774c427" }
+    { "id": "u1", "name": "Marwan", "user": "marwan", "role": "admin", "side": "dees", "pin": "ba000d3fa8b9e7758aeacaf7e8882d5df77d83bf1445a174d38b751cb0c0004b" },
+    { "id": "u2", "name": "Dina", "user": "dina", "role": "dees", "pin": "5e66d2663a72c3fbac50719d9672eafe5aee147ffbf6f0d24815928068f8f10b" },
+    { "id": "u3", "name": "Marwan Majid", "user": "majid", "role": "truck", "pin": "a635091d64a82e52633fcd6a111195a670b128c80cd175f105e5bac1eaf7b88c" },
+    { "id": "u4", "name": "Tarek", "user": "tarek", "role": "truck", "pin": "11fbc22729a0858c3d99001c9187181dd520514ace6136dce43a44c7681ae521" },
+    { "id": "u5", "name": "Truck Cashier", "user": "cashier", "role": "truck", "pin": "f16e34225021f39639cfa33ca88dd9778940f7c88b25d34cc2a0cff2d774c427" }
   ],
   "batches": [],
   "seq": 5,
@@ -238,7 +233,6 @@
   var busy = false;
   var tab = "today";
   var me = null;
-  var lockSel = null;
   var lockErr = "";
 
   var ROLES = {
@@ -380,7 +374,7 @@
     return '<!doctype html>\n<html lang="en">\n<head>\n' +
       '<meta charset="utf-8">\n' +
       '<meta name="viewport" content="width=device-width,initial-scale=1">\n' +
-      "<title>Dee'serts Stock</title>\n" +
+      "<title>Dee's Stock</title>\n" +
       '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Cairo:wght@400;600;700;900&display=swap">\n' +
       '<style id="app-style">' + css + "<" + "/style>\n" +
       "</head>\n<body>\n" +
@@ -467,11 +461,12 @@
 
     var html = "";
     html += '<header class="bar"><div class="wrap">' +
-      '<div class="brand">Dee\'serts<span>STOCK &amp; SALES</span></div>' +
-      '<div class="who"><div class="avatar">' + esc(initials(me.name)) + "</div>" +
-      "<div>" + esc(me.name) + "<br><span style=\"font-size:10px;letter-spacing:.1em\">" + perm.label + "</span></div>" +
-      '</div><button class="out" type="button" data-act="signout">EXIT</button>' +
-      "</div></header>";
+      '<div class="logo" role="img" aria-label="Dee\'s Treats"></div>' +
+      '<div class="brandline">Dee\'s Stock</div>' +
+      '<div class="who"><span class="avatar">' + esc(initials(me.name)) + "</span>" +
+      "<span>" + esc(me.name) + " &middot; " + perm.label + "</span>" +
+      '<button class="out" type="button" data-act="signout">EXIT</button>' +
+      "</div></div></header>";
 
     var tabs = [["today", "TODAY", alerts], ["out", "DELIVERIES", 0], ["sell", "SALES", 0], ["money", "MONEY", 0]];
     if (perm.canDeliver) tabs.push(["recipes", "RECIPES", 0]);
@@ -503,52 +498,68 @@
   }
 
   /* ---------- lock ---------- */
-  function renderLock() {
-    var h = '<div class="lock"><div class="lockbox">' +
-      "<h1>Dee'serts Stock</h1>" +
-      "<p>Pick your name and enter your PIN.</p>";
-    var groups = [
-      ["DEE'S TEAM", S.team.filter(function (u) { return (u.side || u.role) === "dees" || u.role === "admin"; })],
-      ["TRUCK TEAM", S.team.filter(function (u) { return u.role === "truck"; })]
-    ];
-    groups.forEach(function (g) {
-      if (!g[1].length) return;
-      h += '<div class="lockgroup">' + g[0] + '</div><div class="people">';
-      g[1].forEach(function (u) {
-        h += '<button class="person" type="button" data-person="' + u.id + '" aria-pressed="' + (lockSel === u.id) + '">' +
-          '<span class="avatar">' + esc(initials(u.name)) + "</span>" +
-          '<span><span class="nm">' + esc(u.name) + '</span><br><span class="rl">' +
-          (ROLES[u.role] ? ROLES[u.role].label : "TEAM") + "</span></span></button>";
-      });
-      h += "</div>";
-    });
-    if (lockSel) {
-      h += '<div class="field"><label for="pin">PIN</label>' +
-        '<input id="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="••••"></div>' +
-        '<button class="btn pri" type="button" data-act="login" style="width:100%">ENTER</button>';
-    }
-    if (lockErr) h += '<div class="err">' + esc(lockErr) + "</div>";
-    h += "</div></div>";
-    app.innerHTML = h;
-    wire();
-    var p = document.getElementById("pin");
-    if (p) {
-      p.focus();
-      p.addEventListener("keydown", function (e) { if (e.key === "Enter") doLogin(); });
-    }
+  function failState() {
+    try { return JSON.parse(sessionStorage.getItem("deeserts.fail") || "{}"); } catch (e) { return {}; }
   }
+  function lockedFor() {
+    var f = failState();
+    return f.until && Date.now() < f.until ? Math.ceil((f.until - Date.now()) / 1000) : 0;
+  }
+  function noteFail() {
+    var f = failState();
+    f.n = (f.n || 0) + 1;
+    if (f.n >= 5) { f.until = Date.now() + 30000; f.n = 0; }
+    try { sessionStorage.setItem("deeserts.fail", JSON.stringify(f)); } catch (e) {}
+  }
+  function clearFail() { try { sessionStorage.removeItem("deeserts.fail"); } catch (e) {} }
+
+  function renderLock() {
+    var wait = lockedFor();
+    var h = '<div class="lock"><form class="lockbox" id="loginform" autocomplete="on">' +
+      '<div class="logo" role="img" aria-label="Dee\'s Treats"></div>' +
+      "<h1>Dee's Stock</h1>" +
+      "<p>Sign in with your own login.</p>" +
+      '<div class="field"><label for="who">USERNAME</label>' +
+      '<input id="who" type="text" name="username" autocomplete="username" autocapitalize="none" ' +
+      'autocorrect="off" spellcheck="false" placeholder="your username"' + (wait ? " disabled" : "") + "></div>" +
+      '<div class="field"><label for="pin">PIN</label>' +
+      '<input id="pin" type="password" name="password" inputmode="numeric" autocomplete="current-password" ' +
+      'placeholder="••••"' + (wait ? " disabled" : "") + "></div>" +
+      '<button class="btn pri" type="submit" style="width:100%"' + (wait ? " disabled" : "") + ">SIGN IN</button>";
+    if (wait) h += '<div class="err">Too many attempts. Try again in ' + wait + "s.</div>";
+    else if (lockErr) h += '<div class="err">' + esc(lockErr) + "</div>";
+    h += '<p class="hint" style="margin-top:16px">Ask an admin if you do not have a login yet.</p>';
+    h += "</form></div>";
+    app.innerHTML = h;
+    var form = document.getElementById("loginform");
+    form.onsubmit = function (e) { e.preventDefault(); doLogin(); };
+    if (wait) { setTimeout(function () { if (!me) renderLock(); }, 1000); return; }
+    var w = document.getElementById("who");
+    if (w) w.focus();
+  }
+
   function doLogin() {
-    var el = document.getElementById("pin");
-    if (!el) return;
-    var u = user(lockSel);
-    hash(el.value.trim()).then(function (h) {
-      if (u && h === u.pin) {
-        me = u;
-        lockErr = "";
-        try { sessionStorage.setItem("deeserts.uid", u.id); } catch (e) {}
+    if (lockedFor()) { renderLock(); return; }
+    var whoEl = document.getElementById("who"), pinEl = document.getElementById("pin");
+    if (!whoEl || !pinEl) return;
+    var who = (whoEl.value || "").trim().toLowerCase();
+    var pin = (pinEl.value || "").trim();
+    if (!who || !pin) { lockErr = "Enter your username and PIN."; renderLock(); return; }
+    var found = null;
+    for (var i = 0; i < S.team.length; i++) {
+      var t = S.team[i];
+      if ((t.user || "").toLowerCase() === who || (t.name || "").trim().toLowerCase() === who) { found = t; break; }
+    }
+    /* hash regardless of whether the name exists, so a wrong username and a
+       wrong PIN take the same time and give the same message */
+    hash(pin).then(function (hp) {
+      if (found && hp === found.pin) {
+        me = found; lockErr = ""; clearFail();
+        try { sessionStorage.setItem("deeserts.uid", found.id); } catch (e) {}
         render();
       } else {
-        lockErr = "That PIN doesn't match.";
+        noteFail();
+        lockErr = "That username and PIN don't match.";
         renderLock();
       }
     });
@@ -820,6 +831,8 @@
     S.team.forEach(function (u) {
       h += '<div class="card" data-user="' + u.id + '"><div class="grid2">' +
         '<div class="field"><label>NAME</label><input data-f="name" value="' + esc(u.name) + '"></div>' +
+        '<div class="field"><label>USERNAME (THEY TYPE THIS)</label><input data-f="user" value="' + esc(u.user || "") +
+        '" autocapitalize="none" autocorrect="off" spellcheck="false"></div>' +
         '<div class="field"><label>SIDE</label><select data-f="role">' +
         '<option value="dees"' + (u.role === "dees" ? " selected" : "") + ">Dee's — logs deliveries</option>" +
         '<option value="truck"' + (u.role === "truck" ? " selected" : "") + ">Truck — logs sales</option>" +
@@ -856,9 +869,6 @@
   function wire() {
     app.querySelectorAll("[data-tab]").forEach(function (b) {
       b.onclick = function () { setTab(b.getAttribute("data-tab")); };
-    });
-    app.querySelectorAll("[data-person]").forEach(function (b) {
-      b.onclick = function () { lockSel = b.getAttribute("data-person"); lockErr = ""; renderLock(); };
     });
     app.querySelectorAll("[data-sell]").forEach(function (b) {
       b.onclick = function () { logSale(b.getAttribute("data-sell"), +b.getAttribute("data-n")); };
@@ -909,7 +919,9 @@
       },
       adduser: function () {
         save(function (n) {
-          n.team.push({ id: id("u"), name: "New person", role: "truck", pin: "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117" });
+          var nid = id("u");
+          n.team.push({ id: nid, name: "New person", user: nid, role: "truck",
+            pin: "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117" });
           n.defaultPins = true;
         }, "Person added with PIN 1234 — change it.");
       },
@@ -1109,12 +1121,19 @@
     var card = app.querySelector('[data-user="' + uid + '"]');
     var g = function (f) { return card.querySelector('[data-f="' + f + '"]').value; };
     var name = g("name").trim(), role = g("role"), pin = g("pin").trim();
+    var handle = g("user").trim().toLowerCase();
     if (!name) { toast("Person needs a name.", true); return; }
+    if (!/^[a-z0-9._-]{2,20}$/.test(handle)) {
+      toast("Username: 2–20 characters, lowercase letters, digits, dot, dash or underscore.", true); return;
+    }
+    if (S.team.some(function (t) { return t.id !== uid && (t.user || "").toLowerCase() === handle; })) {
+      toast("That username is already taken.", true); return;
+    }
     if (pin && !/^\d{4,8}$/.test(pin)) { toast("PIN must be 4–8 digits.", true); return; }
     var apply = function (h) {
       save(function (n) {
         var t = n.team.filter(function (u) { return u.id === uid; })[0];
-        t.name = name; t.role = role;
+        t.name = name; t.role = role; t.user = handle;
         if (h) t.pin = h;
         var DEF = "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117";
         n.defaultPins = n.team.some(function (u) { return u.pin === DEF; });
