@@ -91,6 +91,25 @@ reintroduce a native modal.
   opened to see them.
 - **One writer at a time.** Concurrent saves conflict; the loser reloads to the winner's version.
 
+## Costed recipes (all five loaded, reconciled to the source sheets)
+
+| Item | 1 batch = | Unit cost | Sells | Profit | Margin |
+|---|---|---|---|---|---|
+| Lazy Cake | 1 tray = 6 portions (+2 spare) | 20.84 | 26 | 5.16 | 19.9% |
+| San Sebastian | 1 cake = 8 slices | 7.10 | 26 | 18.90 | 72.7% |
+| Crème Brûlée | 1 batch = 5 ramekins | 6.54 | 20 | 13.46 | 67.3% |
+| Brownie Bag | 1 tray = 4 bags of 4 | 14.63 | 26 | 11.37 | 43.7% |
+| Mini Pavlova | 1 batch = 7 minis | 21.94 | 60 | 38.06 | 63.4% |
+
+Unit cost includes packaging (0.45 / 1.09 / 0.25 / 0.25 / 1.68).
+
+## Corrections
+Nothing is edited or deleted — mistakes are reversed on the record:
+- **FIX COUNT** on a batch asks what has *actually* sold and appends the difference as a
+  correction entry (flagged `fix`); both entries stay in the log.
+- **VOID** on a delivery marks it voided with a written reason and drops it out of stock, cost
+  and the split. Blocked for non-admins once anything has sold from it. Admins can **RESTORE**.
+
 ## Costing reference
 Lazy Cake is seeded from the real sheet: batch AED 123.51, 26 pcs @ 2 pcs/portion = 13 portions,
 AED 9.50 ingredient + 0.25 packaging = 9.75/unit, sells 26 → 16.25 profit, 62.5% margin.

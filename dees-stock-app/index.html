@@ -213,39 +213,378 @@
 {
   "v": 1,
   "currency": "AED",
-  "split": { "deesPct": 50, "basis": "profit" },
+  "split": {
+    "deesPct": 50,
+    "basis": "profit"
+  },
   "defaultShelf": 2,
   "items": [
-    { "id": "i1", "name": "Lazy Cake", "note": "4 pcs", "price": 26, "shelf": 2, "active": true,
-      "batchWord": "tray", "yieldPieces": 26, "perPortion": 4, "packaging": 0.25,
+    {
+      "id": "i1",
+      "name": "Lazy Cake",
+      "note": "4 pcs",
+      "price": 26,
+      "shelf": 2,
+      "active": true,
+      "batchWord": "tray",
+      "yieldPieces": 26,
+      "perPortion": 4,
+      "packaging": 0.25,
       "recipe": [
-        { "n": "Leibniz biscuits", "q": 500, "u": "g",  "pp": 14.29, "pq": 200 },
-        { "n": "Milk",             "q": 250, "u": "ml", "pp": 9.91,  "pq": 1000 },
-        { "n": "Sugar",            "q": 120, "u": "g",  "pp": 5.5,   "pq": 1000 },
-        { "n": "Vanilla",          "q": 20,  "u": "g",  "pp": 3.78,  "pq": 20 },
-        { "n": "Cocoa powder",     "q": 60,  "u": "g",  "pp": 15.3,  "pq": 100 },
-        { "n": "Lurpak butter",    "q": 150, "u": "g",  "pp": 24.3,  "pq": 100 },
-        { "n": "Chocolate slab",   "q": 140, "u": "g",  "pp": 8.81,  "pq": 35 }
-      ] },
-    { "id": "i2", "name": "San Sebastian", "note": "slice", "price": 26, "shelf": 2, "active": true,
-      "batchWord": "cake", "yieldPieces": 0, "perPortion": 1, "packaging": 0.25, "recipe": [] },
-    { "id": "i3", "name": "Crème Brûlée", "note": "", "price": 20, "shelf": 2, "active": true,
-      "batchWord": "batch", "yieldPieces": 0, "perPortion": 1, "packaging": 0.25, "recipe": [] },
-    { "id": "i4", "name": "Brownie Bag", "note": "", "price": 26, "shelf": 2, "active": true,
-      "batchWord": "tray", "yieldPieces": 0, "perPortion": 1, "packaging": 0.25, "recipe": [] },
-    { "id": "i5", "name": "Mini Pavlova", "note": "weekends only", "price": 60, "shelf": 1, "active": true,
-      "batchWord": "batch", "yieldPieces": 0, "perPortion": 1, "packaging": 0.25, "recipe": [] }
+        {
+          "n": "Leibniz biscuits",
+          "q": 500,
+          "u": "g",
+          "pp": 14.29,
+          "pq": 200
+        },
+        {
+          "n": "Milk",
+          "q": 250,
+          "u": "ml",
+          "pp": 9.91,
+          "pq": 1000
+        },
+        {
+          "n": "Sugar",
+          "q": 120,
+          "u": "g",
+          "pp": 5.5,
+          "pq": 1000
+        },
+        {
+          "n": "Vanilla",
+          "q": 20,
+          "u": "g",
+          "pp": 3.78,
+          "pq": 20
+        },
+        {
+          "n": "Cocoa powder",
+          "q": 60,
+          "u": "g",
+          "pp": 15.3,
+          "pq": 100
+        },
+        {
+          "n": "Lurpak butter",
+          "q": 150,
+          "u": "g",
+          "pp": 24.3,
+          "pq": 100
+        },
+        {
+          "n": "Chocolate slab",
+          "q": 140,
+          "u": "g",
+          "pp": 8.81,
+          "pq": 35
+        }
+      ]
+    },
+    {
+      "id": "i2",
+      "name": "San Sebastian",
+      "note": "slice",
+      "price": 26,
+      "shelf": 2,
+      "active": true,
+      "batchWord": "cake",
+      "yieldPieces": 8,
+      "perPortion": 1,
+      "packaging": 0.45,
+      "recipe": [
+        {
+          "n": "Kiri cream cheese",
+          "q": 600,
+          "u": "g",
+          "pp": 12.1,
+          "pq": 200
+        },
+        {
+          "n": "Sugar",
+          "q": 200,
+          "u": "g",
+          "pp": 5.5,
+          "pq": 1000
+        },
+        {
+          "n": "Eggs",
+          "q": 4,
+          "u": "pcs",
+          "pp": 23.75,
+          "pq": 30
+        },
+        {
+          "n": "Flour",
+          "q": 60,
+          "u": "g",
+          "pp": 13,
+          "pq": 1000
+        },
+        {
+          "n": "Cream",
+          "q": 312.5,
+          "u": "ml",
+          "pp": 37.95,
+          "pq": 1000
+        }
+      ]
+    },
+    {
+      "id": "i3",
+      "name": "Crème Brûlée",
+      "note": "125 ml ramekin",
+      "price": 20,
+      "shelf": 2,
+      "active": true,
+      "batchWord": "batch",
+      "yieldPieces": 5,
+      "perPortion": 1,
+      "packaging": 1.09,
+      "recipe": [
+        {
+          "n": "Cream",
+          "q": 500,
+          "u": "ml",
+          "pp": 37.95,
+          "pq": 1000
+        },
+        {
+          "n": "Egg yolks",
+          "q": 5,
+          "u": "pcs",
+          "pp": 23.75,
+          "pq": 30
+        },
+        {
+          "n": "Sugar",
+          "q": 100,
+          "u": "g",
+          "pp": 5.5,
+          "pq": 1000
+        },
+        {
+          "n": "Vanilla",
+          "q": 20,
+          "u": "g",
+          "pp": 3.78,
+          "pq": 20
+        }
+      ]
+    },
+    {
+      "id": "i4",
+      "name": "Brownie Bag",
+      "note": "4 pcs",
+      "price": 26,
+      "shelf": 2,
+      "active": true,
+      "batchWord": "tray",
+      "yieldPieces": 16,
+      "perPortion": 4,
+      "packaging": 0.25,
+      "recipe": [
+        {
+          "n": "Eggs",
+          "q": 4,
+          "u": "pcs",
+          "pp": 23.75,
+          "pq": 30
+        },
+        {
+          "n": "Milk",
+          "q": 62.5,
+          "u": "ml",
+          "pp": 9.91,
+          "pq": 1000
+        },
+        {
+          "n": "Flour",
+          "q": 125,
+          "u": "g",
+          "pp": 13,
+          "pq": 1000
+        },
+        {
+          "n": "Oil",
+          "q": 250,
+          "u": "ml",
+          "pp": 18,
+          "pq": 750
+        },
+        {
+          "n": "Sugar",
+          "q": 200,
+          "u": "g",
+          "pp": 5.5,
+          "pq": 1000
+        },
+        {
+          "n": "Cocoa powder",
+          "q": 100,
+          "u": "g",
+          "pp": 15.3,
+          "pq": 100
+        },
+        {
+          "n": "Vanilla",
+          "q": 20,
+          "u": "g",
+          "pp": 3.78,
+          "pq": 20
+        },
+        {
+          "n": "Hershey's choc. chips",
+          "q": 255,
+          "u": "g",
+          "pp": 29,
+          "pq": 285
+        }
+      ]
+    },
+    {
+      "id": "i5",
+      "name": "Mini Pavlova",
+      "note": "weekends only",
+      "price": 60,
+      "shelf": 1,
+      "active": true,
+      "batchWord": "batch",
+      "yieldPieces": 7,
+      "perPortion": 1,
+      "packaging": 1.68,
+      "recipe": [
+        {
+          "n": "Egg whites",
+          "q": 6,
+          "u": "pcs",
+          "pp": 23.75,
+          "pq": 30
+        },
+        {
+          "n": "Cornstarch",
+          "q": 5,
+          "u": "g",
+          "pp": 4.32,
+          "pq": 400
+        },
+        {
+          "n": "Vinegar",
+          "q": 5,
+          "u": "ml",
+          "pp": 8.5,
+          "pq": 473
+        },
+        {
+          "n": "Vanilla",
+          "q": 20,
+          "u": "g",
+          "pp": 3.78,
+          "pq": 20
+        },
+        {
+          "n": "Cream",
+          "q": 500,
+          "u": "ml",
+          "pp": 37.95,
+          "pq": 1000
+        },
+        {
+          "n": "Blueberries",
+          "q": 248.5,
+          "u": "g",
+          "pp": 39.95,
+          "pq": 500
+        },
+        {
+          "n": "Raspberries",
+          "q": 248.5,
+          "u": "g",
+          "pp": 19.5,
+          "pq": 125
+        },
+        {
+          "n": "Blackberries",
+          "q": 248.5,
+          "u": "g",
+          "pp": 28.5,
+          "pq": 170
+        },
+        {
+          "n": "Strawberries",
+          "q": 248.5,
+          "u": "g",
+          "pp": 13.99,
+          "pq": 250
+        }
+      ]
+    }
   ],
   "team": [
-    { "id": "u1", "name": "Marwan", "user": "marwan", "role": "admin", "side": "dees", "pin": "ba000d3fa8b9e7758aeacaf7e8882d5df77d83bf1445a174d38b751cb0c0004b" },
-    { "id": "u2", "name": "Dina", "user": "dina", "role": "dees", "pin": "5e66d2663a72c3fbac50719d9672eafe5aee147ffbf6f0d24815928068f8f10b" },
-    { "id": "u3", "name": "Marwan Majid", "user": "majid", "role": "truck", "pin": "a635091d64a82e52633fcd6a111195a670b128c80cd175f105e5bac1eaf7b88c" },
-    { "id": "u4", "name": "Tarek", "user": "tarek", "role": "truck", "pin": "11fbc22729a0858c3d99001c9187181dd520514ace6136dce43a44c7681ae521" },
-    { "id": "u5", "name": "Truck Cashier", "user": "cashier", "role": "truck", "pin": "f16e34225021f39639cfa33ca88dd9778940f7c88b25d34cc2a0cff2d774c427" }
+    {
+      "id": "u1",
+      "name": "Marwan",
+      "user": "marwan",
+      "role": "admin",
+      "side": "dees",
+      "pin": "ba000d3fa8b9e7758aeacaf7e8882d5df77d83bf1445a174d38b751cb0c0004b"
+    },
+    {
+      "id": "u2",
+      "name": "Dina",
+      "user": "dina",
+      "role": "dees",
+      "pin": "5e66d2663a72c3fbac50719d9672eafe5aee147ffbf6f0d24815928068f8f10b"
+    },
+    {
+      "id": "u3",
+      "name": "Marwan Majid",
+      "user": "majid",
+      "role": "truck",
+      "pin": "a635091d64a82e52633fcd6a111195a670b128c80cd175f105e5bac1eaf7b88c"
+    },
+    {
+      "id": "u4",
+      "name": "Tarek",
+      "user": "tarek",
+      "role": "truck",
+      "pin": "11fbc22729a0858c3d99001c9187181dd520514ace6136dce43a44c7681ae521"
+    },
+    {
+      "id": "u5",
+      "name": "Truck Cashier",
+      "user": "cashier",
+      "role": "truck",
+      "pin": "f16e34225021f39639cfa33ca88dd9778940f7c88b25d34cc2a0cff2d774c427"
+    }
   ],
-  "batches": [],
-  "seq": 5,
-  "defaultPins": false
+  "batches": [
+    {
+      "id": "b7",
+      "drop": "d6",
+      "itemId": "i2",
+      "qty": 21,
+      "unitCost": null,
+      "unitPrice": 26,
+      "batches": 21,
+      "batchWord": "cake",
+      "shelf": 2,
+      "madeOn": "2026-08-31",
+      "by": "u1",
+      "at": "2026-08-31T11:21:14.388Z",
+      "sales": [
+        {
+          "qty": 1,
+          "by": "u1",
+          "at": "2026-08-31T11:21:45.441Z"
+        }
+      ]
+    }
+  ],
+  "seq": 7,
+  "defaultPins": false,
+  "updatedAt": "2026-08-31T11:21:45.441Z"
 }
 </script>
 
@@ -462,9 +801,15 @@
       var h = '<div class="modalbox" role="dialog" aria-modal="true" aria-label="' + esc(opts.title || "Confirm") + '">';
       if (opts.title) h += "<h3>" + esc(opts.title) + "</h3>";
       if (opts.body) h += '<div class="msg">' + esc(opts.body) + "</div>";
-      if (opts.input) h += '<div class="field" style="margin-top:16px"><label for="m-val">' +
-        esc(opts.input.label) + '</label><input id="m-val" type="number" inputmode="numeric" value="' +
-        esc(opts.input.value) + '" min="' + esc(opts.input.min) + '" max="' + esc(opts.input.max) + '"></div>';
+      if (opts.input) {
+        h += '<div class="field" style="margin-top:16px"><label for="m-val">' + esc(opts.input.label) + "</label>";
+        h += opts.input.type === "text"
+          ? '<input id="m-val" type="text" maxlength="80" value="' + esc(opts.input.value || "") +
+            '" placeholder="' + esc(opts.input.placeholder || "") + '">'
+          : '<input id="m-val" type="number" inputmode="numeric" value="' + esc(opts.input.value) +
+            '" min="' + esc(opts.input.min) + '" max="' + esc(opts.input.max) + '">';
+        h += "</div>";
+      }
       h += '<div class="modalacts">' +
         '<button class="btn ghost" type="button" data-m="no">Cancel</button>' +
         '<button class="btn ' + (opts.danger ? "danger" : "pri") + '" type="button" data-m="yes">' +
@@ -486,10 +831,17 @@
       }
       function accept() {
         if (!opts.input) { finish(true); return; }
-        var v = parseInt(back.querySelector("#m-val").value, 10);
-        if (!(v > 0)) { toast("Enter a whole number above zero.", true); return; }
-        if (opts.input.max != null && v > opts.input.max) {
-          toast("Only " + opts.input.max + " left in that batch.", true); return;
+        var el = back.querySelector("#m-val");
+        if (opts.input.type === "text") {
+          var txt = el.value.trim();
+          if (!txt) { toast("Type a short reason so the record explains itself.", true); return; }
+          finish(txt); return;
+        }
+        var v = parseInt(el.value, 10);
+        var lo = opts.input.min != null ? +opts.input.min : 1;
+        if (isNaN(v) || v < lo) { toast("Enter a whole number, " + lo + " or more.", true); return; }
+        if (opts.input.max != null && v > +opts.input.max) {
+          toast("That is more than the " + opts.input.max + " available.", true); return;
         }
         finish(v);
       }
@@ -738,7 +1090,7 @@
   }
 
   /* ---------- rows ---------- */
-  function rows(list, perm, withSell) {
+  function rows(list, perm, withSell, withVoid) {
     var h = '<div class="rows">';
     list.forEach(function (b) {
       var it = item(b.itemId);
@@ -755,20 +1107,30 @@
         "Made <b>" + niceDate(b.madeOn) + "</b> · expires <b>" + niceDate(exp) + "</b>" +
         (st === "expired" ? " (" + Math.abs(d) + "d ago)" : d >= 0 && !b.voided && left > 0 ? " (" + (d === 0 ? "today" : d + "d") + ")" : "") +
         " · logged <b>" + esc(stamp(b.at)) + "</b> by <b>" + esc(uname(b.by)) + "</b></div>";
-      h += '<div class="meta">Sold <b>' + s + "</b> · cost " +
+      var fixes = (b.sales || []).filter(function (x) { return x.fix; }).length;
+      h += '<div class="meta">Sold <b>' + s + "</b>" + (fixes ? " <span class=\"pill p-soon\">CORRECTED</span>" : "") + " · cost " +
         (b.unitCost == null ? "<b>not set</b>" : "<b>" + cur() + " " + money(b.qty * b.unitCost) + "</b>") +
         " · sells at <b>" + cur() + " " + money(b.unitPrice) + "</b></div>";
       if (b.voided) h += '<div class="meta">Voided by <b>' + esc(uname(b.voidedBy)) + "</b>" +
         (b.voidReason ? ": " + esc(b.voidReason) : "") + "</div>";
       var pct = b.qty ? Math.round((s / b.qty) * 100) : 0;
       h += '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>';
+      var acts = "";
       if (withSell && !b.voided && left > 0 && perm.canSell && !readOnly) {
-        h += '<div class="acts">' +
-          '<button class="btn pri sm" type="button" data-sell="' + b.id + '" data-n="1">SOLD 1</button>' +
+        acts += '<button class="btn pri sm" type="button" data-sell="' + b.id + '" data-n="1">SOLD 1</button>' +
           '<button class="btn dark sm" type="button" data-sell="' + b.id + '" data-n="2">SOLD 2</button>' +
-          '<button class="btn ghost sm" type="button" data-sellmany="' + b.id + '">OTHER…</button>' +
-          "</div>";
+          '<button class="btn ghost sm" type="button" data-sellmany="' + b.id + '">OTHER…</button>';
       }
+      if (withSell && !b.voided && s > 0 && perm.canSell && !readOnly) {
+        acts += '<button class="btn ghost sm" type="button" data-fix="' + b.id + '">FIX COUNT</button>';
+      }
+      if (withVoid && !b.voided && perm.canDeliver && !readOnly) {
+        acts += '<button class="btn danger sm" type="button" data-void="' + b.id + '">VOID</button>';
+      }
+      if (withVoid && b.voided && perm.canSetup && !readOnly) {
+        acts += '<button class="btn ghost sm" type="button" data-unvoid="' + b.id + '">RESTORE</button>';
+      }
+      if (acts) h += '<div class="acts">' + acts + "</div>";
       h += "</div></div>";
     });
     return h + "</div>";
@@ -777,7 +1139,7 @@
   /* ---------- deliveries ---------- */
   function viewOut(perm) {
     var h = '<h2 class="sec">Deliveries out</h2>' +
-      '<p class="sub">What Dee sends to the truck. Every delivery locks the moment it is saved — quantity, cost and date cannot be edited afterwards.</p>';
+      '<p class="sub">What Dee sends to the truck. A delivery locks the moment it is saved — to undo a mistake, <b>VOID</b> it with a reason rather than editing it.</p>';
     if (perm.canDeliver && !readOnly) {
       h += '<div class="card">' +
         '<div class="field" style="max-width:220px"><label for="d-date">MADE ON</label>' +
@@ -792,7 +1154,7 @@
     }
     var all = S.batches.slice().sort(function (a, b) { return a.at < b.at ? 1 : -1; });
     h += '<div class="subhead">ALL DELIVERIES (' + all.length + ")</div>";
-    h += all.length ? rows(all, perm, false) : '<div class="empty">No deliveries logged yet.</div>';
+    h += all.length ? rows(all, perm, false, true) : '<div class="empty">No deliveries logged yet.</div>';
     return h;
   }
 
@@ -800,7 +1162,7 @@
   function viewSell(perm) {
     var open = live().filter(function (b) { return remaining(b) > 0 && status(b) !== "expired"; });
     var h = '<h2 class="sec">Sales</h2>' +
-      '<p class="sub">Tap what has sold. Entries are added to the batch and cannot be edited — log a correction as a new entry if you miscount.</p>';
+      '<p class="sub">Tap what has sold. Entries are never edited or deleted — if a count is wrong, <b>FIX COUNT</b> logs the difference as a correction and both stay on the record.</p>';
     if (!perm.canSell) h += '<div class="banner info">Only the truck side can record sales.</div>';
     h += open.length ? rows(open, perm, true) :
       '<div class="empty">Nothing available to sell. Anything expired shows on Today.</div>';
@@ -808,7 +1170,7 @@
     var log = [];
     live().forEach(function (b) {
       (b.sales || []).forEach(function (s) {
-        log.push({ at: s.at, qty: s.qty, by: s.by, item: (item(b.itemId) || {}).name || "—" });
+        log.push({ at: s.at, qty: s.qty, by: s.by, fix: s.fix, item: (item(b.itemId) || {}).name || "—" });
       });
     });
     log.sort(function (a, b) { return a.at < b.at ? 1 : -1; });
@@ -818,7 +1180,8 @@
       log.slice(0, 25).forEach(function (r) {
         var dt = new Date(r.at);
         h += "<tr><td>" + esc(dt.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })) +
-          "</td><td>" + esc(r.item) + '</td><td class="r num">' + r.qty + "</td><td>" + esc(uname(r.by)) + "</td></tr>";
+          "</td><td>" + esc(r.item) + (r.fix ? ' <span class="pill p-soon">FIX</span>' : "") +
+          '</td><td class="r num">' + (r.qty > 0 ? "+" + r.qty : r.qty) + "</td><td>" + esc(uname(r.by)) + "</td></tr>";
       });
       h += "</tbody></table></div>";
     }
@@ -1052,6 +1415,64 @@
         ask({ title: "How many sold?", ok: "LOG SALE",
               input: { label: "PORTIONS (UP TO " + remaining(bt) + ")", value: 1, min: 1, max: remaining(bt) } })
           .then(function (n) { if (n != null) logSale(bid, n); });
+      };
+    });
+    app.querySelectorAll("[data-fix]").forEach(function (b) {
+      b.onclick = function () {
+        var bt = S.batches.filter(function (x) { return x.id === b.getAttribute("data-fix"); })[0];
+        if (!bt) return;
+        var now = sold(bt);
+        ask({ title: "Fix the sold count",
+              body: "This batch is recorded as " + now + " sold out of " + bt.qty +
+                ". Enter what has actually sold — the difference is logged as a correction, " +
+                "the original entries stay on the record.",
+              ok: "SAVE CORRECTION",
+              input: { label: "ACTUALLY SOLD", value: now, min: 0, max: bt.qty } })
+          .then(function (target) {
+            if (target == null || target === now) return;
+            save(function (nx) {
+              var t = nx.batches.filter(function (x) { return x.id === bt.id; })[0];
+              t.sales = t.sales || [];
+              t.sales.push({ qty: target - now, by: me.id, at: new Date().toISOString(), fix: true });
+            }, "Count corrected to " + target + ".");
+          });
+      };
+    });
+    app.querySelectorAll("[data-void]").forEach(function (b) {
+      b.onclick = function () {
+        var bt = S.batches.filter(function (x) { return x.id === b.getAttribute("data-void"); })[0];
+        if (!bt) return;
+        var s0 = sold(bt);
+        if (s0 > 0 && !ROLES[me.role].canSetup) {
+          toast("This batch already has " + s0 + " sold. Fix the count to 0 first, or ask an admin.", true);
+          return;
+        }
+        ask({ title: "Void this delivery?",
+              body: (s0 > 0 ? "Warning: " + s0 + " already recorded as sold — those go too.\n\n" : "") +
+                "It stays on the record marked voided, and drops out of stock, cost and the split.",
+              ok: "VOID IT", danger: true,
+              input: { type: "text", label: "REASON", placeholder: "logged twice, wrong item…" } })
+          .then(function (reason) {
+            if (!reason) return;
+            save(function (nx) {
+              var t = nx.batches.filter(function (x) { return x.id === bt.id; })[0];
+              t.voided = true; t.voidedBy = me.id; t.voidReason = reason;
+              t.voidedAt = new Date().toISOString();
+            }, "Delivery voided.");
+          });
+      };
+    });
+    app.querySelectorAll("[data-unvoid]").forEach(function (b) {
+      b.onclick = function () {
+        var bid = b.getAttribute("data-unvoid");
+        ask({ title: "Restore this delivery?", body: "It counts towards stock and the split again.",
+              ok: "RESTORE" }).then(function (go) {
+          if (!go) return;
+          save(function (nx) {
+            var t = nx.batches.filter(function (x) { return x.id === bid; })[0];
+            delete t.voided; delete t.voidedBy; delete t.voidReason; delete t.voidedAt;
+          }, "Delivery restored.");
+        });
       };
     });
     app.querySelectorAll("[data-saveitem]").forEach(function (b) {
