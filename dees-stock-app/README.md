@@ -35,12 +35,15 @@ for 30 seconds.
 | `cashier` | Truck Cashier | Truck | truck | 7726 |
 
 Usernames are editable per person in Setup (2–20 chars, lowercase letters/digits/`.`/`-`/`_`,
-must be unique).
+must be unique). The PINs above are starters — everyone changes their own on the **MY PIN**
+tab (current PIN + new PIN twice). An admin can still reset a forgotten one in Setup.
 
 ## Roles
 | Role | Deliveries | Sales | Setup |
 |---|---|---|---|
 | `admin` | yes | yes | yes |
+
+Everyone, whatever their role, can change their own PIN on the MY PIN tab.
 | `dees` | yes | no | no |
 | `truck` | no | yes | no |
 
@@ -61,7 +64,9 @@ and needs the same correction.
 
 ## Header
 Dee's mark recoloured to brown (`dees-brown.png`, embedded in the CSS as a data URI) above a
-centred "Dee's Stock". The header scrolls; the tab strip is what sticks to the top.
+centred "Stock" — the logo already carries the name. The header scrolls; the tab strip sticks
+to the top. The artifact's `<title>` stays "Dee's Stock" so it stays identifiable in a browser
+tab and the artifact gallery, where the logo is not visible.
 
 ## Editing
 Edit `index.html`, republish to the same artifact URL. Note the page rewrites its own source on

@@ -462,7 +462,7 @@
     var html = "";
     html += '<header class="bar"><div class="wrap">' +
       '<div class="logo" role="img" aria-label="Dee\'s Treats"></div>' +
-      '<div class="brandline">Dee\'s Stock</div>' +
+      '<div class="brandline">Stock</div>' +
       '<div class="who"><span class="avatar">' + esc(initials(me.name)) + "</span>" +
       "<span>" + esc(me.name) + " &middot; " + perm.label + "</span>" +
       '<button class="out" type="button" data-act="signout">EXIT</button>' +
@@ -471,6 +471,7 @@
     var tabs = [["today", "TODAY", alerts], ["out", "DELIVERIES", 0], ["sell", "SALES", 0], ["money", "MONEY", 0]];
     if (perm.canDeliver) tabs.push(["recipes", "RECIPES", 0]);
     if (perm.canSetup) tabs.push(["setup", "SETUP", 0]);
+    tabs.push(["account", "MY PIN", 0]);
     html += '<nav class="tabs"><div class="wrap">';
     tabs.forEach(function (t) {
       html += '<button class="tab" type="button" data-tab="' + t[0] + '" aria-current="' + (tab === t[0]) + '">' +
@@ -491,6 +492,7 @@
     else if (tab === "money") html += viewMoney();
     else if (tab === "recipes") html += viewRecipes(perm);
     else if (tab === "setup") html += viewSetup(perm);
+    else if (tab === "account") html += viewAccount();
     html += "</div></main>";
 
     app.innerHTML = html;
@@ -517,7 +519,7 @@
     var wait = lockedFor();
     var h = '<div class="lock"><form class="lockbox" id="loginform" autocomplete="on">' +
       '<div class="logo" role="img" aria-label="Dee\'s Treats"></div>' +
-      "<h1>Dee's Stock</h1>" +
+      "<h1>Stock</h1>" +
       "<p>Sign in with your own login.</p>" +
       '<div class="field"><label for="who">USERNAME</label>' +
       '<input id="who" type="text" name="username" autocomplete="username" autocapitalize="none" ' +
@@ -809,6 +811,51 @@
     return h;
   }
 
+  /* ---------- your own login ---------- */
+  function viewAccount() {
+    var h = '<h2 class="sec">Your login</h2>' +
+      '<p class="sub">Signed in as <b>' + esc(me.name) + '</b> — username <b>' + esc(me.user || "—") +
+      '</b>. Change your own PIN here; nobody else can see it.</p>';
+    if (readOnly) return h + '<div class="banner info">This view is read-only, so your PIN cannot be changed from here.</div>';
+    h += '<div class="card"><div class="grid2">' +
+      '<div class="field"><label for="pw-old">CURRENT PIN</label>' +
+      '<input id="pw-old" type="password" inputmode="numeric" autocomplete="current-password" placeholder="••••"></div>' +
+      '<div class="field"><label for="pw-new">NEW PIN</label>' +
+      '<input id="pw-new" type="password" inputmode="numeric" autocomplete="new-password" placeholder="4–8 digits"></div>' +
+      '<div class="field"><label for="pw-two">REPEAT NEW PIN</label>' +
+      '<input id="pw-two" type="password" inputmode="numeric" autocomplete="new-password" placeholder="••••"></div>' +
+      "</div>" +
+      '<button class="btn pri" type="button" data-act="changepin">CHANGE MY PIN</button>' +
+      '<p class="hint" style="margin-top:12px">4 to 8 digits. If you forget it, an admin can set a new one for you in Setup.</p>' +
+      "</div>";
+    return h;
+  }
+
+  function changePin() {
+    var oldEl = document.getElementById("pw-old"),
+        newEl = document.getElementById("pw-new"),
+        twoEl = document.getElementById("pw-two");
+    var oldPin = (oldEl.value || "").trim(),
+        newPin = (newEl.value || "").trim(),
+        twoPin = (twoEl.value || "").trim();
+    if (!oldPin || !newPin) { toast("Fill in your current PIN and the new one.", true); return; }
+    if (!/^\d{4,8}$/.test(newPin)) { toast("New PIN must be 4–8 digits.", true); return; }
+    if (newPin !== twoPin) { toast("The two new PINs do not match.", true); return; }
+    if (newPin === oldPin) { toast("That is already your PIN.", true); return; }
+    var uid = me.id;
+    hash(oldPin).then(function (ho) {
+      if (ho !== me.pin) { toast("Your current PIN is not right.", true); return; }
+      return hash(newPin).then(function (hn) {
+        save(function (n) {
+          var t = n.team.filter(function (u) { return u.id === uid; })[0];
+          t.pin = hn;
+          var DEF = "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117";
+          n.defaultPins = n.team.some(function (u) { return u.pin === DEF; });
+        }, "PIN changed.");
+      });
+    });
+  }
+
   /* ---------- setup ---------- */
   function viewSetup(perm) {
     if (!perm.canSetup) return '<div class="empty">Setup is admin only.</div>';
@@ -910,6 +957,7 @@
     var acts = {
       signout: signOut,
       login: doLogin,
+      changepin: changePin,
       deliver: addDelivery,
       additem: function () {
         save(function (n) {
