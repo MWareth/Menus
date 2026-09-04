@@ -824,18 +824,31 @@
         s = String(s == null ? "" : s);
         return this.text(s, Math.round((xRight - textWidth(winAnsi(s), size, bold)) * 100) / 100,
                          y, size, bold, rgb);
+      },
+      /* x,y is the bottom-left corner; the image is scaled to w x h points */
+      image: function (name, x, y, w, h) {
+        ops.push("q " + w + " 0 0 " + h + " " + x + " " + y + " cm /" + name + " Do Q");
+        return this;
       }
     };
   }
   function pdfDoc(content) {
+    var fill = rawBytes(LOGO_FILL), mask = rawBytes(LOGO_MASK);
+    var img = "/Type/XObject/Subtype/Image/Width " + LOGO_W + "/Height " + LOGO_H +
+              "/BitsPerComponent 8/Filter/FlateDecode";
     var objs = [
       "<</Type/Catalog/Pages 2 0 R>>",
       "<</Type/Pages/Kids[3 0 R]/Count 1>>",
       "<</Type/Page/Parent 2 0 R/MediaBox[0 0 595.28 841.89]" +
-        "/Resources<</Font<</F1 5 0 R/F2 6 0 R>>>>/Contents 4 0 R>>",
+        "/Resources<</Font<</F1 5 0 R/F2 6 0 R>>/XObject<</Logo 7 0 R>>>>/Contents 4 0 R>>",
       "<</Length " + content.length + ">>\nstream\n" + content + "\nendstream",
       "<</Type/Font/Subtype/Type1/BaseFont/Helvetica/Encoding/WinAnsiEncoding>>",
-      "<</Type/Font/Subtype/Type1/BaseFont/Helvetica-Bold/Encoding/WinAnsiEncoding>>"
+      "<</Type/Font/Subtype/Type1/BaseFont/Helvetica-Bold/Encoding/WinAnsiEncoding>>",
+      /* the wordmark: a flat brown plate, with its own shape as the soft mask */
+      "<<" + img + "/ColorSpace/DeviceRGB/SMask 8 0 R/Length " + fill.length + ">>\nstream\n" +
+        fill + "\nendstream",
+      "<<" + img + "/ColorSpace/DeviceGray/Length " + mask.length + ">>\nstream\n" +
+        mask + "\nendstream"
     ];
     var out = "%PDF-1.4\n%\xe2\xe3\xcf\xd3\n", offsets = [];
     objs.forEach(function (body, i) {
@@ -855,20 +868,97 @@
 
   var BROWN = [0.29, 0.17, 0.16], GREY = [0.42, 0.35, 0.30], RULE = [0.90, 0.86, 0.78];
 
+  /* ---- the Dee's wordmark on the paper ----
+     The logo is one flat colour all the way through, so rather than carry a
+     picture of it the PDF carries a rectangle of that brown and the alpha
+     channel that cuts the letters out of it. Both are already deflated, which
+     is a filter every PDF reader has, so nothing has to be compressed here at
+     the moment of saving. About three kilobytes, and sharp at any size. */
+  var LOGO_W = 360, LOGO_H = 146;
+  var LOGO_FILL =
+      "eNrtwgENAAAMAqA+ziT2D/QKDwBjzVRVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV" +
+      "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV" +
+      "VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV" +
+      "VVVV1d8Dw7NZgQ==";
+  var LOGO_MASK =
+      "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" +
+      "U6CUZfpn/nCfgircFsEmTZo0aWKWf7/D8Sg=";
+
+  /* base64 to a byte-per-character string, which is what the PDF is built as */
+  function rawBytes(b64) {
+    try { return atob(b64); } catch (e) { return ""; }
+  }
+
+  /* Where the money goes. One place, so every document agrees. */
+  var PAY_BY = "Ziina", PAY_NUM = "+971 50 540 7913", PAY_NAME = "Dee's Treats";
+
+
+  /* The wordmark, sized off its own proportions so it never distorts. */
+  function letterhead(pg, L, R, ref, kind, right) {
+    var w = 112, h = Math.round(w * LOGO_H / LOGO_W * 100) / 100;
+    pg.image("Logo", L, 834 - h, w, h);
+    pg.right(ref, R, 812, 11, true, BROWN);
+    pg.text(kind, L, 776, 9, true, GREY);
+    pg.right(right, R, 776, 9, false, GREY);
+    pg.rect(L, 762, R - L, 1.4, BROWN);
+    return 762;
+  }
+
+  /* Who to pay, and how. The same block on every document Dee's hands over. */
+  function payeeBlock(pg, L, R, y) {
+    pg.rect(L, y - 36, R - L, 48, [0.96, 0.93, 0.87]);
+    pg.text("PAY TO", L + 12, y, 8, true, GREY);
+    pg.text(PAY_BY, L + 12, y - 19, 15, true, BROWN);
+    pg.text(PAY_NUM, L + 12 + textWidth(PAY_BY, 15, true) + 12, y - 19, 15, true);
+    pg.text(PAY_NAME, L + 12, y - 31, 9, false, GREY);
+    return y - 48;
+  }
+
   function invoice(dropKey) {
     var list = S.batches.filter(function (b) { return dropOf(b) === dropKey; });
     if (!list.length) return null;
     var b0 = list[0];
     var no = "INV-" + b0.madeOn.replace(/-/g, "") + "-" + String(dropKey).toUpperCase();
-    var pg = pdfPage(), L = 48, R = 547, y = 792;
-
-    pg.text("Dee's Treats", L, y, 22, true, BROWN);
-    pg.right(no, R, y, 11, true, BROWN);
-    y -= 17;
-    pg.text("STOCK INVOICE", L, y, 9, true, GREY);
-    pg.right("Made " + niceDate(b0.madeOn), R, y, 9, false, GREY);
-    y -= 14;
-    pg.rect(L, y, R - L, 1.4, BROWN);
+    var pg = pdfPage(), L = 48, R = 547;
+    var y = letterhead(pg, L, R, no, "STOCK INVOICE", "Sent out " + niceDate(b0.madeOn));
 
     y -= 34;
     pg.text("FROM", L, y, 8, true, GREY);
@@ -921,6 +1011,8 @@
       pg.text("Some lines have no recipe costed yet, so this total is incomplete.", L, y, 9, false, GREY);
     }
 
+    y = payeeBlock(pg, L, R, y - 30);
+
     /* footer */
     pg.rect(L, 74, R - L, 0.6, RULE);
     pg.text("Cost of ingredients and packaging only. It excludes labour, utilities and wastage.",
@@ -935,16 +1027,9 @@
      number the truck pays. The same figures the Weeks tab shows. */
   function weekStatement(start) {
     var w = weekTotals(start);
-    var pg = pdfPage(), L = 48, R = 547, y = 792;
+    var pg = pdfPage(), L = 48, R = 547;
     var no = "WK-" + start.replace(/-/g, "");
-
-    pg.text("Dee's Treats", L, y, 22, true, BROWN);
-    pg.right(no, R, y, 11, true, BROWN);
-    y -= 17;
-    pg.text("WEEKLY STATEMENT", L, y, 9, true, GREY);
-    pg.right(weekLabel(start), R, y, 9, false, GREY);
-    y -= 14;
-    pg.rect(L, y, R - L, 1.4, BROWN);
+    var y = letterhead(pg, L, R, no, "WEEKLY STATEMENT", weekLabel(start));
 
     y -= 32;
     pg.text("FROM", L, y, 8, true, GREY);
@@ -1002,6 +1087,8 @@
       pg.text(w.toDecide + " pieces are still waiting to be marked sold, given away or binned - " +
               "they are in no figure above.", L, y, 9, false, GREY);
     }
+
+    y = payeeBlock(pg, L, R, y - 30);
 
     pg.rect(L, 74, R - L, 0.6, RULE);
     pg.text("Ingredients and packaging only. Excludes labour, utilities and the truck itself.",
