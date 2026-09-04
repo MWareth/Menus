@@ -202,7 +202,17 @@
   .proj b{color:var(--ink)}
   .subhead{font-size:12px;font-weight:900;letter-spacing:.14em;color:var(--ink-3);
     margin:22px 0 10px;padding-top:4px;border-top:1px solid var(--line)}
-  /* ---------- multi-item delivery ---------- */
+  /* ---------- where the sale came from ---------- */
+  .chbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--card);
+    border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
+  .chlab{font-size:11px;font-weight:900;letter-spacing:.12em;color:var(--ink-3)}
+  .chset{display:flex;gap:6px;flex-wrap:wrap}
+  .ch{background:transparent;border:1.5px solid var(--line);color:var(--ink-2);border-radius:999px;
+    padding:8px 15px;font-size:13px;font-weight:900;min-height:40px}
+  .ch:hover{border-color:var(--ink-3);color:var(--ink)}
+  .ch.on{background:var(--char);border-color:var(--char);color:var(--butter)}
+
+  /* ---------- multi-item order ---------- */
   .drow{display:grid;grid-template-columns:1fr 84px auto 42px;gap:8px;align-items:center;margin-bottom:9px}
   .drow select,.drow input{border:1.5px solid var(--line);border-radius:10px;padding:10px 11px;
     min-height:44px;width:100%;background:#fff}
@@ -256,6 +266,10 @@
   },
   "defaultShelf": 2,
   "notify": "",
+  "channels": [
+    "Window",
+    "Delivery app"
+  ],
   "items": [
     {
       "id": "i1",
@@ -775,6 +789,47 @@
   function live() {
     return S.batches.filter(function (b) { return !b.voided; });
   }
+
+  /* ============ where a sale came from ============
+     The window, or one of the delivery apps. Whatever a sale was logged
+     under is stamped on it, so renaming a channel later never rewrites
+     what already happened. */
+  function channels() {
+    var c = S.channels;
+    return (c && c.length) ? c : ["Window", "Delivery app"];
+  }
+  function curChannel() {
+    var list = channels(), v = "";
+    try { v = sessionStorage.getItem("deeserts.ch") || ""; } catch (e) {}
+    return list.indexOf(v) >= 0 ? v : list[0];
+  }
+  function setChannel(v) {
+    try { sessionStorage.setItem("deeserts.ch", v); } catch (e) {}
+    render();
+  }
+  function byChannel() {
+    var map = {}, order = channels().slice();
+    live().forEach(function (b) {
+      (b.sales || []).forEach(function (s) {
+        var k = s.ch || order[0];
+        if (!map[k]) map[k] = { units: 0, revenue: 0 };
+        map[k].units += s.qty;
+        map[k].revenue += s.qty * (b.unitPrice || 0);
+      });
+    });
+    Object.keys(map).forEach(function (k) { if (order.indexOf(k) < 0) order.push(k); });
+    return { map: map, order: order.filter(function (k) { return map[k]; }) };
+  }
+  function channelBar(perm) {
+    if (!perm.canSell || readOnly) return "";
+    var now = curChannel();
+    var h = '<div class="chbar"><span class="chlab">THIS SALE CAME FROM</span><div class="chset">';
+    channels().forEach(function (c) {
+      h += '<button class="ch' + (c === now ? " on" : "") + '" type="button" data-ch="' + esc(c) + '">' +
+        esc(c) + "</button>";
+    });
+    return h + "</div></div>";
+  }
   function totals(days) {
     var cutoff = days ? addDays(todayStr(), -days + 1) : null;
     var t = { cost: 0, revenue: 0, waste: 0, unitsOut: 0, unitsSold: 0, unitsWasted: 0, unknownCost: 0 };
@@ -985,7 +1040,7 @@
     });
     var link = appLink();
     return {
-      subject: "Dee's delivery " + niceDate(b0.madeOn) + " \u2014 " + units + " portions",
+      subject: "Dee's order " + niceDate(b0.madeOn) + " \u2014 " + units + " portions",
       body: "Logged by " + uname(b0.by) + " at " + stamp(b0.at) + ".\n\n" +
         lines.join("\n") + "\n\n" +
         "Out in total: " + units + " portions\n" +
@@ -1004,8 +1059,20 @@
         " left, expires " + niceDate(expiresOn(b));
     };
     var expired = pick("expired"), lastDay = pick("today"), soon = pick("soon");
-    var body = "Stock on the truck, " + niceDate(todayStr()) + "\n\n" +
+    var today = todayStr(), soldToday = {}, soldTotal = 0;
+    live().forEach(function (b) {
+      (b.sales || []).forEach(function (s) {
+        if ((s.at || "").slice(0, 10) !== today) return;
+        var k = s.ch || channels()[0];
+        soldToday[k] = (soldToday[k] || 0) + s.qty;
+        soldTotal += s.qty;
+      });
+    });
+    var body = "Stock on the truck, " + niceDate(today) + "\n\n" +
       onHand + " portion" + (onHand === 1 ? "" : "s") + " on hand.\n";
+    if (soldTotal) body += "Sold today: " + soldTotal + " (" + Object.keys(soldToday).map(function (k) {
+      return k + " " + soldToday[k];
+    }).join(", ") + ")\n";
     if (expired.length) body += "\nEXPIRED \u2014 take these off the counter:\n" + expired.map(line).join("\n") + "\n";
     if (lastDay.length) body += "\nLAST DAY \u2014 sell these first:\n" + lastDay.map(line).join("\n") + "\n";
     if (soon.length) body += "\nGone tomorrow:\n" + soon.map(line).join("\n") + "\n";
@@ -1143,7 +1210,7 @@
       '<button class="out" type="button" data-act="signout">EXIT</button>' +
       "</div></div></header>";
 
-    var tabs = [["stock", "STOCK", alerts], ["out", "DELIVERIES", 0], ["sell", "SALES", 0], ["money", "MONEY", 0]];
+    var tabs = [["stock", "STOCK", alerts], ["out", "ORDERS", 0], ["sell", "SALES", 0], ["money", "MONEY", 0]];
     if (perm.canDeliver) tabs.push(["recipes", "RECIPES", 0]);
     if (perm.canSetup) tabs.push(["setup", "SETUP", 0]);
     tabs.push(["account", "MY PIN", 0]);
@@ -1313,8 +1380,9 @@
     }
 
     h += '<div class="subhead">EVERY BATCH</div>';
+    if (sorted.length) h += channelBar(perm);
     h += sorted.length ? rows(sorted, perm, true) :
-      '<div class="empty">Nothing in stock. Dee logs a delivery to start.</div>';
+      '<div class="empty">Nothing in stock. Dee logs an order to start.</div>';
     if (tomorrow.length) h += '<p class="hint" style="margin-top:12px">' + tomorrow.length +
       " batch" + (tomorrow.length > 1 ? "es expire" : " expires") + " tomorrow.</p>";
     return h;
@@ -1390,10 +1458,10 @@
     return h + "</div>";
   }
 
-  /* ---------- deliveries ---------- */
+  /* ---------- orders out ---------- */
   function viewOut(perm) {
-    var h = '<h2 class="sec">Deliveries out</h2>' +
-      '<p class="sub">What Dee sends to the truck. A delivery locks the moment it is saved — to undo a mistake, <b>VOID</b> it with a reason rather than editing it.</p>';
+    var h = '<h2 class="sec">Orders out</h2>' +
+      '<p class="sub">What Dee sends to the truck. An order locks the moment it is saved — to undo a mistake, <b>VOID</b> it with a reason rather than editing it.</p>';
     if (perm.canDeliver && !readOnly) {
       h += '<div class="card">' +
         '<div class="field" style="max-width:220px"><label for="d-date">MADE ON</label>' +
@@ -1401,14 +1469,14 @@
         '<div id="d-rows"></div>' +
         '<button class="btn ghost sm" type="button" data-act="addrow2">+ ADD ANOTHER ITEM</button>' +
         '<div id="d-preview" style="margin-top:14px"></div>' +
-        '<button class="btn pri" type="button" data-act="deliver" style="margin-top:14px">SAVE DELIVERY &amp; LOCK</button>' +
+        '<button class="btn pri" type="button" data-act="deliver" style="margin-top:14px">SAVE ORDER &amp; LOCK</button>' +
         "</div>";
     } else if (!readOnly) {
-      h += '<div class="banner info">Only Dee\'s side can log deliveries. You can see every batch below.</div>';
+      h += '<div class="banner info">Only Dee\'s side can log orders. You can see every batch below.</div>';
     }
     var all = S.batches.slice().sort(function (a, b) { return a.at < b.at ? 1 : -1; });
-    h += '<div class="subhead">ALL DELIVERIES (' + all.length + ")</div>";
-    h += all.length ? rows(all, perm, false, true) : '<div class="empty">No deliveries logged yet.</div>';
+    h += '<div class="subhead">ALL ORDERS (' + all.length + ")</div>";
+    h += all.length ? rows(all, perm, false, true) : '<div class="empty">No orders logged yet.</div>';
     return h;
   }
 
@@ -1418,24 +1486,27 @@
     var h = '<h2 class="sec">Sales</h2>' +
       '<p class="sub">Tap what has sold. Entries are never edited or deleted — if a count is wrong, <b>FIX COUNT</b> logs the difference as a correction and both stay on the record.</p>';
     if (!perm.canSell) h += '<div class="banner info">Only the truck side can record sales.</div>';
+    h += channelBar(perm);
     h += open.length ? rows(open, perm, true) :
       '<div class="empty">Nothing available to sell. Anything expired shows on Today.</div>';
 
     var log = [];
     live().forEach(function (b) {
       (b.sales || []).forEach(function (s) {
-        log.push({ at: s.at, qty: s.qty, by: s.by, fix: s.fix, item: (item(b.itemId) || {}).name || "—" });
+        log.push({ at: s.at, qty: s.qty, by: s.by, fix: s.fix, ch: s.ch || channels()[0],
+                   item: (item(b.itemId) || {}).name || "—" });
       });
     });
     log.sort(function (a, b) { return a.at < b.at ? 1 : -1; });
     if (log.length) {
       h += '<div class="subhead">RECENT ENTRIES</div><div class="tw"><table><thead><tr>' +
-        "<th>WHEN</th><th>ITEM</th><th class=\"r\">QTY</th><th>BY</th></tr></thead><tbody>";
+        "<th>WHEN</th><th>ITEM</th><th class=\"r\">QTY</th><th>FROM</th><th>BY</th></tr></thead><tbody>";
       log.slice(0, 25).forEach(function (r) {
         var dt = new Date(r.at);
         h += "<tr><td>" + esc(dt.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })) +
           "</td><td>" + esc(r.item) + (r.fix ? ' <span class="pill p-soon">FIX</span>' : "") +
-          '</td><td class="r num">' + (r.qty > 0 ? "+" + r.qty : r.qty) + "</td><td>" + esc(uname(r.by)) + "</td></tr>";
+          '</td><td class="r num">' + (r.qty > 0 ? "+" + r.qty : r.qty) + "</td><td>" +
+          esc(r.ch) + "</td><td>" + esc(uname(r.by)) + "</td></tr>";
       });
       h += "</tbody></table></div>";
     }
@@ -1446,7 +1517,7 @@
   function viewRecipes(perm) {
     if (!perm.canDeliver) {
       return '<h2 class="sec">Recipes &amp; cost</h2>' +
-        '<div class="banner info">Recipes are kept to Dee\'s side. The truck sees the cost totals on Money and on each delivery, not the ingredients behind them.</div>';
+        '<div class="banner info">Recipes are kept to Dee\'s side. The truck sees the cost totals on Money and on each order, not the ingredients behind them.</div>';
     }
     var editable = perm.canDeliver && !readOnly;
     var h = '<h2 class="sec">Recipes &amp; cost</h2>' +
@@ -1588,6 +1659,24 @@
         "These are direct-cost figures \u2014 they take no account of labour, gas, the truck itself or anyone's time.</p>";
     }
 
+    var BC = byChannel();
+    if (BC.order.length) {
+      h += '<div class="subhead">WHERE THE SALES CAME FROM</div><div class="tw"><table><thead><tr>' +
+        '<th>CHANNEL</th><th class="r">UNITS</th><th class="r">REVENUE</th><th class="r">SHARE</th>' +
+        "</tr></thead><tbody>";
+      BC.order.forEach(function (k) {
+        var g = BC.map[k];
+        var share = t.revenue ? Math.round((g.revenue / t.revenue) * 1000) / 10 : 0;
+        h += "<tr><td>" + esc(k) + '</td><td class="r num">' + g.units +
+          '</td><td class="r num">' + cur() + " " + money(g.revenue) +
+          '</td><td class="r num">' + share + "%</td></tr>";
+      });
+      h += "</tbody></table></div>";
+      h += '<p class="hint" style="margin-top:10px">Revenue here is the menu price. ' +
+        "If a delivery app keeps a commission, what actually lands is less \u2014 tell me the rate and " +
+        "I will take it off before the split.</p>";
+    }
+
     var byWho = {};
     live().forEach(function (b) {
       if (b.unitCost == null) return;
@@ -1599,7 +1688,7 @@
     var whoKeys = Object.keys(byWho);
     if (whoKeys.length) {
       h += '<div class="subhead">STOCK BUILT — WHO PAID FOR IT</div><div class="tw"><table><thead><tr>' +
-        '<th>MADE BY</th><th class="r">DELIVERIES</th><th class="r">PORTIONS</th><th class="r">COST BORNE</th>' +
+        '<th>MADE BY</th><th class="r">ORDERS</th><th class="r">PORTIONS</th><th class="r">COST BORNE</th>' +
         '<th class="r">TRUCK SHARE</th></tr></thead><tbody>';
       whoKeys.forEach(function (k) {
         var g = byWho[k];
@@ -1693,7 +1782,7 @@
   /* ---------- setup ---------- */
   function viewSetup(perm) {
     if (!perm.canSetup) return '<div class="empty">Setup is admin only.</div>';
-    var h = '<h2 class="sec">Setup</h2><p class="sub">Edit anything here. Changes apply to <em>future</em> deliveries only — batches already logged keep the price, cost and shelf life they were saved with.</p>';
+    var h = '<h2 class="sec">Setup</h2><p class="sub">Edit anything here. Changes apply to <em>future</em> orders only — batches already logged keep the price, cost and shelf life they were saved with.</p>';
 
     h += '<div class="subhead">ITEMS</div>';
     S.items.forEach(function (it) {
@@ -1715,7 +1804,7 @@
         '<div class="field"><label>USERNAME (THEY TYPE THIS)</label><input data-f="user" value="' + esc(u.user || "") +
         '" autocapitalize="none" autocorrect="off" spellcheck="false"></div>' +
         '<div class="field"><label>SIDE</label><select data-f="role">' +
-        '<option value="dees"' + (u.role === "dees" ? " selected" : "") + ">Dee's — logs deliveries</option>" +
+        '<option value="dees"' + (u.role === "dees" ? " selected" : "") + ">Dee's — logs orders</option>" +
         '<option value="truck"' + (u.role === "truck" ? " selected" : "") + ">Truck — logs sales</option>" +
         '<option value="admin"' + (u.role === "admin" ? " selected" : "") + ">Admin — everything</option>" +
         "</select></div>" +
@@ -1736,13 +1825,21 @@
       "</div>" +
       '<button class="btn dark sm" type="button" data-act="savesplit">SAVE</button></div>';
 
+    h += '<div class="subhead">WHERE SALES COME FROM</div><div class="card">' +
+      '<div class="field"><label for="ch-list">CHANNELS</label>' +
+      '<input id="ch-list" value="' + esc(channels().join(", ")) + '" placeholder="Window, Talabat, Deliveroo"></div>' +
+      '<button class="btn dark sm" type="button" data-act="savechannels">SAVE</button>' +
+      "<p class=\"hint\" style=\"margin-top:12px\">Separate them with commas \u2014 the first is the one " +
+      "the truck starts on. Every sale is stamped with whichever channel was picked at the time, so " +
+      "renaming one here does not rewrite sales already logged under the old name.</p></div>";
+
     h += '<div class="subhead">WHO GETS TOLD</div><div class="card">' +
       '<div class="field"><label for="nt-mails">EMAIL ADDRESSES</label>' +
       '<input id="nt-mails" value="' + esc(S.notify || "") + '" ' +
       'placeholder="dina@example.com, marwan@example.com" autocapitalize="none" autocorrect="off" spellcheck="false"></div>' +
       '<button class="btn dark sm" type="button" data-act="savenotify">SAVE</button>' +
       "<p class=\"hint\" style=\"margin-top:12px\">Separate them with commas. These addresses are filled in for you " +
-      "whenever someone presses <b>EMAIL NOTICE</b> on a delivery or <b>EMAIL THE STOCK NOTE</b>. " +
+      "whenever someone presses <b>EMAIL NOTICE</b> on an order or <b>EMAIL THE STOCK NOTE</b>. " +
       "The page itself cannot post to a mail server, so it opens the note in your own mail app \u2014 " +
       "you press send.</p></div>";
 
@@ -1760,6 +1857,9 @@
   function wire() {
     app.querySelectorAll("[data-tab]").forEach(function (b) {
       b.onclick = function () { setTab(b.getAttribute("data-tab")); };
+    });
+    app.querySelectorAll("[data-ch]").forEach(function (b) {
+      b.onclick = function () { setChannel(b.getAttribute("data-ch")); };
     });
     app.querySelectorAll("[data-sell]").forEach(function (b) {
       b.onclick = function () { logSale(b.getAttribute("data-sell"), +b.getAttribute("data-n")); };
@@ -1789,7 +1889,8 @@
             save(function (nx) {
               var t = nx.batches.filter(function (x) { return x.id === bt.id; })[0];
               t.sales = t.sales || [];
-              t.sales.push({ qty: target - now, by: me.id, at: new Date().toISOString(), fix: true });
+              t.sales.push({ qty: target - now, by: me.id, at: new Date().toISOString(),
+                             fix: true, ch: curChannel() });
             }, "Count corrected to " + target + ".");
           });
       };
@@ -1803,7 +1904,7 @@
           toast("This batch already has " + s0 + " sold. Fix the count to 0 first, or ask an admin.", true);
           return;
         }
-        ask({ title: "Void this delivery?",
+        ask({ title: "Void this order?",
               body: (s0 > 0 ? "Warning: " + s0 + " already recorded as sold — those go too.\n\n" : "") +
                 "It stays on the record marked voided, and drops out of stock, cost and the split.",
               ok: "VOID IT", danger: true,
@@ -1814,25 +1915,25 @@
               var t = nx.batches.filter(function (x) { return x.id === bt.id; })[0];
               t.voided = true; t.voidedBy = me.id; t.voidReason = reason;
               t.voidedAt = new Date().toISOString();
-            }, "Delivery voided.");
+            }, "Order voided.");
           });
       };
     });
     app.querySelectorAll("[data-notify]").forEach(function (b) {
       b.onclick = function () {
-        notice("Delivery notice", deliveryNotice(b.getAttribute("data-notify")));
+        notice("Order notice", deliveryNotice(b.getAttribute("data-notify")));
       };
     });
     app.querySelectorAll("[data-unvoid]").forEach(function (b) {
       b.onclick = function () {
         var bid = b.getAttribute("data-unvoid");
-        ask({ title: "Restore this delivery?", body: "It counts towards stock and the split again.",
+        ask({ title: "Restore this order?", body: "It counts towards stock and the split again.",
               ok: "RESTORE" }).then(function (go) {
           if (!go) return;
           save(function (nx) {
             var t = nx.batches.filter(function (x) { return x.id === bid; })[0];
             delete t.voided; delete t.voidedBy; delete t.voidReason; delete t.voidedAt;
-          }, "Delivery restored.");
+          }, "Order restored.");
         });
       };
     });
@@ -1843,8 +1944,8 @@
       b.onclick = function () {
         var iid = b.getAttribute("data-delitem");
         var used = S.batches.some(function (x) { return x.itemId === iid; });
-        if (used) { toast("This item has deliveries against it — set it to 'not on the menu' instead.", true); return; }
-        ask({ title: "Remove this item?", body: "It disappears from the menu and from future deliveries.",
+        if (used) { toast("This item has orders against it — set it to 'not on the menu' instead.", true); return; }
+        ask({ title: "Remove this item?", body: "It disappears from the menu and from future orders.",
               ok: "REMOVE", danger: true }).then(function (go) {
           if (!go) return;
           save(function (n) { n.items = n.items.filter(function (i) { return i.id !== iid; }); }, "Item removed.");
@@ -1887,6 +1988,14 @@
       addrow2: addDeliveryRow,
       deliver: addDelivery,
       notifystock: function () { notice("Stock note", stockNotice()); },
+      savechannels: function () {
+        var list = document.getElementById("ch-list").value.split(",").map(function (x) {
+          return x.trim();
+        }).filter(Boolean);
+        if (!list.length) { toast("Keep at least one channel.", true); return; }
+        if (list.length > 6) { toast("Six channels is plenty \u2014 the truck has to tap one every sale.", true); return; }
+        save(function (n) { n.channels = list; }, list.join(", ") + " saved.");
+      },
       savenotify: function () {
         var raw = document.getElementById("nt-mails").value;
         var list = raw.split(/[,;\s]+/).filter(Boolean);
@@ -2024,11 +2133,12 @@
     var b = S.batches.filter(function (x) { return x.id === bid; })[0];
     if (!b) return;
     if (n > remaining(b)) { toast("Only " + remaining(b) + " left in that batch.", true); return; }
+    var ch = curChannel();
     save(function (nx) {
       var t = nx.batches.filter(function (x) { return x.id === bid; })[0];
       t.sales = t.sales || [];
-      t.sales.push({ qty: n, by: me.id, at: new Date().toISOString() });
-    }, n + " sold — logged.");
+      t.sales.push({ qty: n, by: me.id, at: new Date().toISOString(), ch: ch });
+    }, n + " sold at " + ch.toLowerCase() + " — logged.");
   }
 
   function itemOptions(sel) {
@@ -2118,7 +2228,7 @@
     });
     var msg = summary.join("\n") + "\n\nQuantity, cost and date cannot be changed after this.";
     if (uncosted.length) msg = "No recipe costed for: " + uncosted.join(", ") + " — they go in with no cost.\n\n" + msg;
-    ask({ title: "Lock this delivery?", body: msg, ok: "SAVE & LOCK" }).then(function (go) {
+    ask({ title: "Lock this order?", body: msg, ok: "SAVE & LOCK" }).then(function (go) {
       if (!go) return;
       doSaveDelivery(lines, madeOn);
     });
@@ -2139,7 +2249,7 @@
           by: me.id, at: at, sales: []
         });
       });
-    }, lines.length > 1 ? lines.length + " items locked in." : "Delivery locked in.");
+    }, lines.length > 1 ? lines.length + " items locked in." : "Order locked in.");
   }
 
   function saveRecipe(iid) {
