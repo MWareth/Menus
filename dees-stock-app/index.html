@@ -97,6 +97,16 @@
   .p-void{background:var(--shade);color:var(--ink-3)}
   .p-lock{background:var(--char);color:var(--butter)}
 
+  /* ---------- the day a lot went out ---------- */
+  .dayband{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+    margin:16px 0 8px;padding:9px 13px;border-radius:10px;
+    background:var(--char);color:var(--paper)}
+  .dayband .d1{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:15px;color:var(--butter)}
+  .dayband .d2{font-size:11px;font-weight:900;letter-spacing:.09em;color:#8C8279}
+  .dayband .d3{margin-left:auto;font-size:12.5px;font-weight:700;color:var(--paper)}
+  .dayband.shut .d1{color:var(--ink-3)}
+  .rows + .dayband{margin-top:18px}
+
   .bar-track{height:7px;border-radius:4px;background:var(--shade);margin-top:10px;overflow:hidden}
   .bar-fill{height:100%;background:var(--gold);border-radius:4px}
 
@@ -715,6 +725,20 @@
           "at": "2026-09-04T14:20:29.198Z",
           "on": "2026-09-03",
           "ch": "Window"
+        },
+        {
+          "qty": 5,
+          "by": "u1",
+          "at": "2026-09-04T15:42:36.116Z",
+          "on": "2026-09-04",
+          "kind": "gift"
+        },
+        {
+          "qty": 1,
+          "by": "u1",
+          "at": "2026-09-04T15:42:45.883Z",
+          "on": "2026-09-04",
+          "kind": "waste"
         }
       ]
     },
@@ -752,7 +776,15 @@
       "madeOn": "2026-09-04",
       "by": "u1",
       "at": "2026-09-04T14:53:39.779Z",
-      "sales": []
+      "sales": [
+        {
+          "qty": 1,
+          "by": "u1",
+          "at": "2026-09-04T15:42:58.150Z",
+          "on": "2026-09-04",
+          "ch": "Window"
+        }
+      ]
     },
     {
       "id": "b9",
@@ -773,7 +805,7 @@
   ],
   "seq": 9,
   "defaultPins": false,
-  "updatedAt": "2026-09-04T14:53:39.780Z",
+  "updatedAt": "2026-09-04T15:42:58.150Z",
   "payments": [],
   "weeks": []
 }
@@ -971,10 +1003,7 @@
   /* every week the board knows about, newest first */
   function allWeeks() {
     var seen = {};
-    live().forEach(function (b) {
-      seen[weekOf(b.madeOn)] = true;
-      (b.sales || []).forEach(function (s) { seen[weekOf(saleOn(s))] = true; });
-    });
+    live().forEach(function (b) { seen[weekOf(b.madeOn)] = true; });
     closedWeeks().forEach(function (w) { seen[w.start] = true; });
     seen[thisWeek()] = true;
     return Object.keys(seen).sort().reverse();
@@ -1042,7 +1071,9 @@
       "</div>";
     if (back) {
       h += '<div class="banner warn"><b>Logging sales on ' + esc(niceDate(sd)) +
-        ", not today.</b> Every SOLD you tap lands on that date until you change it back.</div>";
+        ", not today.</b> Every SOLD you tap lands on that date until you change it back. " +
+        "It only sets the day on the record \u2014 the money always settles in the week " +
+        "the lot went out.</div>";
     }
     return h;
   }
@@ -1947,7 +1978,7 @@
     }
 
     h += '<div class="subhead">EVERYTHING ON THE TRUCK</div>';
-    h += sorted.length ? rows(sorted, perm, false) :
+    h += sorted.length ? rowsByDate(sorted, perm, false) :
       '<div class="empty">Nothing in stock. Add some above to start.</div>';
     if (sorted.length && perm.canSell && !readOnly) {
       h += '<p class="hint" style="margin-top:12px">This is the count, not the till \u2014 ' +
@@ -1980,6 +2011,37 @@
   }
 
   /* ---------- rows ---------- */
+  /* The same lots, but banded under the day they went out. Whoever is about
+     to tap SOLD, GAVE AWAY or BINNED can see which day's stock it is coming
+     off, and which week it will settle in. */
+  function rowsByDate(list, perm, withSell, withVoid) {
+    var byDay = {}, days = [];
+    list.forEach(function (b) {
+      if (!byDay[b.madeOn]) { byDay[b.madeOn] = []; days.push(b.madeOn); }
+      byDay[b.madeOn].push(b);
+    });
+    days.sort().reverse();
+    var h = "";
+    days.forEach(function (day) {
+      var g = byDay[day];
+      var out = 0, left = 0, dead = 0;
+      g.forEach(function (b) {
+        if (b.voided) { dead += 1; return; }     /* a voided lot counts nowhere */
+        out += b.qty; left += Math.max(0, remaining(b));
+      });
+      var shut = weekClosed(weekOf(day));
+      var tail = out ? left + " of " + out + " left" : "";
+      if (dead) tail += (tail ? " \u00b7 " : "") + dead + (dead === 1 ? " voided" : " voided");
+      h += '<div class="dayband' + (shut ? " shut" : "") + '">' +
+        '<span class="d1">SENT OUT ' + esc(niceDate(day).toUpperCase()) + "</span>" +
+        '<span class="d2">' + esc(weekLabel(weekOf(day)).toUpperCase()) +
+        (shut ? " \u00b7 CLOSED" : "") + "</span>" +
+        '<span class="d3 num">' + tail + "</span></div>";
+      h += rows(g, perm, withSell, withVoid);
+    });
+    return h;
+  }
+
   function rows(list, perm, withSell, withVoid) {
     var h = '<div class="rows">';
     var seenDrop = {};                 /* one notice and one invoice per order */
@@ -1995,7 +2057,7 @@
         '<span class="unit">' + esc(plural(bPortion(b))) + "</span>" +
         '<span class="pill p-' + st + '">' + STATUS_LABEL[st] + "</span>" +
         (b.voided ? "" : '<span class="pill p-lock">LOCKED</span>') + "</div>";
-      h += '<div class="meta">' + "Made <b>" + niceDate(b.madeOn) + "</b> · expires <b>" + niceDate(exp) + "</b>" +
+      h += '<div class="meta">' + "Sent out <b>" + niceDate(b.madeOn) + "</b> · expires <b>" + niceDate(exp) + "</b>" +
         (st === "expired" ? " (" + Math.abs(d) + "d ago)" : d >= 0 && !b.voided && left > 0 ? " (" + (d === 0 ? "today" : d + "d") + ")" : "") +
         " · logged <b>" + esc(stamp(b.at)) + "</b> by <b>" + esc(uname(b.by)) + "</b></div>";
       var fixes = (b.sales || []).filter(function (x) { return x.fix; }).length;
@@ -2061,7 +2123,7 @@
   function orderForm(perm) {
     if (!perm.canDeliver || readOnly) return "";
     return '<div class="subhead">ADD STOCK</div><div class="card">' +
-      '<div class="field" style="max-width:220px"><label for="d-date">MADE ON</label>' +
+      '<div class="field" style="max-width:220px"><label for="d-date">SENT OUT ON</label>' +
       '<input id="d-date" type="date" value="' + todayStr() + '"></div>' +
       '<div id="d-rows"></div>' +
       '<button class="btn ghost sm" type="button" data-act="addrow2">+ ADD ANOTHER ITEM</button>' +
@@ -2100,10 +2162,10 @@
       sell += '<div class="banner warn"><b>' + esc(count(staleLeft, "piece")) +
         " is sitting past its date with nothing logged against it.</b> If it sold before it turned, " +
         "set <b>SOLD ON</b> to the day it went and log it. Whatever is genuinely left over stays as waste.</div>";
-      sell += rows(stale, perm, true);
+      sell += rowsByDate(stale, perm, true);
     }
     sell += '<div class="subhead">ON THE TRUCK NOW</div>';
-    sell += open.length ? rows(open, perm, true) :
+    sell += open.length ? rowsByDate(open, perm, true) :
       '<div class="empty">Nothing in date on the truck.</div>';
 
     /* --- the sales log --- */
@@ -2134,7 +2196,7 @@
     /* --- the full history --- */
     var all = S.batches.slice().sort(function (a, b) { return a.at < b.at ? 1 : -1; });
     var hist = '<div class="subhead">EVERY ORDER OUT (' + all.length + ")</div>";
-    hist += all.length ? rows(all, perm, false, true) : '<div class="empty">No orders logged yet.</div>';
+    hist += all.length ? rowsByDate(all, perm, false, true) : '<div class="empty">No orders logged yet.</div>';
 
     /* the truck is here to sell, so it gets the sell buttons first;
        Dee's side is here to send stock out, so the form comes first */
@@ -2215,23 +2277,24 @@
     var t = { start: start, out: 0, outCost: 0, sold: 0, revenue: 0, costSold: 0,
               given: 0, costGiven: 0, binned: 0, costBinned: 0,
               toDecide: 0, costToDecide: 0, left: 0, costLeft: 0, d: d };
+    /* A lot belongs to the week it went out, and everything that happens to
+       it belongs there too \u2014 sold, given away or binned, whenever it was
+       typed in. Otherwise clearing out last week's leftovers today lands
+       last week's cost on this week, and both weeks read wrong. */
     live().forEach(function (b) {
+      if (weekOf(b.madeOn) !== start) return;
       var c = b.unitCost || 0;
-      var mine = weekOf(b.madeOn) === start;
-      if (mine) { t.out += b.qty; t.outCost += b.qty * c; }
+      t.out += b.qty; t.outCost += b.qty * c;
       (b.sales || []).forEach(function (s) {
-        if (weekOf(saleOn(s)) !== start) return;
         var k = kindOf(s);
         if (k === "gift") { t.given += s.qty; t.costGiven += s.qty * c; }
         else if (k === "waste") { t.binned += s.qty; t.costBinned += s.qty * c; }
         else { t.sold += s.qty; t.revenue += s.qty * (b.unitPrice || 0); t.costSold += s.qty * c; }
       });
-      if (mine) {
-        var lft = remaining(b);
-        if (lft > 0) {
-          if (status(b) === "expired") { t.toDecide += lft; t.costToDecide += lft * c; }
-          else { t.left += lft; t.costLeft += lft * c; }
-        }
+      var lft = remaining(b);
+      if (lft > 0) {
+        if (status(b) === "expired") { t.toDecide += lft; t.costToDecide += lft * c; }
+        else { t.left += lft; t.costLeft += lft * c; }
       }
     });
     t.used = t.costSold + t.costGiven + t.costBinned;
@@ -2301,9 +2364,11 @@
     var t = totals(null);
     var S1 = settlement();
     var h = '<h2 class="sec">Weeks</h2>' +
-      '<p class="sub">A week runs Friday to Thursday. Each one shows what went out, what sold, ' +
-      'and what the truck owes for it — then you close it. Nothing is ever written off on its ' +
-      'own: stock past its date waits for you to say whether it sold, was given away, or was binned.</p>';
+      '<p class="sub">A week runs Friday to Thursday, and a lot belongs to the week it was ' +
+      '<b>sent out</b> — so selling it, giving it away or binning it later still settles in that ' +
+      'week, whenever you get round to typing it in. Each week shows what went out, what happened ' +
+      'to it and what the truck owes, then you close it. Nothing is ever written off on its own: ' +
+      'stock past its date waits for you to say whether it sold, was given away, or was binned.</p>';
 
     allWeeks().forEach(function (start) { h += weekCard(start, perm); });
 
@@ -2587,7 +2652,15 @@
           var bt = S.batches.filter(function (x) { return x.id === bid; })[0];
           if (!bt) return;
           var m = MOVE[act];
-          ask({ title: m.title, ok: m.ok, body: m.body || undefined, danger: m.danger,
+          var mit = item(bt.itemId);
+          /* say out loud which day's stock this is coming off, and where it
+             lands, so nobody has to guess which lot they are tapping */
+          var head = (mit ? mit.name : "This lot") + " from the " +
+            niceDate(bt.madeOn) + " order \u2014 " + count(remaining(bt), bPortion(bt)) +
+            " left of " + bt.qty + ".\nIt counts in " + weekLabel(weekOf(bt.madeOn)) +
+            ", the week that order went out.";
+          ask({ title: m.title, ok: m.ok, danger: m.danger,
+                body: head + (m.body ? "\n\n" + m.body : ""),
                 input: { label: plural(bPortion(bt)).toUpperCase() + " (UP TO " + remaining(bt) + ")",
                          value: 1, min: 1, max: remaining(bt) } })
             .then(function (n) { if (n != null) logSale(bid, n, m.kind); });
@@ -2662,7 +2735,8 @@
           : "";
         ask({ title: "Close " + weekLabel(start) + "?",
               body: warn + "The truck owes " + cur() + " " + money(w.owed) + " for this week.\n\n" +
-                    "Closing locks it: no more sales can be dated inside it. An admin can reopen it.",
+                    "Closing locks it: nothing more can be sold, given away or binned off the lots that " +
+                    "went out in this week. An admin can reopen it.",
               ok: "CLOSE THE WEEK" })
           .then(function (go) {
             if (!go) return;
@@ -2910,8 +2984,9 @@
     if (n > remaining(b)) { toast("Only " + count(remaining(b), bPortion(b)) + " left in that lot.", true); return; }
     kind = kind || "sale";
     var on = saleDate();
-    if (weekClosed(weekOf(on))) {
-      toast(weekLabel(weekOf(on)) + " is closed. Reopen it first, or pick another date.", true);
+    var wk = weekOf(b.madeOn);            /* the lot's own week is where this settles */
+    if (weekClosed(wk)) {
+      toast("That lot went out in " + weekLabel(wk) + ", and that week is closed. Reopen it first.", true);
       return;
     }
     var ch = curChannel();

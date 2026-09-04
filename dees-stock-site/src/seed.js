@@ -459,6 +459,20 @@ export const SEED = {
           "at": "2026-09-04T14:20:29.198Z",
           "on": "2026-09-03",
           "ch": "Window"
+        },
+        {
+          "qty": 5,
+          "by": "u1",
+          "at": "2026-09-04T15:42:36.116Z",
+          "on": "2026-09-04",
+          "kind": "gift"
+        },
+        {
+          "qty": 1,
+          "by": "u1",
+          "at": "2026-09-04T15:42:45.883Z",
+          "on": "2026-09-04",
+          "kind": "waste"
         }
       ]
     },
@@ -496,7 +510,15 @@ export const SEED = {
       "madeOn": "2026-09-04",
       "by": "u1",
       "at": "2026-09-04T14:53:39.779Z",
-      "sales": []
+      "sales": [
+        {
+          "qty": 1,
+          "by": "u1",
+          "at": "2026-09-04T15:42:58.150Z",
+          "on": "2026-09-04",
+          "ch": "Window"
+        }
+      ]
     },
     {
       "id": "b9",
@@ -517,7 +539,7 @@ export const SEED = {
   ],
   "seq": 9,
   "defaultPins": false,
-  "updatedAt": "2026-09-04T14:53:39.780Z",
+  "updatedAt": "2026-09-04T15:42:58.150Z",
   "payments": [],
   "weeks": [],
   "defaultPinHash": "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117"
