@@ -212,6 +212,9 @@
     padding:8px 15px;font-size:13px;font-weight:900;min-height:40px}
   .ch:hover{border-color:var(--ink-3);color:var(--ink)}
   .ch.on{background:var(--char);border-color:var(--char);color:var(--butter)}
+  .chbar input[type="date"]{border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;
+    min-height:40px;background:#fff;font-weight:700}
+  .chbar input[type="date"]:focus{outline:2px solid var(--gold);outline-offset:-1px;border-color:var(--gold)}
 
   /* ---------- multi-item order ---------- */
   .drow{display:grid;grid-template-columns:1fr 84px auto 42px;gap:8px;align-items:center;margin-bottom:9px}
@@ -659,7 +662,7 @@
       "itemId": "i2",
       "qty": 21,
       "unitCost": 7.848255208333334,
-      "unitPrice": 26,
+      "unitPrice": 24,
       "batches": null,
       "batchWord": "cake",
       "portionWord": "slice",
@@ -691,7 +694,7 @@
       "itemId": "i2",
       "qty": 16,
       "unitCost": 7.848255208333334,
-      "unitPrice": 26,
+      "unitPrice": 24,
       "batches": null,
       "batchWord": "cake",
       "portionWord": "slice",
@@ -888,6 +891,23 @@
     var c = S.channels;
     return (c && c.length) ? c : ["Window", "Delivery app"];
   }
+  /* A sale is stamped with the day it happened, not the moment it was typed:
+     the board is often filled in after the fact, and the day-by-day split
+     is only honest if the sale lands on the right day. */
+  function saleDate() {
+    var v = "";
+    try { v = sessionStorage.getItem("deeserts.sdate") || ""; } catch (e) {}
+    return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : todayStr();
+  }
+  function setSaleDate(v) {
+    try {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) sessionStorage.setItem("deeserts.sdate", v);
+      else sessionStorage.removeItem("deeserts.sdate");
+    } catch (e) {}
+    render();
+  }
+  function saleOn(s) { return s.on || (s.at || "").slice(0, 10); }
+
   function curChannel() {
     var list = channels(), v = "";
     try { v = sessionStorage.getItem("deeserts.ch") || ""; } catch (e) {}
@@ -912,13 +932,22 @@
   }
   function channelBar(perm) {
     if (!perm.canSell || readOnly) return "";
-    var now = curChannel();
+    var now = curChannel(), sd = saleDate(), back = sd !== todayStr();
     var h = '<div class="chbar"><span class="chlab">THIS SALE CAME FROM</span><div class="chset">';
     channels().forEach(function (c) {
       h += '<button class="ch' + (c === now ? " on" : "") + '" type="button" data-ch="' + esc(c) + '">' +
         esc(c) + "</button>";
     });
-    return h + "</div></div>";
+    h += "</div></div>";
+    h += '<div class="chbar"><span class="chlab">SOLD ON</span>' +
+      '<input id="s-date" type="date" value="' + esc(sd) + '" max="' + esc(todayStr()) + '">' +
+      (back ? '<button class="ch" type="button" data-sdate="today">BACK TO TODAY</button>' : "") +
+      "</div>";
+    if (back) {
+      h += '<div class="banner warn"><b>Logging sales on ' + esc(niceDate(sd)) +
+        ", not today.</b> Every SOLD you tap lands on that date until you change it back.</div>";
+    }
+    return h;
   }
   /* Stock that is made but not yet sold is not a loss — it is Dee's money
      sitting on the truck as cake. Only what has actually been sold, or has
@@ -1332,7 +1361,7 @@
     var today = todayStr(), soldToday = {}, soldTotal = 0;
     live().forEach(function (b) {
       (b.sales || []).forEach(function (s) {
-        if ((s.at || "").slice(0, 10) !== today) return;
+        if (saleOn(s) !== today) return;
         var k = s.ch || channels()[0];
         soldToday[k] = (soldToday[k] || 0) + s.qty;
         soldTotal += s.qty;
@@ -1630,7 +1659,7 @@
     });
     var todaySold = 0;
     live().forEach(function (b) {
-      (b.sales || []).forEach(function (s) { if ((s.at || "").slice(0, 10) === t) todaySold += s.qty; });
+      (b.sales || []).forEach(function (s) { if (saleOn(s) === t) todaySold += s.qty; });
     });
 
     var h = '<h2 class="sec">In stock</h2><p class="sub">' + niceDate(t) +
@@ -1827,31 +1856,44 @@
       form = '<div class="banner info">Only Dee\'s side sends stock out. Your part here is logging what sells, and where it sold.</div>';
     }
 
-    /* --- selling: what is on the truck, and where each sale came from --- */
-    var open = live().filter(function (b) { return remaining(b) > 0 && status(b) !== "expired"; });
-    var sell = '<div class="subhead">ON THE TRUCK NOW</div>';
+    /* --- selling: what is on the truck, and where each sale came from.
+           Anything past its date still needs accounting for: some of it sold
+           before it turned, and only the rest is waste. --- */
+    var unsold = live().filter(function (b) { return remaining(b) > 0; });
+    var stale = unsold.filter(function (b) { return status(b) === "expired"; });
+    var open = unsold.filter(function (b) { return status(b) !== "expired"; });
+    var sell = "";
     if (!perm.canSell && !readOnly) {
       sell += '<div class="banner info">Only the truck side records sales. Everything sold shows below.</div>';
     }
     sell += channelBar(perm);
+    if (stale.length) {
+      var staleLeft = stale.reduce(function (a, b) { return a + remaining(b); }, 0);
+      sell += '<div class="subhead">PAST ITS DATE \u2014 STILL TO ACCOUNT FOR</div>';
+      sell += '<div class="banner warn"><b>' + esc(count(staleLeft, "piece")) +
+        " is sitting past its date with nothing logged against it.</b> If it sold before it turned, " +
+        "set <b>SOLD ON</b> to the day it went and log it. Whatever is genuinely left over stays as waste.</div>";
+      sell += rows(stale, perm, true);
+    }
+    sell += '<div class="subhead">ON THE TRUCK NOW</div>';
     sell += open.length ? rows(open, perm, true) :
-      '<div class="empty">Nothing on the truck to sell. Anything past its date shows on Stock.</div>';
+      '<div class="empty">Nothing in date on the truck.</div>';
 
     /* --- the sales log --- */
     var log = [];
     live().forEach(function (b) {
       (b.sales || []).forEach(function (s) {
-        log.push({ at: s.at, qty: s.qty, by: s.by, fix: s.fix, ch: s.ch || channels()[0],
-                   item: (item(b.itemId) || {}).name || "\u2014" });
+        log.push({ at: s.at, on: saleOn(s), qty: s.qty, by: s.by, fix: s.fix,
+                   ch: s.ch || channels()[0], item: (item(b.itemId) || {}).name || "\u2014" });
       });
     });
     log.sort(function (a, b) { return a.at < b.at ? 1 : -1; });
     if (log.length) {
       sell += '<div class="subhead">SALES LOGGED (' + log.length + ")</div><div class=\"tw\"><table><thead><tr>" +
-        "<th>WHEN</th><th>ITEM</th><th class=\"r\">QTY</th><th>SOLD FROM</th><th>BY</th></tr></thead><tbody>";
+        "<th>SOLD ON</th><th>ITEM</th><th class=\"r\">QTY</th><th>SOLD FROM</th><th>BY</th></tr></thead><tbody>";
+      log.sort(function (a, b) { return a.on < b.on ? 1 : a.on > b.on ? -1 : (a.at < b.at ? 1 : -1); });
       log.slice(0, 25).forEach(function (r) {
-        var dt = new Date(r.at);
-        sell += "<tr><td>" + esc(dt.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })) +
+        sell += "<tr><td>" + esc(niceDate(r.on)) +
           "</td><td>" + esc(r.item) + (r.fix ? ' <span class="pill p-soon">FIX</span>' : "") +
           '</td><td class="r num">' + (r.qty > 0 ? "+" + r.qty : r.qty) + "</td><td>" +
           esc(r.ch) + "</td><td>" + esc(uname(r.by)) + "</td></tr>";
@@ -2080,6 +2122,93 @@
       h += "</tbody></table></div>";
     }
 
+    /* ---- the investment: what Dee's has put in, and where it is now ----
+       Money, not ingredients. The truck sees every figure here; the names
+       of what went into the mixing bowl stay on the Recipes tab. */
+    var INV = { spent: 0, sold: 0, stock: 0, waste: 0, pieces: 0, unknown: 0 };
+    var invItems = [];
+    S.items.forEach(function (it) {
+      var g = { name: it.name, w: portionWordOf(it), pieces: 0, spent: 0,
+                sold: 0, stock: 0, waste: 0, each: null, any: false };
+      live().forEach(function (b) {
+        if (b.itemId !== it.id) return;
+        g.any = true;
+        var s = sold(b), left = remaining(b), gone = status(b) === "expired";
+        g.pieces += b.qty;
+        if (b.unitCost == null) { INV.unknown += b.qty; return; }
+        if (g.each == null) g.each = b.unitCost;
+        g.spent += b.qty * b.unitCost;
+        g.sold += s * b.unitCost;
+        if (gone) g.waste += left * b.unitCost; else g.stock += left * b.unitCost;
+      });
+      if (!g.any) return;
+      INV.spent += g.spent; INV.sold += g.sold;
+      INV.stock += g.stock; INV.waste += g.waste; INV.pieces += g.pieces;
+      invItems.push(g);
+    });
+    if (invItems.length) {
+      h += '<div class="subhead">THE INVESTMENT — WHAT DEE\'S HAS PUT IN</div>';
+      h += '<div class="stats">' +
+        stat("PUT IN", cur() + " " + money(INV.spent),
+             count(INV.pieces, "piece") + " made and sent", "") +
+        stat("SOLD THROUGH", cur() + " " + money(INV.sold),
+             "the part that has earned", "good") +
+        stat("STILL IN STOCK", cur() + " " + money(INV.stock),
+             "on the truck, not sold yet", "") +
+        stat("LOST TO WASTE", cur() + " " + money(INV.waste),
+             "expired before it sold", INV.waste > 0.005 ? "bad" : "") +
+        "</div>";
+      h += '<div class="tw"><table><thead><tr><th>ITEM</th>' +
+        '<th class="r">PIECES</th><th class="r">COST EACH</th><th class="r">PUT IN</th>' +
+        '<th class="r">SOLD</th><th class="r">IN STOCK</th><th class="r">WASTE</th>' +
+        "</tr></thead><tbody>";
+      invItems.forEach(function (g) {
+        h += "<tr><td>" + esc(g.name) + '</td><td class="r num">' + esc(count(g.pieces, g.w)) +
+          '</td><td class="r num">' + (g.each == null ? "—" : money(g.each)) +
+          '</td><td class="r num">' + money(g.spent) +
+          '</td><td class="r num">' + money(g.sold) +
+          '</td><td class="r num">' + money(g.stock) +
+          '</td><td class="r num">' + money(g.waste) + "</td></tr>";
+      });
+      h += '<tr><td><b>Total</b></td><td class="r num"><b>' + INV.pieces +
+        '</b></td><td class="r num">—</td><td class="r num"><b>' + money(INV.spent) +
+        '</b></td><td class="r num"><b>' + money(INV.sold) +
+        '</b></td><td class="r num"><b>' + money(INV.stock) +
+        '</b></td><td class="r num"><b>' + money(INV.waste) + "</b></td></tr>";
+      h += "</tbody></table></div>";
+      h += '<p class="hint" style="margin-top:10px">Dee\'s pays this up front. ' +
+        "SOLD is the part that has earned its keep, and the truck settles half of it. " +
+        "IN STOCK is still Dee’s money sitting on the truck — it settles the day it sells. " +
+        "WASTE is gone, and the two sides carry half of it each.</p>";
+      if (INV.unknown) {
+        h += '<p class="hint" style="margin-top:6px">' + INV.unknown +
+          " pieces went out before their item had a recipe costed, so they are missing from these totals.</p>";
+      }
+      /* what one piece is built from — money only, no ingredient names */
+      h += '<div class="subhead">WHAT ONE PIECE COSTS TO MAKE</div>';
+      h += '<div class="tw"><table><thead><tr><th>ITEM</th>' +
+        '<th class="r">MAKES</th><th class="r">INGREDIENTS</th><th class="r">PACKAGING</th>' +
+        '<th class="r">COST EACH</th><th class="r">SELLS AT</th><th class="r">MARGIN</th>' +
+        "</tr></thead><tbody>";
+      S.items.forEach(function (it) {
+        if (!costed(it)) return;
+        var per = portionsPer(it), ing = batchCost(it) / per, pk = +it.packaging || 0;
+        var u = ing + pk, m = it.price ? ((it.price - u) / it.price) * 100 : 0;
+        h += "<tr><td>" + esc(it.name) + '</td><td class="r num">' +
+          esc(count(per, portionWordOf(it))) + " a bake" +
+          '</td><td class="r num">' + money(ing) +
+          '</td><td class="r num">' + money(pk) +
+          '</td><td class="r num"><b>' + money(u) +
+          '</b></td><td class="r num">' + money(it.price) +
+          '</td><td class="r num">' + (Math.round(m * 10) / 10) + "%</td></tr>";
+      });
+      h += "</tbody></table></div>";
+      h += '<p class="hint" style="margin-top:10px">Today’s recipe prices. ' +
+        "Stock already sent out keeps the cost it was locked in at, which is what every figure above uses." +
+        (ROLES[me.role].canDeliver ? " The ingredients behind these numbers are on the Recipes tab." : "") +
+        "</p>";
+    }
+
     /* the split for one day's stock: what was made that day, what has sold
        off it, and where the two sides stand on it */
     var byDay = {};
@@ -2272,6 +2401,11 @@
     app.querySelectorAll("[data-ch]").forEach(function (b) {
       b.onclick = function () { setChannel(b.getAttribute("data-ch")); };
     });
+    app.querySelectorAll("[data-sdate]").forEach(function (b) {
+      b.onclick = function () { setSaleDate(""); };
+    });
+    var sdEl = document.getElementById("s-date");
+    if (sdEl) sdEl.onchange = function () { setSaleDate(sdEl.value); };
     app.querySelectorAll("[data-sell]").forEach(function (b) {
       b.onclick = function () { logSale(b.getAttribute("data-sell"), +b.getAttribute("data-n")); };
     });
@@ -2302,7 +2436,7 @@
               var t = nx.batches.filter(function (x) { return x.id === bt.id; })[0];
               t.sales = t.sales || [];
               t.sales.push({ qty: target - now, by: me.id, at: new Date().toISOString(),
-                             fix: true, ch: curChannel() });
+                             on: saleDate(), fix: true, ch: curChannel() });
             }, "Count corrected to " + target + ".");
           });
       };
@@ -2551,12 +2685,12 @@
     var b = S.batches.filter(function (x) { return x.id === bid; })[0];
     if (!b) return;
     if (n > remaining(b)) { toast("Only " + count(remaining(b), bPortion(b)) + " left in that lot.", true); return; }
-    var ch = curChannel();
+    var ch = curChannel(), on = saleDate();
     save(function (nx) {
       var t = nx.batches.filter(function (x) { return x.id === bid; })[0];
       t.sales = t.sales || [];
-      t.sales.push({ qty: n, by: me.id, at: new Date().toISOString(), ch: ch });
-    }, n + " sold at " + ch.toLowerCase() + " — logged.");
+      t.sales.push({ qty: n, by: me.id, at: new Date().toISOString(), on: on, ch: ch });
+    }, n + " sold at " + ch.toLowerCase() + " on " + niceDate(on) + " — logged.");
   }
 
   function itemOptions(sel) {
