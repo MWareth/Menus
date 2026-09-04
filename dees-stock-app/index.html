@@ -1338,7 +1338,7 @@
     });
 
     var h = '<h2 class="sec">In stock</h2><p class="sub">' + niceDate(t) +
-      " · everything delivered and not yet sold.</p>";
+      " \u00b7 everything sent out and not yet sold.</p>";
     h += '<div class="stats">' +
       stat("ON HAND", onHand, onHand + " unit" + (onHand === 1 ? "" : "s") + " unsold", "") +
       stat("SOLD TODAY", todaySold, "logged by the truck", "good") +
@@ -1359,6 +1359,8 @@
       h += '<div style="margin:14px 0 4px"><button class="btn ghost sm" type="button" data-act="notifystock">' +
         "EMAIL THE STOCK NOTE</button></div>";
     }
+
+    h += orderForm(perm);
 
     var order = { expired: 0, today: 1, soon: 2, fresh: 3 };
     var sorted = open.slice().sort(function (a, b) {
@@ -1473,7 +1475,24 @@
     return h + "</div>";
   }
 
-  /* ---------- orders out ---------- */
+  /* ---------- orders ---------- */
+
+  /* The one form that puts stock on the truck. It lives on both Stock and
+     Orders because Dee's side thinks of it as adding stock and the truck
+     thinks of it as an order arriving; only one tab renders at a time, so
+     the ids never collide. */
+  function orderForm(perm) {
+    if (!perm.canDeliver || readOnly) return "";
+    return '<div class="subhead">ADD STOCK</div><div class="card">' +
+      '<div class="field" style="max-width:220px"><label for="d-date">MADE ON</label>' +
+      '<input id="d-date" type="date" value="' + todayStr() + '"></div>' +
+      '<div id="d-rows"></div>' +
+      '<button class="btn ghost sm" type="button" data-act="addrow2">+ ADD ANOTHER ITEM</button>' +
+      '<div id="d-preview" style="margin-top:14px"></div>' +
+      '<button class="btn pri" type="button" data-act="deliver" style="margin-top:14px">SAVE ORDER &amp; LOCK</button>' +
+      "</div>";
+  }
+
   function viewOut(perm) {
     var h = '<h2 class="sec">Orders</h2>' +
       '<p class="sub">Everything about an order in one place \u2014 what Dee sends out, what sells, ' +
@@ -1481,19 +1500,10 @@
       'or deleted: if a count is wrong, <b>FIX COUNT</b> logs the difference as a correction and both ' +
       'stay on the record.</p>';
 
-    /* --- the order form: what Dee sends to the truck --- */
-    var form = "";
-    if (perm.canDeliver && !readOnly) {
-      form += '<div class="subhead">NEW ORDER OUT</div><div class="card">' +
-        '<div class="field" style="max-width:220px"><label for="d-date">MADE ON</label>' +
-        '<input id="d-date" type="date" value="' + todayStr() + '"></div>' +
-        '<div id="d-rows"></div>' +
-        '<button class="btn ghost sm" type="button" data-act="addrow2">+ ADD ANOTHER ITEM</button>' +
-        '<div id="d-preview" style="margin-top:14px"></div>' +
-        '<button class="btn pri" type="button" data-act="deliver" style="margin-top:14px">SAVE ORDER &amp; LOCK</button>' +
-        "</div>";
-    } else if (!readOnly) {
-      form += '<div class="banner info">Only Dee\'s side sends orders out. Your part here is logging what sells, and where it sold.</div>';
+    /* --- what Dee hands to the truck --- */
+    var form = orderForm(perm);
+    if (!form && !readOnly) {
+      form = '<div class="banner info">Only Dee\'s side sends stock out. Your part here is logging what sells, and where it sold.</div>';
     }
 
     /* --- selling: what is on the truck, and where each sale came from --- */
