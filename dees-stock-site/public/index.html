@@ -436,6 +436,43 @@
     return S.batches.filter(function (b) { return !b.voided; });
   }
 
+  /* ============ the week ============
+     The week runs Friday to Thursday and is closed by hand. Nothing past its
+     date is written off on its own any more: a piece that did not sell is
+     waiting for somebody to say whether it went, was given away, or went in
+     the bin. The app only ever asks. */
+  function weekOf(ds) {
+    var p = ds.split("-");
+    var d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
+    d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() - 5 + 7) % 7));   /* back to Friday */
+    return d.toISOString().slice(0, 10);
+  }
+  function weekEnd(start) { return addDays(start, 6); }
+  function weekLabel(start) {
+    return niceDate(start) + " \u2013 " + niceDate(weekEnd(start));
+  }
+  function thisWeek() { return weekOf(todayStr()); }
+  function toDecideNow() {
+    return live().reduce(function (a, b) {
+      return a + (status(b) === "expired" ? remaining(b) : 0);
+    }, 0);
+  }
+  function closedWeeks() { return S.weeks || []; }
+  function weekClosed(start) {
+    return closedWeeks().some(function (w) { return w.start === start; });
+  }
+  /* every week the board knows about, newest first */
+  function allWeeks() {
+    var seen = {};
+    live().forEach(function (b) {
+      seen[weekOf(b.madeOn)] = true;
+      (b.sales || []).forEach(function (s) { seen[weekOf(saleOn(s))] = true; });
+    });
+    closedWeeks().forEach(function (w) { seen[w.start] = true; });
+    seen[thisWeek()] = true;
+    return Object.keys(seen).sort().reverse();
+  }
+
   /* ============ where a sale came from ============
      The window, or one of the delivery apps. Whatever a sale was logged
      under is stamped on it, so renaming a channel later never rewrites
@@ -508,8 +545,9 @@
      takings. The rest is inventory and settles when it sells. */
   function totals(days) {
     var cutoff = days ? addDays(todayStr(), -days + 1) : null;
-    var t = { spent: 0, costSold: 0, costGift: 0, costWaste: 0, costStock: 0, revenue: 0,
-              unitsOut: 0, unitsSold: 0, unitsGiven: 0, unitsWasted: 0, unitsLeft: 0, unknownCost: 0 };
+    var t = { spent: 0, costSold: 0, costGift: 0, costWaste: 0, costStock: 0, costToDecide: 0,
+              revenue: 0, unitsOut: 0, unitsSold: 0, unitsGiven: 0, unitsWasted: 0,
+              unitsLeft: 0, unitsToDecide: 0, unknownCost: 0 };
     live().forEach(function (b) {
       if (cutoff && b.madeOn < cutoff) return;
       var s = sold(b), g = given(b), w = binned(b);
@@ -518,19 +556,21 @@
       t.unitsSold += s;
       t.revenue += s * (b.unitPrice || 0);
       t.unitsGiven += g;
-      t.unitsWasted += w + (gone ? left : 0);
-      if (!gone) t.unitsLeft += left;
+      t.unitsWasted += w;
+      if (gone) t.unitsToDecide += left; else t.unitsLeft += left;
       if (b.unitCost == null) { t.unknownCost += b.qty; return; }
       var c = b.unitCost;
       t.spent += b.qty * c;
       t.costSold += s * c;
       t.costGift += g * c;
-      t.costWaste += w * c + (gone ? left * c : 0);
-      if (!gone) t.costStock += left * c;
+      t.costWaste += w * c;
+      if (gone) t.costToDecide += left * c; else t.costStock += left * c;
     });
     t.waste = t.costWaste;
-    /* sold, given away and binned have all been used up; only stock still
-       in date is money that has not been spent on anything yet */
+    /* only what somebody has actually accounted for counts against the
+       takings: sold, given away, or written off by hand. Stock still on the
+       truck, and stock past its date that nobody has ruled on yet, are both
+       still Dee's money sitting there. */
     t.cost = t.costSold + t.costGift + t.costWaste;
     t.profit = t.revenue - t.cost;
     return t;
@@ -882,6 +922,106 @@
     return { filename: no + ".pdf", bytes: pdfDoc(pg.ops.join("\n")) };
   }
 
+  /* One week on one page: what went out, what happened to it, and the one
+     number the truck pays. The same figures the Weeks tab shows. */
+  function weekStatement(start) {
+    var w = weekTotals(start);
+    var pg = pdfPage(), L = 48, R = 547, y = 792;
+    var no = "WK-" + start.replace(/-/g, "");
+
+    pg.text("Dee's Treats", L, y, 22, true, BROWN);
+    pg.right(no, R, y, 11, true, BROWN);
+    y -= 17;
+    pg.text("WEEKLY STATEMENT", L, y, 9, true, GREY);
+    pg.right(weekLabel(start), R, y, 9, false, GREY);
+    y -= 14;
+    pg.rect(L, y, R - L, 1.4, BROWN);
+
+    y -= 32;
+    pg.text("FROM", L, y, 8, true, GREY);
+    pg.text("TO", 320, y, 8, true, GREY);
+    y -= 15;
+    pg.text("Dee's Treats", L, y, 12, true);
+    pg.text("Smash & Pass", 320, y, 12, true);
+    y -= 14;
+    pg.text("Friday to Thursday", L, y, 9.5, false, GREY);
+    pg.text(weekClosed(start) ? "Closed" : "Open", 320, y, 9.5, false, GREY);
+
+    y -= 34;
+    pg.rect(L, y - 6, R - L, 20, [0.96, 0.93, 0.87]);
+    pg.text("THE WEEK", L + 8, y, 8, true, GREY);
+    pg.right("PIECES", 400, y, 8, true, GREY);
+    pg.right("MONEY", R - 8, y, 8, true, GREY);
+    y -= 22;
+
+    function line(label, pieces, amount, bold) {
+      pg.text(label, L + 8, y, 10.5, !!bold);
+      pg.right(pieces == null ? "-" : String(pieces), 400, y, 10, false, GREY);
+      pg.right(amount, R - 8, y, 10, !!bold);
+      y -= 12;
+      pg.rect(L, y + 2, R - L, 0.6, RULE);
+      y -= 12;
+    }
+    line("Stock sent to the truck", w.out, cur() + " " + money(w.outCost) + " cost");
+    line("Sold", w.sold, cur() + " " + money(w.revenue) + " taken", true);
+    line("  ingredients in what sold", null, cur() + " " + money(w.costSold));
+    if (w.given) line("Given away", w.given, cur() + " " + money(w.costGiven));
+    if (w.binned) line("Binned", w.binned, cur() + " " + money(w.costBinned));
+    if (w.left) line("Still in date on the truck", w.left, cur() + " " + money(w.costLeft));
+    if (w.toDecide) line("Past its date, not yet decided", w.toDecide, cur() + " " + money(w.costToDecide));
+
+    y -= 6;
+    pg.right("PROFIT FOR THE WEEK", 400, y, 9, true, GREY);
+    pg.right(cur() + " " + money(w.profit), R - 8, y, 13, true, BROWN);
+    y -= 20;
+    pg.right("Dee's Treats " + Math.round(w.d * 100) + "%", 400, y, 9, false, GREY);
+    pg.right(cur() + " " + money(w.dees), R - 8, y, 10, false);
+    y -= 14;
+    pg.right("Smash & Pass " + Math.round((1 - w.d) * 100) + "%", 400, y, 9, false, GREY);
+    pg.right(cur() + " " + money(w.truck), R - 8, y, 10, false);
+    y -= 26;
+    pg.rect(L, y - 6, R - L, 26, [0.29, 0.17, 0.16]);
+    pg.text("SMASH & PASS PAYS DEE'S TREATS", L + 8, y + 2, 10, true, [1, 1, 1]);
+    pg.right(cur() + " " + money(w.owed), R - 8, y + 1, 14, true, [0.79, 0.58, 0.20]);
+    y -= 30;
+    pg.text("Half the ingredients used up (" + cur() + " " + money(w.used * (1 - w.d)) +
+            ") plus half the takings (" + cur() + " " + money(w.revenue * w.d) + ").",
+            L, y, 9, false, GREY);
+
+    if (w.toDecide) {
+      y -= 16;
+      pg.text(w.toDecide + " pieces are still waiting to be marked sold, given away or binned - " +
+              "they are in no figure above.", L, y, 9, false, GREY);
+    }
+
+    pg.rect(L, 74, R - L, 0.6, RULE);
+    pg.text("Ingredients and packaging only. Excludes labour, utilities and the truck itself.",
+            L, 60, 8.5, false, GREY);
+    pg.text("Dee's Stock, " + stamp(new Date().toISOString()) + ".", L, 48, 8.5, false, GREY);
+    return { filename: no + ".pdf", bytes: pdfDoc(pg.ops.join("\n")) };
+  }
+
+  function weekNotice(start) {
+    var w = weekTotals(start);
+    var L = [];
+    L.push("Stock sent out: " + count(w.out, "piece") + " (" + cur() + " " + money(w.outCost) + ")");
+    L.push("Sold: " + count(w.sold, "piece") + " - took " + cur() + " " + money(w.revenue));
+    if (w.given) L.push("Given away: " + count(w.given, "piece"));
+    if (w.binned) L.push("Binned: " + count(w.binned, "piece"));
+    if (w.left) L.push("Still in date: " + count(w.left, "piece"));
+    if (w.toDecide) L.push("Waiting on a decision: " + count(w.toDecide, "piece"));
+    var link = appLink();
+    return {
+      subject: "Dee's week " + weekLabel(start) + " — " + cur() + " " + money(w.owed) + " to settle",
+      body: weekLabel(start) + "\n\n" + L.join("\n") + "\n\n" +
+        "Profit " + cur() + " " + money(w.profit) + "\n" +
+        "Dee's " + Math.round(w.d * 100) + "%: " + cur() + " " + money(w.dees) + "\n" +
+        "Truck " + Math.round((1 - w.d) * 100) + "%: " + cur() + " " + money(w.truck) + "\n\n" +
+        "SMASH & PASS PAYS DEE'S TREATS: " + cur() + " " + money(w.owed) +
+        (link ? "\n\n" + link : "")
+    };
+  }
+
   /* ============ notices ============
      A published artifact cannot reach a mail server — nothing here can post
      to the outside world. So the app writes the notice and hands it over:
@@ -1026,18 +1166,26 @@
     ta.focus();
   }
 
+  /* Hand a generated file to whoever is looking at the page. The published
+     board asks the viewer's permission through the platform; the hosted site
+     hands it straight to the browser. One function, so both the order invoice
+     and the week statement travel the same way. */
+  function handOver(file) {
+    try {
+      var url = URL.createObjectURL(new Blob([file.bytes], { type: "application/pdf" }));
+      var a = document.createElement("a");
+      a.href = url; a.download = file.filename; a.rel = "noopener";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 8000);
+      toast(file.filename + " saved.");
+    } catch (e) { toast("Could not save it here.", true); }
+  }
+
   function saveInvoice(dropKey) {
     var inv;
     try { inv = invoice(dropKey); } catch (e) { inv = null; }
     if (!inv) { toast("Could not build that invoice.", true); return; }
-    try {
-      var url = URL.createObjectURL(new Blob([inv.bytes], { type: "application/pdf" }));
-      var a = document.createElement("a");
-      a.href = url; a.download = inv.filename; a.rel = "noopener";
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(function () { URL.revokeObjectURL(url); }, 8000);
-      toast(inv.filename + " saved.");
-    } catch (e) { toast("Could not save the invoice here.", true); }
+    handOver(inv);
   }
 
   var toastT = null;
@@ -1082,7 +1230,7 @@
     var perm = ROLES[me.role] || ROLES.truck;
     var alerts = live().filter(function (b) {
       var s = status(b);
-      return s === "expired" || s === "today";
+      return (s === "expired" || s === "today") && remaining(b) > 0;
     }).length;
 
     var html = "";
@@ -1094,7 +1242,7 @@
       '<button class="out" type="button" data-act="signout">EXIT</button>' +
       "</div></div></header>";
 
-    var tabs = [["stock", "STOCK", alerts], ["out", "ORDERS", 0], ["money", "MONEY", 0]];
+    var tabs = [["stock", "STOCK", alerts], ["out", "ORDERS", 0], ["money", "WEEKS", toDecideNow()]];
     if (perm.canDeliver) tabs.push(["recipes", "RECIPES", 0]);
     if (perm.canSetup) tabs.push(["setup", "SETUP", 0]);
     tabs.push(["account", "MY PIN", 0]);
@@ -1118,7 +1266,7 @@
     if (!allowed[tab]) tab = "stock";
     if (tab === "stock") html += viewStock(perm);
     else if (tab === "out") html += viewOut(perm);
-    else if (tab === "money") html += viewMoney();
+    else if (tab === "money") html += viewMoney(perm);
     else if (tab === "recipes") html += viewRecipes(perm);
     else if (tab === "setup") html += viewSetup(perm);
     else if (tab === "account") html += viewAccount();
@@ -1344,9 +1492,12 @@
         (gv ? " \u00b7 given away <b>" + gv + "</b>" : "") +
         (bn ? " \u00b7 binned <b>" + bn + "</b>" : "") +
         (fixes ? " <span class=\"pill p-soon\">CORRECTED</span>" : "") +
-        " \u00b7 cost of the lot " +
-        (b.unitCost == null ? "<b>not set</b>" : "<b>" + cur() + " " + money(b.qty * b.unitCost) + "</b>") +
         " \u00b7 sells at <b>" + cur() + " " + money(b.unitPrice) + "</b> each</div>";
+      h += '<div class="meta">' + "The whole lot: cost " +
+        (b.unitCost == null ? "<b>not set</b>" : "<b>" + cur() + " " + money(b.qty * b.unitCost) + "</b>") +
+        " \u00b7 worth <b>" + cur() + " " + money(b.qty * (b.unitPrice || 0)) + "</b> at menu price " +
+        "\u00b7 profit in it <b>" + (b.unitCost == null ? "\u2014" :
+          cur() + " " + money(b.qty * ((b.unitPrice || 0) - b.unitCost))) + "</b></div>";
       if (b.unitCost != null && left > 0 && !b.voided) {
         h += '<div class="meta">Still on the truck: <b>' + esc(count(left, bPortion(b))) +
           "</b> \u00b7 cost <b>" + cur() + " " + money(left * b.unitCost) +
@@ -1546,227 +1697,202 @@
   }
 
   /* ---------- money ---------- */
-  function viewMoney() {
-    var t = totals(null);
-    var pct = S.split.deesPct;
-    var basis = S.split.basis === "revenue" ? t.revenue : t.profit;
-    var deesCut = basis * (pct / 100), truckCut = basis * (1 - pct / 100);
-    var S1 = settlement();
-    var out = S1.outstanding;
-    var owes = out >= 0 ? "SMASH &amp; PASS owes DEE'S TREATS" : "DEE'S TREATS owes SMASH &amp; PASS";
-    var h = '<h2 class="sec">Money</h2><p class="sub">Profit counts only what has actually sold. ' +
-      "Stock still sitting on the truck is Dee's money, not a loss \u2014 it settles the day it sells.</p>";
+  /* ---------- the week ---------- */
+  function weekTotals(start) {
+    var d = (S.split.deesPct || 0) / 100;
+    var t = { start: start, out: 0, outCost: 0, sold: 0, revenue: 0, costSold: 0,
+              given: 0, costGiven: 0, binned: 0, costBinned: 0,
+              toDecide: 0, costToDecide: 0, left: 0, costLeft: 0, d: d };
+    live().forEach(function (b) {
+      var c = b.unitCost || 0;
+      var mine = weekOf(b.madeOn) === start;
+      if (mine) { t.out += b.qty; t.outCost += b.qty * c; }
+      (b.sales || []).forEach(function (s) {
+        if (weekOf(saleOn(s)) !== start) return;
+        var k = kindOf(s);
+        if (k === "gift") { t.given += s.qty; t.costGiven += s.qty * c; }
+        else if (k === "waste") { t.binned += s.qty; t.costBinned += s.qty * c; }
+        else { t.sold += s.qty; t.revenue += s.qty * (b.unitPrice || 0); t.costSold += s.qty * c; }
+      });
+      if (mine) {
+        var lft = remaining(b);
+        if (lft > 0) {
+          if (status(b) === "expired") { t.toDecide += lft; t.costToDecide += lft * c; }
+          else { t.left += lft; t.costLeft += lft * c; }
+        }
+      }
+    });
+    t.used = t.costSold + t.costGiven + t.costBinned;
+    t.profit = t.revenue - t.used;
+    t.dees = t.profit * d;
+    t.truck = t.profit * (1 - d);
+    t.owed = t.used * (1 - d) + t.revenue * d;      /* what the truck hands over */
+    t.any = t.out || t.sold || t.given || t.binned;
+    return t;
+  }
 
-    h += '<div class="settle' + (Math.abs(out) < 0.005 ? " clear" : "") + '">' +
-      '<div class="k">OUTSTANDING RIGHT NOW</div>' +
-      '<div class="big num">' + cur() + " " + money(Math.abs(out)) + "</div>" +
-      '<div class="who2">' + (Math.abs(out) < 0.005 ? "All square — nothing owed either way." : owes) + "</div>";
-    h += '<div class="calc">' +
-      '<div class="crow"><span>Ingredients in everything used up' +
-        (S1.gift || S1.waste ? " \u2014 sold, given away, binned" : "") +
-        '</span><span class="num">' + cur() + " " + money(S1.cost) + "</span></div>" +
-      '<div class="crow"><span>Truck\'s ' + Math.round((1 - S1.d) * 100) + '% share of that</span><span class="num">+ ' +
-        cur() + " " + money(S1.costShare) + "</span></div>" +
-      '<div class="crow"><span>Truck collected in sales</span><span class="num">' +
-        cur() + " " + money(S1.revenue) + "</span></div>" +
-      '<div class="crow"><span>Dee\'s ' + Math.round(S1.d * 100) + '% share of those takings</span><span class="num">+ ' +
-        cur() + " " + money(S1.revShare) + "</span></div>" +
-      (S1.paid ? '<div class="crow"><span>Already paid across</span><span class="num">- ' +
-        cur() + " " + money(S1.paid) + "</span></div>" : "") +
-      '<div class="crow tot"><span>' + (out >= 0 ? "Truck pays Dee\'s" : "Dee\'s pays truck") +
-        '</span><span class="num">' + cur() + " " + money(Math.abs(out)) + "</span></div>" +
-      "</div></div>";
-    if (S1.stock > 0.005) {
-      h += '<p class="hint" style="margin:-4px 0 16px">Not in that figure: ' +
-        esc(count(S1.stockUnits, "piece")) + " still on the truck, " + cur() + " " + money(S1.stock) +
-        " of Dee's money. That settles the day they sell, not before.</p>";
+  function wrow(label, value, strong) {
+    return '<div class="crow' + (strong ? " tot" : "") + '"><span>' + label +
+      '</span><span class="num">' + value + "</span></div>";
+  }
+
+  function weekCard(start, perm) {
+    var w = weekTotals(start);
+    var shut = weekClosed(start);
+    var rec = closedWeeks().filter(function (x) { return x.start === start; })[0];
+    var now = start === thisWeek();
+    var h = '<div class="settle' + (Math.abs(w.owed) < 0.005 ? " clear" : "") + '">';
+    h += '<div class="k">' + esc(weekLabel(start).toUpperCase()) +
+      (shut ? " · CLOSED" : now ? " · THIS WEEK" : " · OPEN") + "</div>";
+    h += '<div class="big num">' + cur() + " " + money(w.owed) + "</div>";
+    h += '<div class="who2">' + (w.any ? "SMASH &amp; PASS PAYS DEE'S TREATS" : "Nothing yet this week") + "</div>";
+    h += '<div class="calc">';
+    h += wrow("Stock out", count(w.out, "piece") + " · " + cur() + " " + money(w.outCost));
+    h += wrow("Sold", count(w.sold, "piece") + " · took " + cur() + " " + money(w.revenue));
+    if (w.given) h += wrow("Given away", count(w.given, "piece") + " · " + cur() + " " + money(w.costGiven));
+    if (w.binned) h += wrow("Binned", count(w.binned, "piece") + " · " + cur() + " " + money(w.costBinned));
+    if (w.left) h += wrow("Still in date", count(w.left, "piece") + " · " + cur() + " " + money(w.costLeft));
+    if (w.toDecide) h += wrow("<b>Waiting on you</b>", "<b>" + count(w.toDecide, "piece") + " · " +
+      cur() + " " + money(w.costToDecide) + "</b>");
+    h += wrow("Profit", cur() + " " + money(w.profit));
+    h += wrow("Dee's " + Math.round(w.d * 100) + "%", cur() + " " + money(w.dees));
+    h += wrow("Truck " + Math.round((1 - w.d) * 100) + "%", cur() + " " + money(w.truck));
+    h += wrow(shut ? "Closed — truck pays" : "Truck pays Dee's", cur() + " " + money(w.owed), true);
+    h += "</div></div>";
+
+    if (w.toDecide && !shut) {
+      h += '<div class="banner warn"><b>' + esc(count(w.toDecide, "piece")) +
+        " from this week are past their date with nothing said about them.</b> " +
+        "They are not counted either way until you say what happened — " +
+        "open <b>Orders</b> and mark each one sold, given away or binned. " +
+        "Nothing is ever written off on its own.</div>";
+    }
+    if (shut && rec) {
+      h += '<p class="hint" style="margin:-6px 0 12px">Closed by <b>' + esc(uname(rec.by)) +
+        "</b> on " + esc(stamp(rec.at)) + ".</p>";
+    }
+    var acts = "";
+    if (dl) acts += '<button class="btn dark sm" type="button" data-wpdf="' + start + '">PDF STATEMENT</button>';
+    acts += '<button class="btn ghost sm" type="button" data-wmail="' + start + '">EMAIL IT</button>';
+    if (perm.canDeliver && !readOnly && !shut && w.any) {
+      acts += '<button class="btn pri sm" type="button" data-wclose="' + start + '">CLOSE THIS WEEK</button>';
+    }
+    if (perm.canSetup && !readOnly && shut) {
+      acts += '<button class="btn ghost sm" type="button" data-wopen="' + start + '">REOPEN</button>';
+    }
+    h += '<div class="acts" style="margin-bottom:20px">' + acts + "</div>";
+    return h;
+  }
+
+  /* ---------- money ---------- */
+  function viewMoney(perm) {
+    var t = totals(null);
+    var S1 = settlement();
+    var h = '<h2 class="sec">Weeks</h2>' +
+      '<p class="sub">A week runs Friday to Thursday. Each one shows what went out, what sold, ' +
+      'and what the truck owes for it — then you close it. Nothing is ever written off on its ' +
+      'own: stock past its date waits for you to say whether it sold, was given away, or was binned.</p>';
+
+    allWeeks().forEach(function (start) { h += weekCard(start, perm); });
+
+    /* ---- everything, all time ---- */
+    var out = S1.outstanding;
+    h += '<div class="subhead">ALL TIME</div>';
+    h += '<div class="stats">' +
+      stat("TAKINGS", cur() + " " + money(t.revenue), count(t.unitsSold, "piece") + " sold", "good") +
+      stat("COST OF THOSE", cur() + " " + money(t.costSold), "ingredients in what sold", "") +
+      stat("PROFIT", cur() + " " + money(t.profit), "on what has been accounted for", t.profit >= 0 ? "good" : "bad") +
+      stat("OUTSTANDING", cur() + " " + money(Math.abs(out)),
+           out >= 0 ? "the truck owes this" : "you owe the truck", out > 0.005 ? "warn" : "") +
+      "</div>";
+    h += '<div class="earn">' +
+      ecard("d", "DEE'S TREATS", S1.profit * S1.d,
+        Math.round(S1.d * 100) + "% of the profit so far",
+        [["Ingredients used up", -S1.cost], ["Comes back from the truck", S1.owed]],
+        "Dee's makes",
+        S1.paid ? cur() + " " + money(S1.paid) + " already received." : "None of it is in hand until the truck settles.") +
+      ecard("t", "SMASH &amp; PASS", S1.profit * (1 - S1.d),
+        Math.round((1 - S1.d) * 100) + "% of the profit so far",
+        [["Taken at the window", S1.revenue], ["Goes across to Dee's", -S1.owed]],
+        "The truck makes", "Hold back what is owed — the rest is yours.") +
+      "</div>";
+    if (t.costStock > 0.005 || t.costToDecide > 0.005) {
+      h += '<p class="hint" style="margin-top:12px">Not in any of that: ' +
+        (t.costStock > 0.005 ? count(t.unitsLeft, "piece") + " still in date (" + cur() + " " +
+          money(t.costStock) + ")" : "") +
+        (t.costStock > 0.005 && t.costToDecide > 0.005 ? ", and " : "") +
+        (t.costToDecide > 0.005 ? count(t.unitsToDecide, "piece") + " past their date waiting on you (" +
+          cur() + " " + money(t.costToDecide) + ")" : "") +
+        ". Both are still Dee’s money, not a loss.</p>";
     }
     if (t.unknownCost) h += '<div class="banner warn"><b>' + t.unknownCost +
-      " pieces have no cost recorded.</b> Profit and waste are flattered until those items have an ingredient cost.</div>";
-    var E = earnings();
-    h += '<div class="subhead">WHAT EACH PARTNER MAKES</div>';
-    h += '<div class="earn">' +
-      ecard("d", "DEE'S TREATS", E.deesNow,
-        Math.round(S1.d * 100) + "% of the profit made so far",
-        [[S1.gift || S1.waste ? "Ingredients used up" : "Ingredients in what has sold", -S1.cost],
-         ["Comes back from the truck", S1.owed]],
-        "Dee's makes",
-        S1.paid ? cur() + " " + money(S1.paid) + " already received · " + cur() + " " +
-          money(S1.outstanding) + " still due."
-                : "None of it is in hand until the truck settles.") +
-      ecard("t", "SMASH &amp; PASS", E.truckNow,
-        Math.round((1 - S1.d) * 100) + "% of the profit made so far",
-        [["Taken at the window", S1.revenue],
-         ["Goes across to Dee's", -S1.owed]],
-        "The truck makes",
-        S1.paid ? cur() + " " + money(S1.paid) + " already handed over · " + cur() + " " +
-          money(S1.outstanding) + " still to pay."
-                : "Hold back what is owed — the rest is yours.") +
-      "</div>";
-    if (E.up.units > 0) {
-      h += '<div class="proj"><b>' + esc(count(E.up.units, "piece")) +
-        " still on the truck</b>, worth " + cur() + " " + money(E.up.revenue) +
-        " at menu price against " + cur() + " " + money(E.up.cost) +
-        " of ingredients \u2014 " + cur() + " " + money(E.up.profit) + " of profit still in them. " +
-        "Sell the lot and the two sides make " + cur() + " " + money(E.deesProj) +
-        " (Dee's) and " + cur() + " " + money(E.truckProj) + " (the truck).</div>";
-    }
-    h += '<div class="stats">' +
-      stat("REVENUE", cur() + " " + money(t.revenue), count(t.unitsSold, "piece") + " sold", "good") +
-      stat("COST OF SALES", cur() + " " + money(t.costSold), "ingredients in the " + t.unitsSold + " sold", "") +
-      stat("PROFIT", cur() + " " + money(t.profit), "on what has actually sold", t.profit >= 0 ? "good" : "bad") +
-      stat("GIVEN AWAY", cur() + " " + money(t.costGift),
-           count(t.unitsGiven, "piece") + " out for free", t.costGift > 0.005 ? "warn" : "") +
-      stat("WASTE", cur() + " " + money(t.waste),
-           count(t.unitsWasted, "piece") + " binned or expired", t.waste > 0 ? "bad" : "") +
-      stat("STOCK ON THE TRUCK", cur() + " " + money(t.costStock),
-           count(t.unitsLeft, "piece") + " not sold yet", "") +
-      "</div>";
-
-    if (S.split.basis === "revenue") {
-      h += '<div class="subhead">SETUP SAYS SPLIT THE REVENUE</div>';
-      h += '<div class="split">' +
-        '<div class="sp d"><div class="k">DEE\'S TREATS</div><div class="v num">' + cur() + " " + money(deesCut) + "</div></div>" +
-        '<div class="sp t"><div class="k">SMASH &amp; PASS</div><div class="v num">' + cur() + " " + money(truckCut) + "</div></div>" +
-        "</div>";
-      h += '<div class="banner warn"><b>The split is set on revenue, not profit.</b> Those are the raw ' +
-        pct + "/" + (100 - pct) + " cuts of the takings, before the ingredients are paid for. " +
-        "The settlement and the earnings above are worked on profit, which is what a 50/50 partnership normally means. " +
-        "Change the basis in Setup if revenue really is what you agreed.</div>";
-    } else {
-      h += '<p class="hint" style="margin-top:12px">Split percentage and basis are set in Setup. ' +
-        "These are direct-cost figures \u2014 they take no account of labour, gas, the truck itself or anyone's time.</p>";
-    }
-
-    var BC = byChannel();
-    if (BC.order.length) {
-      h += '<div class="subhead">WHERE THE SALES CAME FROM</div><div class="tw"><table><thead><tr>' +
-        '<th>CHANNEL</th><th class="r">UNITS</th><th class="r">REVENUE</th><th class="r">SHARE</th>' +
-        "</tr></thead><tbody>";
-      BC.order.forEach(function (k) {
-        var g = BC.map[k];
-        var share = t.revenue ? Math.round((g.revenue / t.revenue) * 1000) / 10 : 0;
-        h += "<tr><td>" + esc(k) + '</td><td class="r num">' + g.units +
-          '</td><td class="r num">' + cur() + " " + money(g.revenue) +
-          '</td><td class="r num">' + share + "%</td></tr>";
-      });
-      h += "</tbody></table></div>";
-      h += '<p class="hint" style="margin-top:10px">Revenue here is the menu price. ' +
-        "If a delivery app keeps a commission, what actually lands is less \u2014 tell me the rate and " +
-        "I will take it off before the split.</p>";
-    }
-
-    var byWho = {};
-    live().forEach(function (b) {
-      if (b.unitCost == null) return;
-      if (!byWho[b.by]) byWho[b.by] = { units: 0, cost: 0, stock: 0, drops: {} };
-      byWho[b.by].units += b.qty;
-      byWho[b.by].cost += b.qty * b.unitCost;
-      if (status(b) !== "expired") byWho[b.by].stock += remaining(b) * b.unitCost;
-      byWho[b.by].drops[b.drop || b.id] = 1;
-    });
-    var whoKeys = Object.keys(byWho);
-    if (whoKeys.length) {
-      h += '<div class="subhead">WHO PAID FOR THE STOCK</div><div class="tw"><table><thead><tr>' +
-        '<th>MADE BY</th><th class="r">ORDERS</th><th class="r">PIECES</th><th class="r">SPENT</th>' +
-        '<th class="r">STILL AS STOCK</th></tr></thead><tbody>';
-      whoKeys.forEach(function (k) {
-        var g = byWho[k];
-        h += "<tr><td>" + esc(uname(k)) + '</td><td class="r num">' + Object.keys(g.drops).length +
-          '</td><td class="r num">' + g.units + '</td><td class="r num">' + money(g.cost) +
-          '</td><td class="r num">' + money(g.stock) + "</td></tr>";
-      });
-      h += "</tbody></table></div>";
-    }
+      " pieces have no cost recorded.</b> Every figure here is flattered until those items are costed.</div>";
 
     if (ROLES[me.role].canDeliver && !readOnly) {
       h += '<div style="margin-top:12px"><button class="btn dark sm" type="button" data-act="pay">RECORD A PAYMENT</button></div>';
     }
     if (payments().length) {
       h += '<div class="subhead">PAYMENTS</div><div class="tw"><table><thead><tr>' +
-        '<th>WHEN</th><th class="r">AMOUNT</th><th>NOTE</th><th>LOGGED BY</th></tr></thead><tbody>';
+        '<th>WHEN</th><th class="r">AMOUNT</th><th>LOGGED BY</th></tr></thead><tbody>';
       payments().slice().reverse().forEach(function (pm) {
         h += "<tr><td>" + esc(stamp(pm.at)) + '</td><td class="r num">' + cur() + " " + money(pm.amount) +
-          "</td><td>" + esc(pm.note || "—") + "</td><td>" + esc(uname(pm.by)) + "</td></tr>";
+          "</td><td>" + esc(uname(pm.by)) + "</td></tr>";
       });
       h += "</tbody></table></div>";
     }
 
-    /* ---- the investment: what Dee's has put in, and where it is now ----
-       Money, not ingredients. The truck sees every figure here; the names
-       of what went into the mixing bowl stay on the Recipes tab. */
-    var INV = { spent: 0, sold: 0, gift: 0, stock: 0, waste: 0, pieces: 0, unknown: 0 };
+    /* ---- the investment ---- */
+    var INV = { spent: 0, sold: 0, gift: 0, stock: 0, waste: 0, decide: 0, pieces: 0, unknown: 0 };
     var invItems = [];
     S.items.forEach(function (it) {
-      var g = { name: it.name, w: portionWordOf(it), pieces: 0, spent: 0,
-                sold: 0, gift: 0, stock: 0, waste: 0, each: null, any: false };
+      var g = { name: it.name, w: portionWordOf(it), pieces: 0, spent: 0, sold: 0,
+                gift: 0, stock: 0, waste: 0, decide: 0, each: null, any: false };
       live().forEach(function (b) {
         if (b.itemId !== it.id) return;
         g.any = true;
-        var s = sold(b), gv = given(b), bn = binned(b);
-        var left = remaining(b), gone = status(b) === "expired";
         g.pieces += b.qty;
         if (b.unitCost == null) { INV.unknown += b.qty; return; }
-        var c = b.unitCost;
+        var c = b.unitCost, lft = remaining(b), gone = status(b) === "expired";
         if (g.each == null) g.each = c;
         g.spent += b.qty * c;
-        g.sold += s * c;
-        g.gift += gv * c;
-        g.waste += bn * c + (gone ? left * c : 0);
-        if (!gone) g.stock += left * c;
+        g.sold += sold(b) * c;
+        g.gift += given(b) * c;
+        g.waste += binned(b) * c;
+        if (gone) g.decide += lft * c; else g.stock += lft * c;
       });
       if (!g.any) return;
-      INV.spent += g.spent; INV.sold += g.sold; INV.gift += g.gift;
-      INV.stock += g.stock; INV.waste += g.waste; INV.pieces += g.pieces;
+      ["spent", "sold", "gift", "stock", "waste", "decide", "pieces"].forEach(function (k) { INV[k] += g[k]; });
       invItems.push(g);
     });
     if (invItems.length) {
       h += '<div class="subhead">THE INVESTMENT — WHAT DEE\'S HAS PUT IN</div>';
-      h += '<div class="stats">' +
-        stat("PUT IN", cur() + " " + money(INV.spent),
-             count(INV.pieces, "piece") + " made and sent", "") +
-        stat("SOLD THROUGH", cur() + " " + money(INV.sold),
-             "the part that has earned", "good") +
-        stat("STILL IN STOCK", cur() + " " + money(INV.stock),
-             "on the truck, not sold yet", "") +
-        stat("GIVEN AWAY", cur() + " " + money(INV.gift),
-             "handed out for nothing", INV.gift > 0.005 ? "warn" : "") +
-        stat("LOST TO WASTE", cur() + " " + money(INV.waste),
-             "binned or past its date", INV.waste > 0.005 ? "bad" : "") +
-        "</div>";
-      h += '<div class="tw"><table><thead><tr><th>ITEM</th>' +
-        '<th class="r">PIECES</th><th class="r">COST EACH</th><th class="r">PUT IN</th>' +
-        '<th class="r">SOLD</th><th class="r">GIVEN</th><th class="r">IN STOCK</th><th class="r">WASTE</th>' +
-        "</tr></thead><tbody>";
+      h += '<div class="tw"><table><thead><tr><th>ITEM</th><th class="r">PIECES</th>' +
+        '<th class="r">COST EACH</th><th class="r">PUT IN</th><th class="r">SOLD</th>' +
+        '<th class="r">GIVEN</th><th class="r">BINNED</th><th class="r">IN STOCK</th>' +
+        '<th class="r">TO DECIDE</th></tr></thead><tbody>';
       invItems.forEach(function (g) {
         h += "<tr><td>" + esc(g.name) + '</td><td class="r num">' + esc(count(g.pieces, g.w)) +
           '</td><td class="r num">' + (g.each == null ? "—" : money(g.each)) +
           '</td><td class="r num">' + money(g.spent) +
           '</td><td class="r num">' + money(g.sold) +
           '</td><td class="r num">' + money(g.gift) +
+          '</td><td class="r num">' + money(g.waste) +
           '</td><td class="r num">' + money(g.stock) +
-          '</td><td class="r num">' + money(g.waste) + "</td></tr>";
+          '</td><td class="r num">' + money(g.decide) + "</td></tr>";
       });
       h += '<tr><td><b>Total</b></td><td class="r num"><b>' + INV.pieces +
         '</b></td><td class="r num">—</td><td class="r num"><b>' + money(INV.spent) +
         '</b></td><td class="r num"><b>' + money(INV.sold) +
         '</b></td><td class="r num"><b>' + money(INV.gift) +
+        '</b></td><td class="r num"><b>' + money(INV.waste) +
         '</b></td><td class="r num"><b>' + money(INV.stock) +
-        '</b></td><td class="r num"><b>' + money(INV.waste) + "</b></td></tr>";
+        '</b></td><td class="r num"><b>' + money(INV.decide) + "</b></td></tr>";
       h += "</tbody></table></div>";
-      h += '<p class="hint" style="margin-top:10px">Dee\'s pays this up front. ' +
-        "SOLD is the part that has earned its keep, and the truck settles half of it. " +
-        "IN STOCK is still Dee\u2019s money sitting on the truck \u2014 it settles the day it sells. " +
-        "GIVEN and WASTE brought nothing in, so both sides carry half of each.</p>";
-      if (INV.unknown) {
-        h += '<p class="hint" style="margin-top:6px">' + INV.unknown +
-          " pieces went out before their item had a recipe costed, so they are missing from these totals.</p>";
-      }
-      /* what one piece is built from — money only, no ingredient names */
+
       h += '<div class="subhead">WHAT ONE PIECE COSTS TO MAKE</div>';
-      h += '<div class="tw"><table><thead><tr><th>ITEM</th>' +
-        '<th class="r">MAKES</th><th class="r">INGREDIENTS</th><th class="r">PACKAGING</th>' +
-        '<th class="r">COST EACH</th><th class="r">SELLS AT</th><th class="r">MARGIN</th>' +
+      h += '<div class="tw"><table><thead><tr><th>ITEM</th><th class="r">MAKES</th>' +
+        '<th class="r">INGREDIENTS</th><th class="r">PACKAGING</th><th class="r">COST EACH</th>' +
+        '<th class="r">SELLS AT</th><th class="r">PROFIT EACH</th><th class="r">MARGIN</th>' +
         "</tr></thead><tbody>";
       S.items.forEach(function (it) {
         if (!costed(it)) return;
@@ -1774,84 +1900,27 @@
         var u = ing + pk, m = it.price ? ((it.price - u) / it.price) * 100 : 0;
         h += "<tr><td>" + esc(it.name) + '</td><td class="r num">' +
           esc(count(per, portionWordOf(it))) + " a bake" +
-          '</td><td class="r num">' + money(ing) +
-          '</td><td class="r num">' + money(pk) +
-          '</td><td class="r num"><b>' + money(u) +
-          '</b></td><td class="r num">' + money(it.price) +
+          '</td><td class="r num">' + money(ing) + '</td><td class="r num">' + money(pk) +
+          '</td><td class="r num"><b>' + money(u) + '</b></td><td class="r num">' + money(it.price) +
+          '</td><td class="r num">' + money(it.price - u) +
           '</td><td class="r num">' + (Math.round(m * 10) / 10) + "%</td></tr>";
       });
       h += "</tbody></table></div>";
-      h += '<p class="hint" style="margin-top:10px">Today’s recipe prices. ' +
-        "Stock already sent out keeps the cost it was locked in at, which is what every figure above uses." +
-        (ROLES[me.role].canDeliver ? " The ingredients behind these numbers are on the Recipes tab." : "") +
-        "</p>";
+      h += '<p class="hint" style="margin-top:10px">Today’s recipe prices. Stock already sent out ' +
+        "keeps the cost it was locked in at, which is what every figure above uses." +
+        (ROLES[me.role].canDeliver ? " The ingredients behind them are on the Recipes tab." : "") + "</p>";
     }
 
-    /* the split for one day's stock: what was made that day, what has sold
-       off it, and where the two sides stand on it */
-    var byDay = {};
-    live().forEach(function (b) {
-      var k = b.madeOn;
-      if (!byDay[k]) byDay[k] = { made: 0, units: 0, sold: 0, gift: 0, left: 0, wasted: 0,
-                                  revenue: 0, used: 0, unknown: false };
-      var g = byDay[k], s = sold(b), gv = given(b), bn = binned(b);
-      var left = remaining(b), gone = status(b) === "expired";
-      g.units += b.qty;
-      g.sold += s;
-      g.gift += gv;
-      g.wasted += bn + (gone ? left : 0);
-      if (!gone) g.left += left;
-      g.revenue += s * (b.unitPrice || 0);
-      if (b.unitCost == null) { g.unknown = true; return; }
-      var c2 = b.unitCost;
-      g.made += b.qty * c2;
-      g.used += (s + gv + bn) * c2 + (gone ? left * c2 : 0);
-    });
-    var days = Object.keys(byDay).sort().reverse();
-    if (days.length) {
-      h += '<div class="subhead">DAY BY DAY — THE SPLIT ON EACH DAY\'S STOCK</div>';
-      h += '<div class="tw"><table><thead><tr><th>MADE ON</th>' +
-        '<th class="r">SOLD</th><th class="r">LEFT</th><th class="r">TAKEN</th>' +
-        '<th class="r">COST USED</th><th class="r">PROFIT</th>' +
-        '<th class="r">DEE\'S ' + Math.round(S1.d * 100) + '%</th>' +
-        '<th class="r">TRUCK ' + Math.round((1 - S1.d) * 100) + '%</th>' +
-        "</tr></thead><tbody>";
-      days.forEach(function (k) {
-        var g = byDay[k], pr = g.revenue - g.used;
-        h += "<tr><td>" + esc(niceDate(k)) + '</td><td class="r num">' + g.sold + " / " + g.units +
-          '</td><td class="r num">' + g.left +
-          (g.gift ? " \u00b7 " + g.gift + " free" : "") +
-          (g.wasted ? " \u00b7 " + g.wasted + " lost" : "") +
-          '</td><td class="r num">' + money(g.revenue) +
-          '</td><td class="r num">' + money(g.used) + (g.unknown ? "+" : "") +
-          '</td><td class="r num">' + money(pr) +
-          '</td><td class="r num">' + money(pr * S1.d) +
-          '</td><td class="r num">' + money(pr * (1 - S1.d)) + "</td></tr>";
+    var BC = byChannel();
+    if (BC.order.length > 1) {
+      h += '<div class="subhead">WHERE THE SALES CAME FROM</div><div class="tw"><table><thead><tr>' +
+        '<th>CHANNEL</th><th class="r">PIECES</th><th class="r">TAKINGS</th></tr></thead><tbody>';
+      BC.order.forEach(function (k) {
+        h += "<tr><td>" + esc(k) + '</td><td class="r num">' + BC.map[k].units +
+          '</td><td class="r num">' + cur() + " " + money(BC.map[k].revenue) + "</td></tr>";
       });
       h += "</tbody></table></div>";
-      h += '<p class="hint" style="margin-top:10px">Each row is the stock made that day. ' +
-        "LEFT is still unsold, so nothing has been counted on it either way — " +
-        "its share lands on the day it sells.</p>";
     }
-    h += '<div class="subhead">BY ITEM</div><div class="tw"><table><thead><tr><th>ITEM</th>' +
-      '<th class="r">OUT</th><th class="r">SOLD</th><th class="r">GIVEN</th><th class="r">WASTED</th><th class="r">REVENUE</th><th class="r">COST USED</th><th class="r">PROFIT</th>' +
-      "</tr></thead><tbody>";
-    S.items.forEach(function (it) {
-      var o = 0, s = 0, w = 0, gf = 0, rev = 0, cost = 0, any = false;
-      live().forEach(function (b) {
-        if (b.itemId !== it.id) return;
-        any = true;
-        var sd = sold(b), gv = given(b), bn = binned(b), gone = status(b) === "expired";
-        o += b.qty; s += sd; gf += gv; rev += sd * (b.unitPrice || 0);
-        if (b.unitCost != null) cost += (sd + gv + bn) * b.unitCost + (gone ? remaining(b) * b.unitCost : 0);
-        w += bn + (gone ? remaining(b) : 0);
-      });
-      if (!any) return;
-      h += "<tr><td>" + esc(it.name) + '</td><td class="r num">' + o + '</td><td class="r num">' + s +
-        '</td><td class="r num">' + gf + '</td><td class="r num">' + w + '</td><td class="r num">' + money(rev) +
-        '</td><td class="r num">' + money(cost) + '</td><td class="r num">' + money(rev - cost) + "</td></tr>";
-    });
-    h += "</tbody></table></div>";
     return h;
   }
 
@@ -2049,6 +2118,54 @@
               t.voidedAt = new Date().toISOString();
             }, "Order voided.");
           });
+      };
+    });
+    app.querySelectorAll("[data-wpdf]").forEach(function (b) {
+      b.onclick = function () {
+        var st;
+        try { st = weekStatement(b.getAttribute("data-wpdf")); } catch (e) { st = null; }
+        if (!st) { toast("Could not build that statement.", true); return; }
+        handOver(st);
+      };
+    });
+    app.querySelectorAll("[data-wmail]").forEach(function (b) {
+      b.onclick = function () {
+        notice("Week statement", weekNotice(b.getAttribute("data-wmail")));
+      };
+    });
+    app.querySelectorAll("[data-wclose]").forEach(function (b) {
+      b.onclick = function () {
+        var start = b.getAttribute("data-wclose"), w = weekTotals(start);
+        var warn = w.toDecide
+          ? count(w.toDecide, "piece") + " from this week are past their date and nobody has said " +
+            "what happened to them. Close now and they stay open on the board, counted nowhere.\n\n"
+          : "";
+        ask({ title: "Close " + weekLabel(start) + "?",
+              body: warn + "The truck owes " + cur() + " " + money(w.owed) + " for this week.\n\n" +
+                    "Closing locks it: no more sales can be dated inside it. An admin can reopen it.",
+              ok: "CLOSE THE WEEK" })
+          .then(function (go) {
+            if (!go) return;
+            save(function (n) {
+              n.weeks = n.weeks || [];
+              n.weeks.push({ start: start, at: new Date().toISOString(), by: me.id,
+                             owed: Math.round(w.owed * 100) / 100,
+                             profit: Math.round(w.profit * 100) / 100 });
+            }, weekLabel(start) + " closed.");
+          });
+      };
+    });
+    app.querySelectorAll("[data-wopen]").forEach(function (b) {
+      b.onclick = function () {
+        var start = b.getAttribute("data-wopen");
+        ask({ title: "Reopen " + weekLabel(start) + "?",
+              body: "Sales can be dated inside it again, and the figures can move.",
+              ok: "REOPEN" }).then(function (go) {
+          if (!go) return;
+          save(function (n) {
+            n.weeks = (n.weeks || []).filter(function (w) { return w.start !== start; });
+          }, "Week reopened.");
+        });
       };
     });
     app.querySelectorAll("[data-pdf]").forEach(function (b) {
@@ -2272,7 +2389,12 @@
     if (!b) return;
     if (n > remaining(b)) { toast("Only " + count(remaining(b), bPortion(b)) + " left in that lot.", true); return; }
     kind = kind || "sale";
-    var ch = curChannel(), on = saleDate();
+    var on = saleDate();
+    if (weekClosed(weekOf(on))) {
+      toast(weekLabel(weekOf(on)) + " is closed. Reopen it first, or pick another date.", true);
+      return;
+    }
+    var ch = curChannel();
     var word = count(n, bPortion(b));
     var msg = kind === "gift" ? word + " given away on " + niceDate(on) + " — logged."
             : kind === "waste" ? word + " written off on " + niceDate(on) + " — logged."
@@ -2333,7 +2455,7 @@
     var lines = readDeliveryRows();
     var madeOn = (document.getElementById("d-date") || {}).value || todayStr();
     var only = box.children.length < 2;
-    var html = "", total = 0, units = 0, anyUncosted = false, words = {};
+    var html = "", total = 0, retail = 0, units = 0, anyUncosted = false, words = {};
     lines.forEach(function (L) {
       var w = L.row.querySelector('[data-d="word"]');
       if (L.it) {
@@ -2350,13 +2472,17 @@
       var u = linePortions(L), c = u * unitCostOf(L.it);
       units += u; total += c;
       words[portionWordOf(L.it)] = 1;
+      var val = u * (+L.it.price || 0);
+      retail += val;
       html += '<div class="dline"><span><b>' + esc(count(u, portionWordOf(L.it))) + "</b> " +
         esc(L.it.name) + ", expires " + niceDate(addDays(madeOn, L.it.shelf)) +
-        "</span><span class=\"num\">" + cur() + " " + money(c) + "</span></div>";
+        "</span><span class=\"num\">costs " + cur() + " " + money(c) +
+        " \u00b7 worth " + cur() + " " + money(val) + "</span></div>";
     });
     var wk = Object.keys(words);
     if (html) html += '<div class="dline"><span>' + esc(count(units, wk.length === 1 ? wk[0] : "portion")) +
-      " in total</span><span class=\"num\">" + cur() + " " + money(total) + "</span></div>";
+      " in total</span><span class=\"num\">costs " + cur() + " " + money(total) +
+      " \u00b7 worth " + cur() + " " + money(retail) + "</span></div>";
     if (anyUncosted) html += '<p class="hint" style="margin-top:8px">Items without a recipe go in with no cost recorded.</p>';
     pv.innerHTML = html;
   }
