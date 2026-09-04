@@ -1176,7 +1176,7 @@
       if (line == null) uncosted = true; else total += line;
       units += b.qty;
       pg.text((it ? it.name : "Deleted item") + (b.voided ? "  (VOIDED)" : ""), L + 8, y, 10.5, false);
-      pg.right(count(b.batches || 1, batchWordOf(b)), 300, y, 10, false, GREY);
+      pg.right(b.batches ? count(b.batches, batchWordOf(b)) : "\u2014", 300, y, 10, false, GREY);
       pg.right(count(b.qty, bPortion(b)), 372, y, 10, false, GREY);
       pg.right(b.unitCost == null ? "-" : money(b.unitCost), 460, y, 10, false);
       pg.right(line == null ? "-" : money(line), R - 8, y, 10, true);
@@ -1606,7 +1606,7 @@
       });
       h += '<div class="subhead">BY ITEM</div><div class="tw"><table><thead><tr><th>ITEM</th>' +
         '<th class="r">ON HAND</th><th>ONE BATCH MAKES</th><th class="r">COST</th>' +
-        '<th class="r">AT MENU</th><th class="r">BATCHES</th><th>FIRST TO EXPIRE</th>' +
+        '<th class="r">AT MENU</th><th class="r">ENTRIES</th><th>FIRST TO EXPIRE</th>' +
         "</tr></thead><tbody>";
       Object.keys(byItem).forEach(function (k) {
         var g = byItem[k], it = item(k);
@@ -1724,9 +1724,34 @@
      Orders because Dee's side thinks of it as adding stock and the truck
      thinks of it as an order arriving; only one tab renders at a time, so
      the ids never collide. */
+  /* Dee bakes in trays but counts out in slices, so the form takes either.
+     Whatever was actually counted is what gets recorded — a batch entered
+     as pieces keeps no tray count rather than an invented fraction. */
+  function entryMode() {
+    var v = "";
+    try { v = sessionStorage.getItem("deeserts.entry") || ""; } catch (e) {}
+    return v === "batch" ? "batch" : "portion";
+  }
+  function setEntryMode(v) {
+    try { sessionStorage.setItem("deeserts.entry", v); } catch (e) {}
+    render();
+  }
+  function entryBar() {
+    var m = entryMode();
+    return '<div class="chbar"><span class="chlab">COUNTING IN</span><div class="chset">' +
+      '<button class="ch' + (m === "portion" ? " on" : "") + '" type="button" data-entry="portion">Pieces sold</button>' +
+      '<button class="ch' + (m === "batch" ? " on" : "") + '" type="button" data-entry="batch">Whole batches</button>' +
+      "</div></div>";
+  }
+  /* how many sellable portions a line comes to, in either mode */
+  function linePortions(L) {
+    if (!costed(L.it)) return L.n;
+    return entryMode() === "portion" ? L.n : L.n * portionsPer(L.it);
+  }
+
   function orderForm(perm) {
     if (!perm.canDeliver || readOnly) return "";
-    return '<div class="subhead">ADD STOCK</div><div class="card">' +
+    return '<div class="subhead">ADD STOCK</div><div class="card">' + entryBar() +
       '<div class="field" style="max-width:220px"><label for="d-date">MADE ON</label>' +
       '<input id="d-date" type="date" value="' + todayStr() + '"></div>' +
       '<div id="d-rows"></div>' +
@@ -2140,6 +2165,9 @@
     app.querySelectorAll("[data-tab]").forEach(function (b) {
       b.onclick = function () { setTab(b.getAttribute("data-tab")); };
     });
+    app.querySelectorAll("[data-entry]").forEach(function (b) {
+      b.onclick = function () { setEntryMode(b.getAttribute("data-entry")); };
+    });
     app.querySelectorAll("[data-ch]").forEach(function (b) {
       b.onclick = function () { setChannel(b.getAttribute("data-ch")); };
     });
@@ -2446,7 +2474,8 @@
     var row = document.createElement("div");
     row.className = "drow";
     row.innerHTML = '<select data-d="item">' + itemOptions(null) + "</select>" +
-      '<input data-d="n" type="number" min="1" step="1" value="1" aria-label="How many">' +
+      '<input data-d="n" type="number" min="1" step="1" value="1" aria-label="How many ' +
+        (entryMode() === "portion" ? "pieces" : "batches") + '">' +
       '<span class="w" data-d="word"></span>' +
       '<button class="x" type="button" data-d="rm" aria-label="Remove this line">&times;</button>';
     box.appendChild(row);
@@ -2480,15 +2509,23 @@
     var lines = readDeliveryRows();
     var madeOn = (document.getElementById("d-date") || {}).value || todayStr();
     var only = box.children.length < 2;
+    var mode = entryMode();
     var html = "", total = 0, units = 0, anyUncosted = false, words = {};
     lines.forEach(function (L) {
       var w = L.row.querySelector('[data-d="word"]');
       if (L.it) {
         var per2 = portionsPer(L.it);
-        var bw = L.n === 1 ? batchWordOf(L.it) : plural(batchWordOf(L.it));
-        w.textContent = per2 && L.n > 0
-          ? bw + " \u2192 " + count(L.n * per2, portionWordOf(L.it))
-          : bw;
+        var pw2 = portionWordOf(L.it);
+        if (mode === "portion") {
+          var whole = per2 && L.n > 0 && L.n % per2 === 0 ? L.n / per2 : 0;
+          w.textContent = (L.n === 1 ? pw2 : plural(pw2)) +
+            (whole ? " = " + count(whole, batchWordOf(L.it)) : "");
+        } else {
+          var bw = L.n === 1 ? batchWordOf(L.it) : plural(batchWordOf(L.it));
+          w.textContent = per2 && L.n > 0
+            ? bw + " \u2192 " + count(L.n * per2, pw2)
+            : bw;
+        }
       }
       L.row.querySelector('[data-d="rm"]').disabled = only;
       if (!L.it || !L.n) return;
@@ -2497,11 +2534,15 @@
         html += '<div class="dline"><span>' + esc(L.it.name) + " — no recipe costed</span><span>no cost</span></div>";
         return;
       }
-      var u = L.n * portionsPer(L.it), c = u * unitCostOf(L.it);
+      var u = linePortions(L), c = u * unitCostOf(L.it);
       units += u; total += c;
       words[portionWordOf(L.it)] = 1;
-      html += '<div class="dline"><span>' + esc(count(L.n, batchWordOf(L.it))) +
-        " " + esc(L.it.name) + " = <b>" + esc(count(u, portionWordOf(L.it))) + "</b>, expires " + niceDate(addDays(madeOn, L.it.shelf)) +
+      html += '<div class="dline"><span>' +
+        (mode === "portion"
+          ? "<b>" + esc(count(u, portionWordOf(L.it))) + "</b> " + esc(L.it.name)
+          : esc(count(L.n, batchWordOf(L.it))) + " " + esc(L.it.name) +
+            " = <b>" + esc(count(u, portionWordOf(L.it))) + "</b>") +
+        ", expires " + niceDate(addDays(madeOn, L.it.shelf)) +
         "</span><span class=\"num\">" + cur() + " " + money(c) + "</span></div>";
     });
     var wk = Object.keys(words);
@@ -2518,8 +2559,10 @@
     var summary = [], uncosted = [];
     lines.forEach(function (L) {
       if (costed(L.it)) {
-        summary.push(count(L.n, batchWordOf(L.it)) + " " + L.it.name +
-          " = " + count(L.n * portionsPer(L.it), portionWordOf(L.it)));
+        summary.push(entryMode() === "portion"
+          ? count(linePortions(L), portionWordOf(L.it)) + " " + L.it.name
+          : count(L.n, batchWordOf(L.it)) + " " + L.it.name +
+            " = " + count(linePortions(L), portionWordOf(L.it)));
       } else {
         summary.push(L.n + " " + L.it.name + " (no cost)");
         uncosted.push(L.it.name);
@@ -2537,13 +2580,14 @@
     var at = new Date().toISOString();
     save(function (nx) {
       var drop = id("d");
+      var byPortion = entryMode() === "portion";
       lines.forEach(function (L) {
-        var per = portionsPer(L.it);
         nx.batches.push({
           id: id("b"), drop: drop, itemId: L.it.id,
-          qty: costed(L.it) ? L.n * per : L.n,
+          qty: linePortions(L),
           unitCost: unitCostOf(L.it), unitPrice: L.it.price,
-          batches: L.n, batchWord: batchWordOf(L.it), portionWord: portionWordOf(L.it),
+          batches: byPortion ? null : L.n,
+          batchWord: batchWordOf(L.it), portionWord: portionWordOf(L.it),
           shelf: L.it.shelf, madeOn: madeOn,
           by: me.id, at: at, sales: []
         });
