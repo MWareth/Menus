@@ -218,13 +218,13 @@
   .drow select,.drow input{border:1.5px solid var(--line);border-radius:10px;padding:10px 11px;
     min-height:44px;width:100%;background:#fff}
   .drow select:focus,.drow input:focus{outline:2px solid var(--gold);outline-offset:-1px;border-color:var(--gold)}
-  .drow .w{font-size:12.5px;font-weight:900;letter-spacing:.06em;color:var(--ink-3);white-space:nowrap}
+  .drow .w{font-size:12.5px;font-weight:900;letter-spacing:.04em;color:var(--brown);line-height:1.35}
   .drow .x{background:none;border:1.5px solid var(--line);border-radius:10px;min-height:44px;
     color:var(--ink-3);font-weight:900}
   .drow .x:hover{border-color:#F0B6B0;color:var(--bad)}
   .drow .x:disabled{opacity:.3;cursor:not-allowed}
   @media(max-width:560px){
-    .drow{grid-template-columns:1fr 72px 42px;grid-template-areas:"i i i" "n w x"}
+    .drow{grid-template-columns:78px 1fr 42px;grid-template-areas:"i i i" "n w x"}
     .drow select{grid-area:i}.drow input{grid-area:n}.drow .w{grid-area:w}.drow .x{grid-area:x}
   }
   .dline{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:13.5px;
@@ -1627,7 +1627,7 @@
 
     h += '<div class="subhead">EVERY BATCH</div>';
     h += sorted.length ? rows(sorted, perm, false) :
-      '<div class="empty">Nothing in stock. Dee logs an order to start.</div>';
+      '<div class="empty">Nothing in stock. Add a batch above to start.</div>';
     if (sorted.length && perm.canSell && !readOnly) {
       h += '<p class="hint" style="margin-top:12px">This is the count, not the till \u2014 ' +
         "log what sells on <b>Orders</b>, where you also say whether it went out of the window " +
@@ -2432,8 +2432,11 @@
 
   function itemOptions(sel) {
     return S.items.filter(function (i) { return i.active; }).map(function (i) {
+      var per = portionsPer(i);
+      var tail = per ? " \u2014 1 " + batchWordOf(i) + " = " + count(per, portionWordOf(i))
+                     : (i.note ? " (" + i.note + ")" : "");
       return '<option value="' + i.id + '"' + (i.id === sel ? " selected" : "") + ">" +
-        esc(i.name) + (i.note ? " (" + esc(i.note) + ")" : "") + "</option>";
+        esc(i.name + tail) + "</option>";
     }).join("");
   }
 
@@ -2477,10 +2480,16 @@
     var lines = readDeliveryRows();
     var madeOn = (document.getElementById("d-date") || {}).value || todayStr();
     var only = box.children.length < 2;
-    var html = "", total = 0, units = 0, anyUncosted = false;
+    var html = "", total = 0, units = 0, anyUncosted = false, words = {};
     lines.forEach(function (L) {
       var w = L.row.querySelector('[data-d="word"]');
-      if (L.it) w.textContent = L.n === 1 ? batchWordOf(L.it) : plural(batchWordOf(L.it));
+      if (L.it) {
+        var per2 = portionsPer(L.it);
+        var bw = L.n === 1 ? batchWordOf(L.it) : plural(batchWordOf(L.it));
+        w.textContent = per2 && L.n > 0
+          ? bw + " \u2192 " + count(L.n * per2, portionWordOf(L.it))
+          : bw;
+      }
       L.row.querySelector('[data-d="rm"]').disabled = only;
       if (!L.it || !L.n) return;
       if (!costed(L.it)) {
@@ -2490,12 +2499,14 @@
       }
       var u = L.n * portionsPer(L.it), c = u * unitCostOf(L.it);
       units += u; total += c;
+      words[portionWordOf(L.it)] = 1;
       html += '<div class="dline"><span>' + esc(count(L.n, batchWordOf(L.it))) +
         " " + esc(L.it.name) + " = <b>" + esc(count(u, portionWordOf(L.it))) + "</b>, expires " + niceDate(addDays(madeOn, L.it.shelf)) +
         "</span><span class=\"num\">" + cur() + " " + money(c) + "</span></div>";
     });
-    if (html) html += '<div class="dline"><span>' + units + " portions in total</span><span class=\"num\">" +
-      cur() + " " + money(total) + "</span></div>";
+    var wk = Object.keys(words);
+    if (html) html += '<div class="dline"><span>' + esc(count(units, wk.length === 1 ? wk[0] : "portion")) +
+      " in total</span><span class=\"num\">" + cur() + " " + money(total) + "</span></div>";
     if (anyUncosted) html += '<p class="hint" style="margin-top:8px">Items without a recipe go in with no cost recorded.</p>';
     pv.innerHTML = html;
   }
