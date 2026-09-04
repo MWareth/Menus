@@ -1056,7 +1056,8 @@
       pg.rect(L, y + 2, R - L, 0.6, RULE);
       y -= 12;
     }
-    line("Stock sent to the truck", w.out, cur() + " " + money(w.outCost) + " cost");
+    line("Stock sent to the truck" + (w.days.length ? " on " + w.days.map(niceDate).join(", ") : ""),
+         w.out, cur() + " " + money(w.outCost) + " cost");
     line("Sold", w.sold, cur() + " " + money(w.revenue) + " taken", true);
     line("  ingredients in what sold", null, cur() + " " + money(w.costSold));
     if (w.given) line("Given away", w.given, cur() + " " + money(w.costGiven));
@@ -1100,7 +1101,8 @@
   function weekNotice(start) {
     var w = weekTotals(start);
     var L = [];
-    L.push("Stock sent out: " + count(w.out, "piece") + " (" + cur() + " " + money(w.outCost) + ")");
+    L.push("Stock sent out" + (w.days.length ? " on " + w.days.map(niceDate).join(", ") : "") +
+           ": " + count(w.out, "piece") + " (" + cur() + " " + money(w.outCost) + ")");
     L.push("Sold: " + count(w.sold, "piece") + " - took " + cur() + " " + money(w.revenue));
     if (w.given) L.push("Given away: " + count(w.given, "piece"));
     if (w.binned) L.push("Binned: " + count(w.binned, "piece"));
@@ -1829,7 +1831,7 @@
     var d = (S.split.deesPct || 0) / 100;
     var t = { start: start, out: 0, outCost: 0, sold: 0, revenue: 0, costSold: 0,
               given: 0, costGiven: 0, binned: 0, costBinned: 0,
-              toDecide: 0, costToDecide: 0, left: 0, costLeft: 0, d: d };
+              toDecide: 0, costToDecide: 0, left: 0, costLeft: 0, days: [], d: d };
     /* A lot belongs to the week it went out, and everything that happens to
        it belongs there too \u2014 sold, given away or binned, whenever it was
        typed in. Otherwise clearing out last week's leftovers today lands
@@ -1838,6 +1840,7 @@
       if (weekOf(b.madeOn) !== start) return;
       var c = b.unitCost || 0;
       t.out += b.qty; t.outCost += b.qty * c;
+      if (t.days.indexOf(b.madeOn) < 0) t.days.push(b.madeOn);
       (b.sales || []).forEach(function (s) {
         var k = kindOf(s);
         if (k === "gift") { t.given += s.qty; t.costGiven += s.qty * c; }
@@ -1850,6 +1853,7 @@
         else { t.left += lft; t.costLeft += lft * c; }
       }
     });
+    t.days.sort();                 /* the days stock actually went out */
     t.used = t.costSold + t.costGiven + t.costBinned;
     t.profit = t.revenue - t.used;
     t.dees = t.profit * d;
@@ -1875,7 +1879,8 @@
     h += '<div class="big num">' + cur() + " " + money(w.owed) + "</div>";
     h += '<div class="who2">' + (w.any ? "SMASH &amp; PASS PAYS DEE'S TREATS" : "Nothing yet this week") + "</div>";
     h += '<div class="calc">';
-    h += wrow("Stock out", count(w.out, "piece") + " · " + cur() + " " + money(w.outCost));
+    h += wrow("Stock out" + (w.days.length ? " · sent " + w.days.map(niceDate).join(", ") : ""),
+              count(w.out, "piece") + " · " + cur() + " " + money(w.outCost));
     h += wrow("Sold", count(w.sold, "piece") + " · took " + cur() + " " + money(w.revenue));
     if (w.given) h += wrow("Given away", count(w.given, "piece") + " · " + cur() + " " + money(w.costGiven));
     if (w.binned) h += wrow("Binned", count(w.binned, "piece") + " · " + cur() + " " + money(w.costBinned));
