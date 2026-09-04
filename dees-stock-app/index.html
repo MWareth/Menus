@@ -338,7 +338,7 @@
           "n": "Baking sheet",
           "q": 1,
           "u": "sheet",
-          "pp": 2.0,
+          "pp": 2,
           "pq": 1
         }
       ]
@@ -523,7 +523,7 @@
           "n": "Baking sheet",
           "q": 1,
           "u": "sheet",
-          "pp": 2.0,
+          "pp": 2,
           "pq": 1
         }
       ]
@@ -608,7 +608,7 @@
           "n": "Baking sheet",
           "q": 1,
           "u": "sheet",
-          "pp": 2.0,
+          "pp": 2,
           "pq": 1
         }
       ]
@@ -652,10 +652,75 @@
       "pin": "f16e34225021f39639cfa33ca88dd9778940f7c88b25d34cc2a0cff2d774c427"
     }
   ],
-  "batches": [],
-  "seq": 7,
+  "batches": [
+    {
+      "id": "b9",
+      "drop": "d8",
+      "itemId": "i2",
+      "qty": 21,
+      "unitCost": 7.848255208333334,
+      "unitPrice": 26,
+      "batches": null,
+      "batchWord": "cake",
+      "portionWord": "slice",
+      "shelf": 2,
+      "madeOn": "2026-08-31",
+      "by": "u1",
+      "at": "2026-09-04T13:19:33.060Z",
+      "sales": []
+    },
+    {
+      "id": "b10",
+      "drop": "d8",
+      "itemId": "i4",
+      "qty": 10,
+      "unitCost": 6.20384100877193,
+      "unitPrice": 26,
+      "batches": null,
+      "batchWord": "tray",
+      "portionWord": "bag",
+      "shelf": 2,
+      "madeOn": "2026-08-31",
+      "by": "u1",
+      "at": "2026-09-04T13:19:33.060Z",
+      "sales": []
+    },
+    {
+      "id": "b12",
+      "drop": "d11",
+      "itemId": "i2",
+      "qty": 16,
+      "unitCost": 7.848255208333334,
+      "unitPrice": 26,
+      "batches": null,
+      "batchWord": "cake",
+      "portionWord": "slice",
+      "shelf": 2,
+      "madeOn": "2026-09-01",
+      "by": "u1",
+      "at": "2026-09-04T13:20:38.381Z",
+      "sales": []
+    },
+    {
+      "id": "b13",
+      "drop": "d11",
+      "itemId": "i4",
+      "qty": 4,
+      "unitCost": 6.20384100877193,
+      "unitPrice": 26,
+      "batches": null,
+      "batchWord": "tray",
+      "portionWord": "bag",
+      "shelf": 2,
+      "madeOn": "2026-09-01",
+      "by": "u1",
+      "at": "2026-09-04T13:20:38.381Z",
+      "sales": []
+    }
+  ],
+  "seq": 13,
   "defaultPins": false,
-  "updatedAt": "2026-09-04T12:30:00.000Z",
+  "updatedAt": "2026-09-04T13:20:38.381Z",
   "payments": []
 }
 </script>
@@ -855,22 +920,29 @@
     });
     return h + "</div></div>";
   }
+  /* Stock that is made but not yet sold is not a loss — it is Dee's money
+     sitting on the truck as cake. Only what has actually been sold, or has
+     expired unsold, has been used up, and only that belongs against the
+     takings. The rest is inventory and settles when it sells. */
   function totals(days) {
     var cutoff = days ? addDays(todayStr(), -days + 1) : null;
-    var t = { cost: 0, revenue: 0, waste: 0, unitsOut: 0, unitsSold: 0, unitsWasted: 0, unknownCost: 0 };
+    var t = { spent: 0, costSold: 0, costWaste: 0, costStock: 0, revenue: 0,
+              unitsOut: 0, unitsSold: 0, unitsWasted: 0, unitsLeft: 0, unknownCost: 0 };
     live().forEach(function (b) {
       if (cutoff && b.madeOn < cutoff) return;
-      var s = sold(b);
-      t.unitsOut += b.qty; t.unitsSold += s;
+      var s = sold(b), left = remaining(b), gone = status(b) === "expired";
+      t.unitsOut += b.qty;
+      t.unitsSold += s;
       t.revenue += s * (b.unitPrice || 0);
-      if (b.unitCost == null) t.unknownCost += b.qty;
-      else t.cost += b.qty * b.unitCost;
-      if (status(b) === "expired") {
-        var left = remaining(b);
-        t.unitsWasted += left;
-        if (b.unitCost != null) t.waste += left * b.unitCost;
-      }
+      if (gone) t.unitsWasted += left; else t.unitsLeft += left;
+      if (b.unitCost == null) { t.unknownCost += b.qty; return; }
+      t.spent += b.qty * b.unitCost;
+      t.costSold += s * b.unitCost;
+      if (gone) t.costWaste += left * b.unitCost;
+      else t.costStock += left * b.unitCost;
     });
+    t.waste = t.costWaste;
+    t.cost = t.costSold + t.costWaste;    /* what has actually been used up */
     t.profit = t.revenue - t.cost;
     return t;
   }
@@ -887,35 +959,39 @@
   function settlement() {
     var t = totals(null);
     var d = (S.split.deesPct || 0) / 100;
-    var costShare = t.cost * (1 - d);   // truck's share of what Dee's spent
+    var costShare = t.cost * (1 - d);   // truck's share of the cost that has been used up
     var revShare = t.revenue * d;       // Dee's share of what the truck took
     var owed = costShare + revShare;
     var paid = paidSoFar();
-    return { cost: t.cost, revenue: t.revenue, profit: t.profit, d: d,
+    return { cost: t.cost, spent: t.spent, stock: t.costStock, waste: t.costWaste,
+             stockUnits: t.unitsLeft, revenue: t.revenue, profit: t.profit, d: d,
              costShare: costShare, revShare: revShare, owed: owed,
              paid: paid, outstanding: owed - paid, unknownCost: t.unknownCost };
   }
 
-  /* Everything still sellable on the truck. Dee's already paid for it, and
-     that cost is already inside totals().cost, so every further sale is
-     straight profit on top of what the two sides have made so far. */
+  /* Everything still sellable on the truck: what it would fetch, what it
+     cost Dee's, and the profit in it if it all sells. */
   function upside() {
-    var units = 0, revenue = 0;
+    var units = 0, revenue = 0, profit = 0, cost = 0;
     live().forEach(function (b) {
       if (status(b) === "expired") return;
       var left = remaining(b);
       if (left <= 0) return;
       units += left;
       revenue += left * (b.unitPrice || 0);
+      if (b.unitCost != null) {
+        cost += left * b.unitCost;
+        profit += left * ((b.unitPrice || 0) - b.unitCost);
+      }
     });
-    return { units: units, revenue: revenue };
+    return { units: units, revenue: revenue, cost: cost, profit: profit };
   }
 
   /* What each partner ends up with once the outstanding balance is settled.
      Not cash in hand today — Dee's is out of pocket until the truck pays. */
   function earnings() {
     var s = settlement(), up = upside();
-    var proj = s.profit + up.revenue;
+    var proj = s.profit + up.profit;
     return { s: s, up: up,
              deesNow: s.profit * s.d, truckNow: s.profit * (1 - s.d),
              projProfit: proj, deesProj: proj * s.d, truckProj: proj * (1 - s.d) };
@@ -1870,16 +1946,17 @@
     var S1 = settlement();
     var out = S1.outstanding;
     var owes = out >= 0 ? "SMASH &amp; PASS owes DEE'S TREATS" : "DEE'S TREATS owes SMASH &amp; PASS";
-    var h = '<h2 class="sec">Money</h2><p class="sub">Everything logged so far, using the price and cost locked onto each lot.</p>';
+    var h = '<h2 class="sec">Money</h2><p class="sub">Profit counts only what has actually sold. ' +
+      "Stock still sitting on the truck is Dee's money, not a loss \u2014 it settles the day it sells.</p>";
 
     h += '<div class="settle' + (Math.abs(out) < 0.005 ? " clear" : "") + '">' +
       '<div class="k">OUTSTANDING RIGHT NOW</div>' +
       '<div class="big num">' + cur() + " " + money(Math.abs(out)) + "</div>" +
       '<div class="who2">' + (Math.abs(out) < 0.005 ? "All square — nothing owed either way." : owes) + "</div>";
     h += '<div class="calc">' +
-      '<div class="crow"><span>Dee\'s paid for ingredients &amp; packaging</span><span class="num">' +
-        cur() + " " + money(S1.cost) + "</span></div>" +
-      '<div class="crow"><span>Truck\'s ' + Math.round((1 - S1.d) * 100) + '% share of that cost</span><span class="num">+ ' +
+      '<div class="crow"><span>Ingredients in what has sold' + (S1.waste ? " (and what spoiled)" : "") +
+        '</span><span class="num">' + cur() + " " + money(S1.cost) + "</span></div>" +
+      '<div class="crow"><span>Truck\'s ' + Math.round((1 - S1.d) * 100) + '% share of that</span><span class="num">+ ' +
         cur() + " " + money(S1.costShare) + "</span></div>" +
       '<div class="crow"><span>Truck collected in sales</span><span class="num">' +
         cur() + " " + money(S1.revenue) + "</span></div>" +
@@ -1890,14 +1967,19 @@
       '<div class="crow tot"><span>' + (out >= 0 ? "Truck pays Dee\'s" : "Dee\'s pays truck") +
         '</span><span class="num">' + cur() + " " + money(Math.abs(out)) + "</span></div>" +
       "</div></div>";
+    if (S1.stock > 0.005) {
+      h += '<p class="hint" style="margin:-4px 0 16px">Not in that figure: ' +
+        esc(count(S1.stockUnits, "piece")) + " still on the truck, " + cur() + " " + money(S1.stock) +
+        " of Dee's money. That settles the day they sell, not before.</p>";
+    }
     if (t.unknownCost) h += '<div class="banner warn"><b>' + t.unknownCost +
-      " units have no cost recorded.</b> Profit and waste below are understated until those items have an ingredient cost.</div>";
+      " pieces have no cost recorded.</b> Profit and waste are flattered until those items have an ingredient cost.</div>";
     var E = earnings();
     h += '<div class="subhead">WHAT EACH PARTNER MAKES</div>';
     h += '<div class="earn">' +
       ecard("d", "DEE'S TREATS", E.deesNow,
         Math.round(S1.d * 100) + "% of the profit made so far",
-        [["Paid out for ingredients &amp; packaging", -S1.cost],
+        [[S1.waste ? "Ingredients used up, sold and spoiled" : "Ingredients in what has sold", -S1.cost],
          ["Comes back from the truck", S1.owed]],
         "Dee's makes",
         S1.paid ? cur() + " " + money(S1.paid) + " already received · " + cur() + " " +
@@ -1913,17 +1995,20 @@
                 : "Hold back what is owed — the rest is yours.") +
       "</div>";
     if (E.up.units > 0) {
-      h += '<div class="proj"><b>' + E.up.units + " unit" + (E.up.units === 1 ? "" : "s") +
+      h += '<div class="proj"><b>' + esc(count(E.up.units, "piece")) +
         " still on the truck</b>, worth " + cur() + " " + money(E.up.revenue) +
-        " at the price they went out at. Dee's has already paid for them, so every one sold from here " +
-        "is straight profit. Sell them all and the two sides make " + cur() + " " + money(E.deesProj) +
+        " at menu price against " + cur() + " " + money(E.up.cost) +
+        " of ingredients \u2014 " + cur() + " " + money(E.up.profit) + " of profit still in them. " +
+        "Sell the lot and the two sides make " + cur() + " " + money(E.deesProj) +
         " (Dee's) and " + cur() + " " + money(E.truckProj) + " (the truck).</div>";
     }
     h += '<div class="stats">' +
-      stat("REVENUE", cur() + " " + money(t.revenue), t.unitsSold + " units sold", "good") +
-      stat("COST", cur() + " " + money(t.cost), t.unitsOut + " units delivered", "") +
-      stat("PROFIT", cur() + " " + money(t.profit), "revenue less cost", t.profit >= 0 ? "good" : "bad") +
-      stat("WASTE", cur() + " " + money(t.waste), t.unitsWasted + " units expired unsold", t.waste > 0 ? "bad" : "") +
+      stat("REVENUE", cur() + " " + money(t.revenue), count(t.unitsSold, "piece") + " sold", "good") +
+      stat("COST OF SALES", cur() + " " + money(t.costSold), "ingredients in the " + t.unitsSold + " sold", "") +
+      stat("PROFIT", cur() + " " + money(t.profit), "on what has actually sold", t.profit >= 0 ? "good" : "bad") +
+      stat("WASTE", cur() + " " + money(t.waste), count(t.unitsWasted, "piece") + " expired unsold", t.waste > 0 ? "bad" : "") +
+      stat("STOCK ON THE TRUCK", cur() + " " + money(t.costStock),
+           count(t.unitsLeft, "piece") + " not sold yet", "") +
       "</div>";
 
     if (S.split.basis === "revenue") {
@@ -1962,21 +2047,22 @@
     var byWho = {};
     live().forEach(function (b) {
       if (b.unitCost == null) return;
-      if (!byWho[b.by]) byWho[b.by] = { units: 0, cost: 0, drops: {} };
+      if (!byWho[b.by]) byWho[b.by] = { units: 0, cost: 0, stock: 0, drops: {} };
       byWho[b.by].units += b.qty;
       byWho[b.by].cost += b.qty * b.unitCost;
+      if (status(b) !== "expired") byWho[b.by].stock += remaining(b) * b.unitCost;
       byWho[b.by].drops[b.drop || b.id] = 1;
     });
     var whoKeys = Object.keys(byWho);
     if (whoKeys.length) {
-      h += '<div class="subhead">STOCK BUILT — WHO PAID FOR IT</div><div class="tw"><table><thead><tr>' +
-        '<th>MADE BY</th><th class="r">ORDERS</th><th class="r">PORTIONS</th><th class="r">COST BORNE</th>' +
-        '<th class="r">TRUCK SHARE</th></tr></thead><tbody>';
+      h += '<div class="subhead">WHO PAID FOR THE STOCK</div><div class="tw"><table><thead><tr>' +
+        '<th>MADE BY</th><th class="r">ORDERS</th><th class="r">PIECES</th><th class="r">SPENT</th>' +
+        '<th class="r">STILL AS STOCK</th></tr></thead><tbody>';
       whoKeys.forEach(function (k) {
         var g = byWho[k];
         h += "<tr><td>" + esc(uname(k)) + '</td><td class="r num">' + Object.keys(g.drops).length +
           '</td><td class="r num">' + g.units + '</td><td class="r num">' + money(g.cost) +
-          '</td><td class="r num">' + money(g.cost * (1 - S1.d)) + "</td></tr>";
+          '</td><td class="r num">' + money(g.stock) + "</td></tr>";
       });
       h += "</tbody></table></div>";
     }
@@ -1994,18 +2080,61 @@
       h += "</tbody></table></div>";
     }
 
+    /* the split for one day's stock: what was made that day, what has sold
+       off it, and where the two sides stand on it */
+    var byDay = {};
+    live().forEach(function (b) {
+      var k = b.madeOn;
+      if (!byDay[k]) byDay[k] = { made: 0, units: 0, sold: 0, left: 0, wasted: 0,
+                                  revenue: 0, used: 0, unknown: false };
+      var g = byDay[k], s = sold(b), left = remaining(b), gone = status(b) === "expired";
+      g.units += b.qty;
+      g.sold += s;
+      g.revenue += s * (b.unitPrice || 0);
+      if (gone) g.wasted += left; else g.left += left;
+      if (b.unitCost == null) { g.unknown = true; return; }
+      g.made += b.qty * b.unitCost;
+      g.used += s * b.unitCost + (gone ? left * b.unitCost : 0);
+    });
+    var days = Object.keys(byDay).sort().reverse();
+    if (days.length) {
+      h += '<div class="subhead">DAY BY DAY — THE SPLIT ON EACH DAY\'S STOCK</div>';
+      h += '<div class="tw"><table><thead><tr><th>MADE ON</th>' +
+        '<th class="r">SOLD</th><th class="r">LEFT</th><th class="r">TAKEN</th>' +
+        '<th class="r">COST USED</th><th class="r">PROFIT</th>' +
+        '<th class="r">DEE\'S ' + Math.round(S1.d * 100) + '%</th>' +
+        '<th class="r">TRUCK ' + Math.round((1 - S1.d) * 100) + '%</th>' +
+        "</tr></thead><tbody>";
+      days.forEach(function (k) {
+        var g = byDay[k], pr = g.revenue - g.used;
+        h += "<tr><td>" + esc(niceDate(k)) + '</td><td class="r num">' + g.sold + " / " + g.units +
+          '</td><td class="r num">' + g.left + (g.wasted ? " (" + g.wasted + " lost)" : "") +
+          '</td><td class="r num">' + money(g.revenue) +
+          '</td><td class="r num">' + money(g.used) + (g.unknown ? "+" : "") +
+          '</td><td class="r num">' + money(pr) +
+          '</td><td class="r num">' + money(pr * S1.d) +
+          '</td><td class="r num">' + money(pr * (1 - S1.d)) + "</td></tr>";
+      });
+      h += "</tbody></table></div>";
+      h += '<p class="hint" style="margin-top:10px">Each row is the stock made that day. ' +
+        "LEFT is still unsold, so nothing has been counted on it either way — " +
+        "its share lands on the day it sells.</p>";
+    }
     h += '<div class="subhead">BY ITEM</div><div class="tw"><table><thead><tr><th>ITEM</th>' +
-      '<th class="r">OUT</th><th class="r">SOLD</th><th class="r">WASTED</th><th class="r">REVENUE</th><th class="r">COST</th><th class="r">PROFIT</th>' +
+      '<th class="r">OUT</th><th class="r">SOLD</th><th class="r">WASTED</th><th class="r">REVENUE</th><th class="r">COST USED</th><th class="r">PROFIT</th>' +
       "</tr></thead><tbody>";
     S.items.forEach(function (it) {
       var o = 0, s = 0, w = 0, rev = 0, cost = 0, any = false;
       live().forEach(function (b) {
         if (b.itemId !== it.id) return;
         any = true;
-        var sd = sold(b);
+        var sd = sold(b), gone = status(b) === "expired";
         o += b.qty; s += sd; rev += sd * (b.unitPrice || 0);
-        if (b.unitCost != null) cost += b.qty * b.unitCost;
-        if (status(b) === "expired") w += remaining(b);
+        if (b.unitCost != null) {
+          cost += sd * b.unitCost;
+          if (gone) cost += remaining(b) * b.unitCost;
+        }
+        if (gone) w += remaining(b);
       });
       if (!any) return;
       h += "<tr><td>" + esc(it.name) + '</td><td class="r num">' + o + '</td><td class="r num">' + s +
