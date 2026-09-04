@@ -964,7 +964,7 @@
         return;
       }
       if (code === "rate_limited") { toast("Saving too fast — wait a moment.", true); render(); return; }
-      if (code === "too_large") { toast("The board is full. Archive old batches in Setup.", true); render(); return; }
+      if (code === "too_large") { toast("The board is full. Clear old stock in Setup.", true); render(); return; }
       toast("Could not save. Try again.", true);
       render();
     });
@@ -1163,8 +1163,7 @@
     y -= 36;
     pg.rect(L, y - 6, R - L, 20, [0.96, 0.93, 0.87]);
     pg.text("ITEM", L + 8, y, 8, true, GREY);
-    pg.right("BATCHES", 300, y, 8, true, GREY);
-    pg.right("UNITS", 372, y, 8, true, GREY);
+    pg.right("QUANTITY", 372, y, 8, true, GREY);
     pg.right("UNIT COST", 460, y, 8, true, GREY);
     pg.right("TOTAL", R - 8, y, 8, true, GREY);
     y -= 22;
@@ -1176,7 +1175,6 @@
       if (line == null) uncosted = true; else total += line;
       units += b.qty;
       pg.text((it ? it.name : "Deleted item") + (b.voided ? "  (VOIDED)" : ""), L + 8, y, 10.5, false);
-      pg.right(b.batches ? count(b.batches, batchWordOf(b)) : "\u2014", 300, y, 10, false, GREY);
       pg.right(count(b.qty, bPortion(b)), 372, y, 10, false, GREY);
       pg.right(b.unitCost == null ? "-" : money(b.unitCost), 460, y, 10, false);
       pg.right(line == null ? "-" : money(line), R - 8, y, 10, true);
@@ -1232,7 +1230,6 @@
       units += b.qty;
       if (b.unitCost == null) unknown = true; else cost += b.qty * b.unitCost;
       lines.push("- " + (it ? it.name : "Deleted item") + ": " + count(b.qty, bPortion(b)) +
-        (b.batches ? " (" + count(b.batches, batchWordOf(b)) + ")" : "") +
         ", expires " + niceDate(expiresOn(b)));
     });
     var link = appLink();
@@ -1543,7 +1540,10 @@
     var t = todayStr();
     var open = live().filter(function (b) { return remaining(b) > 0; });
     var expired = open.filter(function (b) { return status(b) === "expired"; });
+    var expiredLeft = 0;
     var lastDay = open.filter(function (b) { return status(b) === "today"; });
+    var leftIn = function (l) { return l.reduce(function (a, b) { return a + remaining(b); }, 0); };
+    expiredLeft = leftIn(expired);
     var tomorrow = open.filter(function (b) { return status(b) === "soon"; });
     var onHand = 0, onHandCost = 0, onHandRetail = 0, noCost = 0;
     open.forEach(function (b) {
@@ -1565,17 +1565,17 @@
            noCost ? count(noCost, "portion") + " of it not costed yet" : "ingredients and packaging, already paid", "") +
       stat("WORTH AT MENU", cur() + " " + money(onHandRetail), "if every one of them sells", "good") +
       stat("SOLD TODAY", todaySold, "logged by the truck", "good") +
-      stat("LAST DAY", lastDay.length, "sell these first", lastDay.length ? "warn" : "") +
-      stat("EXPIRED", expired.length, "batches to write off", expired.length ? "bad" : "") +
+      stat("LAST DAY", leftIn(lastDay), "sell these first", lastDay.length ? "warn" : "") +
+      stat("EXPIRED", expiredLeft, "to write off, past their date", expiredLeft ? "bad" : "") +
       "</div>";
 
     if (expired.length) {
-      h += '<div class="banner bad"><b>' + expired.length + " batch" + (expired.length > 1 ? "es have" : " has") +
-        " passed its date.</b> Pull them off the counter and write them off — they still count as cost.</div>";
+      h += '<div class="banner bad"><b>' + count(expiredLeft, "piece") +
+        " past the date.</b> Pull them off the counter and write them off \u2014 they still count as cost.</div>";
     }
     if (lastDay.length) {
-      h += '<div class="banner warn"><b>' + lastDay.length + " batch" + (lastDay.length > 1 ? "es are" : " is") +
-        " on its last day.</b> Anything unsold tonight becomes waste tomorrow.</div>";
+      h += '<div class="banner warn"><b>' + count(leftIn(lastDay), "piece") +
+        " on the last day.</b> Anything unsold tonight becomes waste tomorrow.</div>";
     }
 
     if (open.length || expired.length) {
@@ -1605,7 +1605,7 @@
         if (!byItem[k].soonest || e < byItem[k].soonest) byItem[k].soonest = e;
       });
       h += '<div class="subhead">BY ITEM</div><div class="tw"><table><thead><tr><th>ITEM</th>' +
-        '<th class="r">ON HAND</th><th>ONE BATCH MAKES</th><th class="r">COST</th>' +
+        '<th class="r">ON HAND</th><th class="r">COST</th>' +
         '<th class="r">AT MENU</th><th class="r">ENTRIES</th><th>FIRST TO EXPIRE</th>' +
         "</tr></thead><tbody>";
       Object.keys(byItem).forEach(function (k) {
@@ -1613,10 +1613,8 @@
         var d = daysBetween(t, g.soonest);
         var when = d < 0 ? "expired" : d === 0 ? "today" : d === 1 ? "tomorrow" : niceDate(g.soonest);
         var cls = d <= 0 ? "p-today" : d === 1 ? "p-soon" : "p-fresh";
-        var per = it ? portionsPer(it) : 0;
         h += "<tr><td>" + esc(it ? it.name : "Deleted item") + '</td><td class="r num">' +
-          esc(count(g.n, it ? portionWordOf(it) : "portion")) + "</td><td>" +
-          (per ? esc("1 " + batchWordOf(it) + " \u2192 " + count(per, portionWordOf(it))) : "\u2014") +
+          esc(count(g.n, it ? portionWordOf(it) : "portion")) +
           '</td><td class="r num">' + money(g.cost) + (g.unknown ? "+" : "") +
           '</td><td class="r num">' + money(g.retail) +
           '</td><td class="r num">' + g.batches + '</td><td><span class="pill ' + cls + '">' +
@@ -1625,16 +1623,16 @@
       h += "</tbody></table></div>";
     }
 
-    h += '<div class="subhead">EVERY BATCH</div>';
+    h += '<div class="subhead">EVERYTHING ON THE TRUCK</div>';
     h += sorted.length ? rows(sorted, perm, false) :
-      '<div class="empty">Nothing in stock. Add a batch above to start.</div>';
+      '<div class="empty">Nothing in stock. Add some above to start.</div>';
     if (sorted.length && perm.canSell && !readOnly) {
       h += '<p class="hint" style="margin-top:12px">This is the count, not the till \u2014 ' +
         "log what sells on <b>Orders</b>, where you also say whether it went out of the window " +
         "or through a delivery app.</p>";
     }
-    if (tomorrow.length) h += '<p class="hint" style="margin-top:12px">' + tomorrow.length +
-      " batch" + (tomorrow.length > 1 ? "es expire" : " expires") + " tomorrow.</p>";
+    if (tomorrow.length) h += '<p class="hint" style="margin-top:12px">' +
+      count(leftIn(tomorrow), "piece") + " expire tomorrow.</p>";
     return h;
   }
   function stat(k, v, n, cls) {
@@ -1674,13 +1672,12 @@
         '<span class="unit">' + esc(plural(bPortion(b))) + "</span>" +
         '<span class="pill p-' + st + '">' + STATUS_LABEL[st] + "</span>" +
         (b.voided ? "" : '<span class="pill p-lock">LOCKED</span>') + "</div>";
-      h += '<div class="meta">' + (b.batches ? "<b>" + esc(count(b.batches, batchWordOf(b))) + "</b> \u00b7 " : "") +
-        "Made <b>" + niceDate(b.madeOn) + "</b> · expires <b>" + niceDate(exp) + "</b>" +
+      h += '<div class="meta">' + "Made <b>" + niceDate(b.madeOn) + "</b> · expires <b>" + niceDate(exp) + "</b>" +
         (st === "expired" ? " (" + Math.abs(d) + "d ago)" : d >= 0 && !b.voided && left > 0 ? " (" + (d === 0 ? "today" : d + "d") + ")" : "") +
         " · logged <b>" + esc(stamp(b.at)) + "</b> by <b>" + esc(uname(b.by)) + "</b></div>";
       var fixes = (b.sales || []).filter(function (x) { return x.fix; }).length;
       h += '<div class="meta">Sold <b>' + s + "</b>" + (fixes ? " <span class=\"pill p-soon\">CORRECTED</span>" : "") +
-        " \u00b7 whole batch cost " +
+        " \u00b7 cost of the lot " +
         (b.unitCost == null ? "<b>not set</b>" : "<b>" + cur() + " " + money(b.qty * b.unitCost) + "</b>") +
         " \u00b7 sells at <b>" + cur() + " " + money(b.unitPrice) + "</b> each</div>";
       if (b.unitCost != null && left > 0 && !b.voided) {
@@ -1724,34 +1721,14 @@
      Orders because Dee's side thinks of it as adding stock and the truck
      thinks of it as an order arriving; only one tab renders at a time, so
      the ids never collide. */
-  /* Dee bakes in trays but counts out in slices, so the form takes either.
-     Whatever was actually counted is what gets recorded — a batch entered
-     as pieces keeps no tray count rather than an invented fraction. */
-  function entryMode() {
-    var v = "";
-    try { v = sessionStorage.getItem("deeserts.entry") || ""; } catch (e) {}
-    return v === "batch" ? "batch" : "portion";
-  }
-  function setEntryMode(v) {
-    try { sessionStorage.setItem("deeserts.entry", v); } catch (e) {}
-    render();
-  }
-  function entryBar() {
-    var m = entryMode();
-    return '<div class="chbar"><span class="chlab">COUNTING IN</span><div class="chset">' +
-      '<button class="ch' + (m === "portion" ? " on" : "") + '" type="button" data-entry="portion">Pieces sold</button>' +
-      '<button class="ch' + (m === "batch" ? " on" : "") + '" type="button" data-entry="batch">Whole batches</button>' +
-      "</div></div>";
-  }
-  /* how many sellable portions a line comes to, in either mode */
-  function linePortions(L) {
-    if (!costed(L.it)) return L.n;
-    return entryMode() === "portion" ? L.n : L.n * portionsPer(L.it);
-  }
+  /* Everything is counted in the pieces that get sold — slices, bags,
+     ramekins. The batch each item is baked in is still what the recipe is
+     costed from, but it stays out of the way of whoever is counting. */
+  function linePortions(L) { return L.n; }
 
   function orderForm(perm) {
     if (!perm.canDeliver || readOnly) return "";
-    return '<div class="subhead">ADD STOCK</div><div class="card">' + entryBar() +
+    return '<div class="subhead">ADD STOCK</div><div class="card">' +
       '<div class="field" style="max-width:220px"><label for="d-date">MADE ON</label>' +
       '<input id="d-date" type="date" value="' + todayStr() + '"></div>' +
       '<div id="d-rows"></div>' +
@@ -1826,8 +1803,8 @@
     }
     var editable = perm.canDeliver && !readOnly;
     var h = '<h2 class="sec">Recipes &amp; cost</h2>' +
-      '<p class="sub">Cost is worked out per whole ' + esc(S.items[0] ? (S.items[0].batchWord || "batch") : "batch") +
-      ', from supermarket pack prices — then divided by how many portions it cuts into. ' +
+      '<p class="sub">Cost is worked out for one whole recipe, from supermarket pack prices, ' +
+      'then divided by how many pieces it makes. ' +
       'Numbers update as you type; nothing is saved until you press save.</p>';
     if (!editable) h += '<div class="banner info">Only Dee\'s side and admins can change recipes.</div>';
 
@@ -1857,7 +1834,7 @@
       if (editable) h += '<button class="btn ghost sm" type="button" data-addrow="' + it.id + '">+ ADD INGREDIENT</button>';
 
       h += '<div class="grid2" style="margin-top:16px">' +
-        '<div class="field"><label>PIECES PER ' + esc((it.batchWord || "batch").toUpperCase()) + '</label>' +
+        '<div class="field"><label>PIECES THIS RECIPE MAKES</label>' +
         '<input data-f="yieldPieces" type="number" min="0" step="any" value="' + (it.yieldPieces || 0) + '"' + ro + "></div>" +
         '<div class="field"><label>PIECES IN ONE ' + esc(portionWordOf(it).toUpperCase()) + '</label>' +
         '<input data-f="perPortion" type="number" min="1" step="any" value="' + (it.perPortion || 1) + '"' + ro + "></div>" +
@@ -1865,14 +1842,12 @@
         '<input data-f="packaging" type="number" min="0" step="0.01" value="' + (it.packaging || 0) + '"' + ro + "></div>" +
         '<div class="field"><label>SELLING PRICE (' + cur() + ')</label>' +
         '<input data-f="price" type="number" min="0" step="0.01" value="' + it.price + '"' + ro + "></div>" +
-        '<div class="field"><label>CALL ONE BATCH A…</label>' +
-        '<input data-f="batchWord" value="' + esc(batchWordOf(it)) + '" placeholder="tray, cake"' + ro + "></div>" +
-        '<div class="field"><label>CALL ONE PORTION A…</label>' +
+        '<div class="field"><label>CALL ONE PIECE A…</label>' +
         '<input data-f="portionWord" value="' + esc(portionWordOf(it)) + '" placeholder="slice, bag"' + ro + "></div>" +
         "</div>";
 
       h += '<div class="costcard"><div class="grid">' +
-        cc("batch", "BATCH COST") + cc("yield", "YIELD") + cc("ing", "INGREDIENT / UNIT") +
+        cc("batch", "RECIPE COST") + cc("yield", "YIELD") + cc("ing", "INGREDIENT / UNIT") +
         cc("pack", "PACKAGING") + cc("price", "SELLS AT") + cc("profit", "GROSS PROFIT") + cc("margin", "MARGIN") +
         "</div></div>";
       h += '<p class="hint" style="margin-top:10px" data-spare></p>';
@@ -1895,7 +1870,7 @@
     var S1 = settlement();
     var out = S1.outstanding;
     var owes = out >= 0 ? "SMASH &amp; PASS owes DEE'S TREATS" : "DEE'S TREATS owes SMASH &amp; PASS";
-    var h = '<h2 class="sec">Money</h2><p class="sub">Everything logged so far, using the price and cost locked onto each batch.</p>';
+    var h = '<h2 class="sec">Money</h2><p class="sub">Everything logged so far, using the price and cost locked onto each lot.</p>';
 
     h += '<div class="settle' + (Math.abs(out) < 0.005 ? " clear" : "") + '">' +
       '<div class="k">OUTSTANDING RIGHT NOW</div>' +
@@ -1916,7 +1891,7 @@
         '</span><span class="num">' + cur() + " " + money(Math.abs(out)) + "</span></div>" +
       "</div></div>";
     if (t.unknownCost) h += '<div class="banner warn"><b>' + t.unknownCost +
-      " units have no cost recorded.</b> Profit and waste below are understated until those batches' items have an ingredient cost.</div>";
+      " units have no cost recorded.</b> Profit and waste below are understated until those items have an ingredient cost.</div>";
     var E = earnings();
     h += '<div class="subhead">WHAT EACH PARTNER MAKES</div>';
     h += '<div class="earn">' +
@@ -2089,7 +2064,7 @@
   /* ---------- setup ---------- */
   function viewSetup(perm) {
     if (!perm.canSetup) return '<div class="empty">Setup is admin only.</div>';
-    var h = '<h2 class="sec">Setup</h2><p class="sub">Edit anything here. Changes apply to <em>future</em> orders only — batches already logged keep the price, cost and shelf life they were saved with.</p>';
+    var h = '<h2 class="sec">Setup</h2><p class="sub">Edit anything here. Changes apply to <em>future</em> orders only — anything already logged keeps the price, cost and shelf life it was saved with.</p>';
 
     h += '<div class="subhead">ITEMS</div>';
     S.items.forEach(function (it) {
@@ -2155,8 +2130,8 @@
     }).length;
     h += '<div class="subhead">HOUSEKEEPING</div><div class="card">' +
       "<p style=\"margin:0 0 12px;font-size:14.5px;color:var(--ink-2)\">The whole board is saved inside this page, so it should not grow forever. " +
-      (oldOnes ? "<b>" + oldOnes + " batches</b> expired more than 30 days ago." : "Nothing is older than 30 days yet.") + "</p>" +
-      '<button class="btn danger sm" type="button" data-act="archive"' + (oldOnes ? "" : " disabled") + ">CLEAR BATCHES OVER 30 DAYS OLD</button></div>";
+      (oldOnes ? "<b>" + count(oldOnes, "entry") + "</b> expired more than 30 days ago." : "Nothing is older than 30 days yet.") + "</p>" +
+      '<button class="btn danger sm" type="button" data-act="archive"' + (oldOnes ? "" : " disabled") + ">CLEAR STOCK OVER 30 DAYS OLD</button></div>";
     return h;
   }
 
@@ -2164,9 +2139,6 @@
   function wire() {
     app.querySelectorAll("[data-tab]").forEach(function (b) {
       b.onclick = function () { setTab(b.getAttribute("data-tab")); };
-    });
-    app.querySelectorAll("[data-entry]").forEach(function (b) {
-      b.onclick = function () { setEntryMode(b.getAttribute("data-entry")); };
     });
     app.querySelectorAll("[data-ch]").forEach(function (b) {
       b.onclick = function () { setChannel(b.getAttribute("data-ch")); };
@@ -2190,7 +2162,7 @@
         if (!bt) return;
         var now = sold(bt);
         ask({ title: "Fix the sold count",
-              body: "This batch is recorded as " + now + " sold out of " + bt.qty +
+              body: "This lot is recorded as " + now + " sold out of " + bt.qty +
                 ". Enter what has actually sold — the difference is logged as a correction, " +
                 "the original entries stay on the record.",
               ok: "SAVE CORRECTION",
@@ -2212,7 +2184,7 @@
         if (!bt) return;
         var s0 = sold(bt);
         if (s0 > 0 && !ROLES[me.role].canSetup) {
-          toast("This batch already has " + s0 + " sold. Fix the count to 0 first, or ask an admin.", true);
+          toast("This lot already has " + s0 + " sold. Fix the count to 0 first, or ask an admin.", true);
           return;
         }
         ask({ title: "Void this order?",
@@ -2341,13 +2313,13 @@
         save(function (n) { n.split = { deesPct: pct, basis: basis }; n.currency = c; }, "Split saved.");
       },
       archive: function () {
-        ask({ title: "Clear old batches?",
-              body: "Batches that expired over 30 days ago are deleted permanently, and their totals go with them.",
+        ask({ title: "Clear old stock?",
+              body: "Anything that expired over 30 days ago is deleted permanently, and its totals go with it.",
               ok: "CLEAR", danger: true }).then(function (go) {
           if (!go) return;
           save(function (n) {
             n.batches = n.batches.filter(function (b) { return daysBetween(todayStr(), addDays(b.madeOn, b.shelf)) >= -30; });
-          }, "Old batches cleared.");
+          }, "Old stock cleared.");
         });
       }
     };
@@ -2435,7 +2407,7 @@
     var note = card.querySelector("[data-spare]");
     if (note) note.innerHTML = portions
       ? (spare
-          ? "<b>" + count(spare, "piece") + " left over per batch</b> \u2014 not enough for another " + pw +
+          ? "<b>" + count(spare, "piece") + " left over</b> \u2014 not enough for another " + pw +
             ", so their cost sits on the " + count(portions, pw) + " that are sellable."
           : pieces + " pcs \u00f7 " + per + " divides evenly — nothing wasted.")
       : "";
@@ -2449,7 +2421,7 @@
   function logSale(bid, n) {
     var b = S.batches.filter(function (x) { return x.id === bid; })[0];
     if (!b) return;
-    if (n > remaining(b)) { toast("Only " + remaining(b) + " left in that batch.", true); return; }
+    if (n > remaining(b)) { toast("Only " + count(remaining(b), bPortion(b)) + " left in that lot.", true); return; }
     var ch = curChannel();
     save(function (nx) {
       var t = nx.batches.filter(function (x) { return x.id === bid; })[0];
@@ -2460,11 +2432,8 @@
 
   function itemOptions(sel) {
     return S.items.filter(function (i) { return i.active; }).map(function (i) {
-      var per = portionsPer(i);
-      var tail = per ? " \u2014 1 " + batchWordOf(i) + " = " + count(per, portionWordOf(i))
-                     : (i.note ? " (" + i.note + ")" : "");
       return '<option value="' + i.id + '"' + (i.id === sel ? " selected" : "") + ">" +
-        esc(i.name + tail) + "</option>";
+        esc(i.name + (i.note ? " (" + i.note + ")" : "")) + "</option>";
     }).join("");
   }
 
@@ -2474,8 +2443,7 @@
     var row = document.createElement("div");
     row.className = "drow";
     row.innerHTML = '<select data-d="item">' + itemOptions(null) + "</select>" +
-      '<input data-d="n" type="number" min="1" step="1" value="1" aria-label="How many ' +
-        (entryMode() === "portion" ? "pieces" : "batches") + '">' +
+      '<input data-d="n" type="number" min="1" step="1" value="1" aria-label="How many pieces">' +
       '<span class="w" data-d="word"></span>' +
       '<button class="x" type="button" data-d="rm" aria-label="Remove this line">&times;</button>';
     box.appendChild(row);
@@ -2509,23 +2477,12 @@
     var lines = readDeliveryRows();
     var madeOn = (document.getElementById("d-date") || {}).value || todayStr();
     var only = box.children.length < 2;
-    var mode = entryMode();
     var html = "", total = 0, units = 0, anyUncosted = false, words = {};
     lines.forEach(function (L) {
       var w = L.row.querySelector('[data-d="word"]');
       if (L.it) {
-        var per2 = portionsPer(L.it);
         var pw2 = portionWordOf(L.it);
-        if (mode === "portion") {
-          var whole = per2 && L.n > 0 && L.n % per2 === 0 ? L.n / per2 : 0;
-          w.textContent = (L.n === 1 ? pw2 : plural(pw2)) +
-            (whole ? " = " + count(whole, batchWordOf(L.it)) : "");
-        } else {
-          var bw = L.n === 1 ? batchWordOf(L.it) : plural(batchWordOf(L.it));
-          w.textContent = per2 && L.n > 0
-            ? bw + " \u2192 " + count(L.n * per2, pw2)
-            : bw;
-        }
+        w.textContent = L.n === 1 ? pw2 : plural(pw2);
       }
       L.row.querySelector('[data-d="rm"]').disabled = only;
       if (!L.it || !L.n) return;
@@ -2537,12 +2494,8 @@
       var u = linePortions(L), c = u * unitCostOf(L.it);
       units += u; total += c;
       words[portionWordOf(L.it)] = 1;
-      html += '<div class="dline"><span>' +
-        (mode === "portion"
-          ? "<b>" + esc(count(u, portionWordOf(L.it))) + "</b> " + esc(L.it.name)
-          : esc(count(L.n, batchWordOf(L.it))) + " " + esc(L.it.name) +
-            " = <b>" + esc(count(u, portionWordOf(L.it))) + "</b>") +
-        ", expires " + niceDate(addDays(madeOn, L.it.shelf)) +
+      html += '<div class="dline"><span><b>' + esc(count(u, portionWordOf(L.it))) + "</b> " +
+        esc(L.it.name) + ", expires " + niceDate(addDays(madeOn, L.it.shelf)) +
         "</span><span class=\"num\">" + cur() + " " + money(c) + "</span></div>";
     });
     var wk = Object.keys(words);
@@ -2559,10 +2512,7 @@
     var summary = [], uncosted = [];
     lines.forEach(function (L) {
       if (costed(L.it)) {
-        summary.push(entryMode() === "portion"
-          ? count(linePortions(L), portionWordOf(L.it)) + " " + L.it.name
-          : count(L.n, batchWordOf(L.it)) + " " + L.it.name +
-            " = " + count(linePortions(L), portionWordOf(L.it)));
+        summary.push(count(linePortions(L), portionWordOf(L.it)) + " " + L.it.name);
       } else {
         summary.push(L.n + " " + L.it.name + " (no cost)");
         uncosted.push(L.it.name);
@@ -2580,13 +2530,12 @@
     var at = new Date().toISOString();
     save(function (nx) {
       var drop = id("d");
-      var byPortion = entryMode() === "portion";
       lines.forEach(function (L) {
         nx.batches.push({
           id: id("b"), drop: drop, itemId: L.it.id,
           qty: linePortions(L),
           unitCost: unitCostOf(L.it), unitPrice: L.it.price,
-          batches: byPortion ? null : L.n,
+          batches: null,
           batchWord: batchWordOf(L.it), portionWord: portionWordOf(L.it),
           shelf: L.it.shelf, madeOn: madeOn,
           by: me.id, at: at, sales: []
@@ -2615,14 +2564,13 @@
     var per = val(card.querySelector('[data-f="perPortion"]'));
     var pack = val(card.querySelector('[data-f="packaging"]'));
     var price = val(card.querySelector('[data-f="price"]'));
-    var word = card.querySelector('[data-f="batchWord"]').value.trim() || "batch";
     var pword = card.querySelector('[data-f="portionWord"]').value.trim() || "portion";
-    if (per <= 0) { toast("Pieces per portion must be above zero.", true); return; }
-    if (pieces > 0 && per > pieces) { toast("A portion cannot be more pieces than the whole batch makes.", true); return; }
+    if (per <= 0) { toast("Pieces in one of them must be above zero.", true); return; }
+    if (pieces > 0 && per > pieces) { toast("One piece cannot take more than the whole recipe makes.", true); return; }
     save(function (nx) {
       var t = nx.items.filter(function (i) { return i.id === iid; })[0];
       t.recipe = rows; t.yieldPieces = pieces; t.perPortion = per;
-      t.packaging = pack; t.price = price; t.batchWord = word; t.portionWord = pword;
+      t.packaging = pack; t.price = price; t.portionWord = pword;
     }, "Recipe saved.");
   }
 
