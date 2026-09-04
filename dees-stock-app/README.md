@@ -114,8 +114,10 @@ The Money tab opens with the outstanding figure, the four lines it is built from
 truck's share of it), and a payments log. `RECORD A PAYMENT` (Dee's side / admin) reduces the
 balance; payments live in `state.payments`.
 
-Baking paper is an ingredient line at AED 1.15 per batch on cheesecake, brownies, lazy cake and
-pavlova — not the crème brûlée, which is baked in ramekins.
+Baking sheets are a recipe line at AED 1.00 per batch on cheesecake, brownies, lazy cake and
+pavlova — not the crème brûlée, which is baked in ramekins. They sit in the recipe rather than
+the `packaging` field because packaging is charged **per portion** while a sheet lines the tin
+**once per batch**.
 
 ## Corrections
 Nothing is edited or deleted — mistakes are reversed on the record:
