@@ -655,10 +655,71 @@
       "pin": "f16e34225021f39639cfa33ca88dd9778940f7c88b25d34cc2a0cff2d774c427"
     }
   ],
-  "batches": [],
-  "seq": 1,
+  "batches": [
+    {
+      "id": "b3",
+      "drop": "d2",
+      "itemId": "i2",
+      "qty": 21,
+      "unitCost": 7.848255208333334,
+      "unitPrice": 26,
+      "batches": null,
+      "batchWord": "cake",
+      "portionWord": "slice",
+      "shelf": 2,
+      "madeOn": "2026-09-04",
+      "by": "u1",
+      "at": "2026-09-04T13:45:46.886Z",
+      "sales": [
+        {
+          "qty": 16,
+          "by": "u1",
+          "at": "2026-09-04T13:47:32.234Z",
+          "on": "2026-09-04",
+          "ch": "Window"
+        }
+      ]
+    },
+    {
+      "id": "b4",
+      "drop": "d2",
+      "itemId": "i4",
+      "qty": 10,
+      "unitCost": 6.20384100877193,
+      "unitPrice": 26,
+      "batches": null,
+      "batchWord": "tray",
+      "portionWord": "bag",
+      "shelf": 2,
+      "madeOn": "2026-09-04",
+      "by": "u1",
+      "at": "2026-09-04T13:45:46.886Z",
+      "sales": []
+    },
+    {
+      "id": "b6",
+      "drop": "d5",
+      "itemId": "i2",
+      "qty": 16,
+      "unitCost": 7.848255208333334,
+      "unitPrice": 26,
+      "batches": null,
+      "batchWord": "cake",
+      "portionWord": "slice",
+      "shelf": 2,
+      "madeOn": "2026-09-04",
+      "by": "u1",
+      "at": "2026-09-04T13:46:41.539Z",
+      "sales": [],
+      "voided": true,
+      "voidedBy": "u1",
+      "voidReason": "Twice",
+      "voidedAt": "2026-09-04T13:47:21.909Z"
+    }
+  ],
+  "seq": 6,
   "defaultPins": false,
-  "updatedAt": "2026-09-04T13:45:00.000Z",
+  "updatedAt": "2026-09-04T13:47:32.234Z",
   "payments": []
 }
 </script>
@@ -793,12 +854,21 @@
   }
 
   /* ============ batch maths ============ */
-  function sold(b) {
-    var t = 0;
-    for (var i = 0; i < (b.sales || []).length; i++) t += b.sales[i].qty;
+  /* Every line in b.sales is one movement off the lot. A sale earns money;
+     a giveaway and a binned piece do not, but all three take stock away.
+     Anything logged before giveaways existed has no kind, and is a sale. */
+  function kindOf(s) { return s.kind || "sale"; }
+  function tally(b, kind) {
+    var t = 0, l = b.sales || [];
+    for (var i = 0; i < l.length; i++) if (!kind || kindOf(l[i]) === kind) t += l[i].qty;
     return t;
   }
-  function remaining(b) { return b.qty - sold(b); }
+  function sold(b) { return tally(b, "sale"); }
+  function given(b) { return tally(b, "gift"); }
+  function binned(b) { return tally(b, "waste"); }
+  function movedOut(b) { return tally(b, null); }
+  function remaining(b) { return b.qty - movedOut(b); }
+  var KIND_LABEL = { sale: "SOLD", gift: "GIVEN", waste: "BINNED" };
   function expiresOn(b) { return addDays(b.madeOn, b.shelf); }
   function status(b) {
     if (b.voided) return "void";
@@ -812,7 +882,7 @@
   }
   var STATUS_LABEL = {
     fresh: "IN DATE", soon: "EXPIRES TOMORROW", today: "LAST DAY",
-    expired: "EXPIRED", done: "SOLD OUT", "void": "VOIDED"
+    expired: "EXPIRED", done: "NONE LEFT", "void": "VOIDED"
   };
   function live() {
     return S.batches.filter(function (b) { return !b.voided; });
@@ -890,23 +960,30 @@
      takings. The rest is inventory and settles when it sells. */
   function totals(days) {
     var cutoff = days ? addDays(todayStr(), -days + 1) : null;
-    var t = { spent: 0, costSold: 0, costWaste: 0, costStock: 0, revenue: 0,
-              unitsOut: 0, unitsSold: 0, unitsWasted: 0, unitsLeft: 0, unknownCost: 0 };
+    var t = { spent: 0, costSold: 0, costGift: 0, costWaste: 0, costStock: 0, revenue: 0,
+              unitsOut: 0, unitsSold: 0, unitsGiven: 0, unitsWasted: 0, unitsLeft: 0, unknownCost: 0 };
     live().forEach(function (b) {
       if (cutoff && b.madeOn < cutoff) return;
-      var s = sold(b), left = remaining(b), gone = status(b) === "expired";
+      var s = sold(b), g = given(b), w = binned(b);
+      var left = remaining(b), gone = status(b) === "expired";
       t.unitsOut += b.qty;
       t.unitsSold += s;
       t.revenue += s * (b.unitPrice || 0);
-      if (gone) t.unitsWasted += left; else t.unitsLeft += left;
+      t.unitsGiven += g;
+      t.unitsWasted += w + (gone ? left : 0);
+      if (!gone) t.unitsLeft += left;
       if (b.unitCost == null) { t.unknownCost += b.qty; return; }
-      t.spent += b.qty * b.unitCost;
-      t.costSold += s * b.unitCost;
-      if (gone) t.costWaste += left * b.unitCost;
-      else t.costStock += left * b.unitCost;
+      var c = b.unitCost;
+      t.spent += b.qty * c;
+      t.costSold += s * c;
+      t.costGift += g * c;
+      t.costWaste += w * c + (gone ? left * c : 0);
+      if (!gone) t.costStock += left * c;
     });
     t.waste = t.costWaste;
-    t.cost = t.costSold + t.costWaste;    /* what has actually been used up */
+    /* sold, given away and binned have all been used up; only stock still
+       in date is money that has not been spent on anything yet */
+    t.cost = t.costSold + t.costGift + t.costWaste;
     t.profit = t.revenue - t.cost;
     return t;
   }
@@ -928,7 +1005,8 @@
     var owed = costShare + revShare;
     var paid = paidSoFar();
     return { cost: t.cost, spent: t.spent, stock: t.costStock, waste: t.costWaste,
-             stockUnits: t.unitsLeft, revenue: t.revenue, profit: t.profit, d: d,
+             gift: t.costGift, stockUnits: t.unitsLeft,
+             revenue: t.revenue, profit: t.profit, d: d,
              costShare: costShare, revShare: revShare, owed: owed,
              paid: paid, outstanding: owed - paid, unknownCost: t.unknownCost };
   }
@@ -1296,7 +1374,7 @@
     var today = todayStr(), soldToday = {}, soldTotal = 0;
     live().forEach(function (b) {
       (b.sales || []).forEach(function (s) {
-        if (saleOn(s) !== today) return;
+        if (kindOf(s) !== "sale" || saleOn(s) !== today) return;
         var k = s.ch || channels()[0];
         soldToday[k] = (soldToday[k] || 0) + s.qty;
         soldTotal += s.qty;
@@ -1594,7 +1672,9 @@
     });
     var todaySold = 0;
     live().forEach(function (b) {
-      (b.sales || []).forEach(function (s) { if (saleOn(s) === t) todaySold += s.qty; });
+      (b.sales || []).forEach(function (s) {
+        if (kindOf(s) === "sale" && saleOn(s) === t) todaySold += s.qty;
+      });
     });
 
     var h = '<h2 class="sec">In stock</h2><p class="sub">' + niceDate(t) +
@@ -1716,7 +1796,11 @@
         (st === "expired" ? " (" + Math.abs(d) + "d ago)" : d >= 0 && !b.voided && left > 0 ? " (" + (d === 0 ? "today" : d + "d") + ")" : "") +
         " · logged <b>" + esc(stamp(b.at)) + "</b> by <b>" + esc(uname(b.by)) + "</b></div>";
       var fixes = (b.sales || []).filter(function (x) { return x.fix; }).length;
-      h += '<div class="meta">Sold <b>' + s + "</b>" + (fixes ? " <span class=\"pill p-soon\">CORRECTED</span>" : "") +
+      var gv = given(b), bn = binned(b);
+      h += '<div class="meta">Sold <b>' + s + "</b>" +
+        (gv ? " \u00b7 given away <b>" + gv + "</b>" : "") +
+        (bn ? " \u00b7 binned <b>" + bn + "</b>" : "") +
+        (fixes ? " <span class=\"pill p-soon\">CORRECTED</span>" : "") +
         " \u00b7 cost of the lot " +
         (b.unitCost == null ? "<b>not set</b>" : "<b>" + cur() + " " + money(b.qty * b.unitCost) + "</b>") +
         " \u00b7 sells at <b>" + cur() + " " + money(b.unitPrice) + "</b> each</div>";
@@ -1727,13 +1811,15 @@
       }
       if (b.voided) h += '<div class="meta">Voided by <b>' + esc(uname(b.voidedBy)) + "</b>" +
         (b.voidReason ? ": " + esc(b.voidReason) : "") + "</div>";
-      var pct = b.qty ? Math.round((s / b.qty) * 100) : 0;
+      var pct = b.qty ? Math.round((movedOut(b) / b.qty) * 100) : 0;
       h += '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>';
       var acts = "";
       if (withSell && !b.voided && left > 0 && perm.canSell && !readOnly) {
         acts += '<button class="btn pri sm" type="button" data-sell="' + b.id + '" data-n="1">SOLD 1</button>' +
           '<button class="btn dark sm" type="button" data-sell="' + b.id + '" data-n="2">SOLD 2</button>' +
-          '<button class="btn ghost sm" type="button" data-sellmany="' + b.id + '">OTHER…</button>';
+          '<button class="btn ghost sm" type="button" data-sellmany="' + b.id + '">OTHER…</button>' +
+          '<button class="btn ghost sm" type="button" data-gift="' + b.id + '">GAVE AWAY</button>' +
+          '<button class="btn danger sm" type="button" data-waste="' + b.id + '">BINNED</button>';
       }
       if (withSell && !b.voided && s > 0 && perm.canSell && !readOnly) {
         acts += '<button class="btn ghost sm" type="button" data-fix="' + b.id + '">FIX COUNT</button>';
@@ -1818,20 +1904,22 @@
     var log = [];
     live().forEach(function (b) {
       (b.sales || []).forEach(function (s) {
-        log.push({ at: s.at, on: saleOn(s), qty: s.qty, by: s.by, fix: s.fix,
+        log.push({ at: s.at, on: saleOn(s), qty: s.qty, by: s.by, fix: s.fix, kind: kindOf(s),
                    ch: s.ch || channels()[0], item: (item(b.itemId) || {}).name || "\u2014" });
       });
     });
     log.sort(function (a, b) { return a.at < b.at ? 1 : -1; });
     if (log.length) {
-      sell += '<div class="subhead">SALES LOGGED (' + log.length + ")</div><div class=\"tw\"><table><thead><tr>" +
-        "<th>SOLD ON</th><th>ITEM</th><th class=\"r\">QTY</th><th>SOLD FROM</th><th>BY</th></tr></thead><tbody>";
+      sell += '<div class="subhead">EVERYTHING LOGGED (' + log.length + ")</div><div class=\"tw\"><table><thead><tr>" +
+        "<th>ON</th><th>ITEM</th><th class=\"r\">QTY</th><th>WHAT</th><th>WHERE</th><th>BY</th></tr></thead><tbody>";
       log.sort(function (a, b) { return a.on < b.on ? 1 : a.on > b.on ? -1 : (a.at < b.at ? 1 : -1); });
       log.slice(0, 25).forEach(function (r) {
         sell += "<tr><td>" + esc(niceDate(r.on)) +
           "</td><td>" + esc(r.item) + (r.fix ? ' <span class="pill p-soon">FIX</span>' : "") +
           '</td><td class="r num">' + (r.qty > 0 ? "+" + r.qty : r.qty) + "</td><td>" +
-          esc(r.ch) + "</td><td>" + esc(uname(r.by)) + "</td></tr>";
+          '<span class="pill ' + (r.kind === "waste" ? "p-today" : r.kind === "gift" ? "p-soon" : "p-fresh") +
+          '">' + KIND_LABEL[r.kind] + "</span></td><td>" +
+          (r.kind === "sale" ? esc(r.ch) : "\u2014") + "</td><td>" + esc(uname(r.by)) + "</td></tr>";
       });
       sell += "</tbody></table></div>";
       if (log.length > 25) sell += '<p class="hint" style="margin-top:10px">Showing the last 25.</p>';
@@ -1931,7 +2019,8 @@
       '<div class="big num">' + cur() + " " + money(Math.abs(out)) + "</div>" +
       '<div class="who2">' + (Math.abs(out) < 0.005 ? "All square — nothing owed either way." : owes) + "</div>";
     h += '<div class="calc">' +
-      '<div class="crow"><span>Ingredients in what has sold' + (S1.waste ? " (and what spoiled)" : "") +
+      '<div class="crow"><span>Ingredients in everything used up' +
+        (S1.gift || S1.waste ? " \u2014 sold, given away, binned" : "") +
         '</span><span class="num">' + cur() + " " + money(S1.cost) + "</span></div>" +
       '<div class="crow"><span>Truck\'s ' + Math.round((1 - S1.d) * 100) + '% share of that</span><span class="num">+ ' +
         cur() + " " + money(S1.costShare) + "</span></div>" +
@@ -1956,7 +2045,7 @@
     h += '<div class="earn">' +
       ecard("d", "DEE'S TREATS", E.deesNow,
         Math.round(S1.d * 100) + "% of the profit made so far",
-        [[S1.waste ? "Ingredients used up, sold and spoiled" : "Ingredients in what has sold", -S1.cost],
+        [[S1.gift || S1.waste ? "Ingredients used up" : "Ingredients in what has sold", -S1.cost],
          ["Comes back from the truck", S1.owed]],
         "Dee's makes",
         S1.paid ? cur() + " " + money(S1.paid) + " already received · " + cur() + " " +
@@ -1983,7 +2072,10 @@
       stat("REVENUE", cur() + " " + money(t.revenue), count(t.unitsSold, "piece") + " sold", "good") +
       stat("COST OF SALES", cur() + " " + money(t.costSold), "ingredients in the " + t.unitsSold + " sold", "") +
       stat("PROFIT", cur() + " " + money(t.profit), "on what has actually sold", t.profit >= 0 ? "good" : "bad") +
-      stat("WASTE", cur() + " " + money(t.waste), count(t.unitsWasted, "piece") + " expired unsold", t.waste > 0 ? "bad" : "") +
+      stat("GIVEN AWAY", cur() + " " + money(t.costGift),
+           count(t.unitsGiven, "piece") + " out for free", t.costGift > 0.005 ? "warn" : "") +
+      stat("WASTE", cur() + " " + money(t.waste),
+           count(t.unitsWasted, "piece") + " binned or expired", t.waste > 0 ? "bad" : "") +
       stat("STOCK ON THE TRUCK", cur() + " " + money(t.costStock),
            count(t.unitsLeft, "piece") + " not sold yet", "") +
       "</div>";
@@ -2060,24 +2152,28 @@
     /* ---- the investment: what Dee's has put in, and where it is now ----
        Money, not ingredients. The truck sees every figure here; the names
        of what went into the mixing bowl stay on the Recipes tab. */
-    var INV = { spent: 0, sold: 0, stock: 0, waste: 0, pieces: 0, unknown: 0 };
+    var INV = { spent: 0, sold: 0, gift: 0, stock: 0, waste: 0, pieces: 0, unknown: 0 };
     var invItems = [];
     S.items.forEach(function (it) {
       var g = { name: it.name, w: portionWordOf(it), pieces: 0, spent: 0,
-                sold: 0, stock: 0, waste: 0, each: null, any: false };
+                sold: 0, gift: 0, stock: 0, waste: 0, each: null, any: false };
       live().forEach(function (b) {
         if (b.itemId !== it.id) return;
         g.any = true;
-        var s = sold(b), left = remaining(b), gone = status(b) === "expired";
+        var s = sold(b), gv = given(b), bn = binned(b);
+        var left = remaining(b), gone = status(b) === "expired";
         g.pieces += b.qty;
         if (b.unitCost == null) { INV.unknown += b.qty; return; }
-        if (g.each == null) g.each = b.unitCost;
-        g.spent += b.qty * b.unitCost;
-        g.sold += s * b.unitCost;
-        if (gone) g.waste += left * b.unitCost; else g.stock += left * b.unitCost;
+        var c = b.unitCost;
+        if (g.each == null) g.each = c;
+        g.spent += b.qty * c;
+        g.sold += s * c;
+        g.gift += gv * c;
+        g.waste += bn * c + (gone ? left * c : 0);
+        if (!gone) g.stock += left * c;
       });
       if (!g.any) return;
-      INV.spent += g.spent; INV.sold += g.sold;
+      INV.spent += g.spent; INV.sold += g.sold; INV.gift += g.gift;
       INV.stock += g.stock; INV.waste += g.waste; INV.pieces += g.pieces;
       invItems.push(g);
     });
@@ -2090,31 +2186,35 @@
              "the part that has earned", "good") +
         stat("STILL IN STOCK", cur() + " " + money(INV.stock),
              "on the truck, not sold yet", "") +
+        stat("GIVEN AWAY", cur() + " " + money(INV.gift),
+             "handed out for nothing", INV.gift > 0.005 ? "warn" : "") +
         stat("LOST TO WASTE", cur() + " " + money(INV.waste),
-             "expired before it sold", INV.waste > 0.005 ? "bad" : "") +
+             "binned or past its date", INV.waste > 0.005 ? "bad" : "") +
         "</div>";
       h += '<div class="tw"><table><thead><tr><th>ITEM</th>' +
         '<th class="r">PIECES</th><th class="r">COST EACH</th><th class="r">PUT IN</th>' +
-        '<th class="r">SOLD</th><th class="r">IN STOCK</th><th class="r">WASTE</th>' +
+        '<th class="r">SOLD</th><th class="r">GIVEN</th><th class="r">IN STOCK</th><th class="r">WASTE</th>' +
         "</tr></thead><tbody>";
       invItems.forEach(function (g) {
         h += "<tr><td>" + esc(g.name) + '</td><td class="r num">' + esc(count(g.pieces, g.w)) +
           '</td><td class="r num">' + (g.each == null ? "—" : money(g.each)) +
           '</td><td class="r num">' + money(g.spent) +
           '</td><td class="r num">' + money(g.sold) +
+          '</td><td class="r num">' + money(g.gift) +
           '</td><td class="r num">' + money(g.stock) +
           '</td><td class="r num">' + money(g.waste) + "</td></tr>";
       });
       h += '<tr><td><b>Total</b></td><td class="r num"><b>' + INV.pieces +
         '</b></td><td class="r num">—</td><td class="r num"><b>' + money(INV.spent) +
         '</b></td><td class="r num"><b>' + money(INV.sold) +
+        '</b></td><td class="r num"><b>' + money(INV.gift) +
         '</b></td><td class="r num"><b>' + money(INV.stock) +
         '</b></td><td class="r num"><b>' + money(INV.waste) + "</b></td></tr>";
       h += "</tbody></table></div>";
       h += '<p class="hint" style="margin-top:10px">Dee\'s pays this up front. ' +
         "SOLD is the part that has earned its keep, and the truck settles half of it. " +
-        "IN STOCK is still Dee’s money sitting on the truck — it settles the day it sells. " +
-        "WASTE is gone, and the two sides carry half of it each.</p>";
+        "IN STOCK is still Dee\u2019s money sitting on the truck \u2014 it settles the day it sells. " +
+        "GIVEN and WASTE brought nothing in, so both sides carry half of each.</p>";
       if (INV.unknown) {
         h += '<p class="hint" style="margin-top:6px">' + INV.unknown +
           " pieces went out before their item had a recipe costed, so they are missing from these totals.</p>";
@@ -2149,16 +2249,20 @@
     var byDay = {};
     live().forEach(function (b) {
       var k = b.madeOn;
-      if (!byDay[k]) byDay[k] = { made: 0, units: 0, sold: 0, left: 0, wasted: 0,
+      if (!byDay[k]) byDay[k] = { made: 0, units: 0, sold: 0, gift: 0, left: 0, wasted: 0,
                                   revenue: 0, used: 0, unknown: false };
-      var g = byDay[k], s = sold(b), left = remaining(b), gone = status(b) === "expired";
+      var g = byDay[k], s = sold(b), gv = given(b), bn = binned(b);
+      var left = remaining(b), gone = status(b) === "expired";
       g.units += b.qty;
       g.sold += s;
+      g.gift += gv;
+      g.wasted += bn + (gone ? left : 0);
+      if (!gone) g.left += left;
       g.revenue += s * (b.unitPrice || 0);
-      if (gone) g.wasted += left; else g.left += left;
       if (b.unitCost == null) { g.unknown = true; return; }
-      g.made += b.qty * b.unitCost;
-      g.used += s * b.unitCost + (gone ? left * b.unitCost : 0);
+      var c2 = b.unitCost;
+      g.made += b.qty * c2;
+      g.used += (s + gv + bn) * c2 + (gone ? left * c2 : 0);
     });
     var days = Object.keys(byDay).sort().reverse();
     if (days.length) {
@@ -2172,7 +2276,9 @@
       days.forEach(function (k) {
         var g = byDay[k], pr = g.revenue - g.used;
         h += "<tr><td>" + esc(niceDate(k)) + '</td><td class="r num">' + g.sold + " / " + g.units +
-          '</td><td class="r num">' + g.left + (g.wasted ? " (" + g.wasted + " lost)" : "") +
+          '</td><td class="r num">' + g.left +
+          (g.gift ? " \u00b7 " + g.gift + " free" : "") +
+          (g.wasted ? " \u00b7 " + g.wasted + " lost" : "") +
           '</td><td class="r num">' + money(g.revenue) +
           '</td><td class="r num">' + money(g.used) + (g.unknown ? "+" : "") +
           '</td><td class="r num">' + money(pr) +
@@ -2185,24 +2291,21 @@
         "its share lands on the day it sells.</p>";
     }
     h += '<div class="subhead">BY ITEM</div><div class="tw"><table><thead><tr><th>ITEM</th>' +
-      '<th class="r">OUT</th><th class="r">SOLD</th><th class="r">WASTED</th><th class="r">REVENUE</th><th class="r">COST USED</th><th class="r">PROFIT</th>' +
+      '<th class="r">OUT</th><th class="r">SOLD</th><th class="r">GIVEN</th><th class="r">WASTED</th><th class="r">REVENUE</th><th class="r">COST USED</th><th class="r">PROFIT</th>' +
       "</tr></thead><tbody>";
     S.items.forEach(function (it) {
-      var o = 0, s = 0, w = 0, rev = 0, cost = 0, any = false;
+      var o = 0, s = 0, w = 0, gf = 0, rev = 0, cost = 0, any = false;
       live().forEach(function (b) {
         if (b.itemId !== it.id) return;
         any = true;
-        var sd = sold(b), gone = status(b) === "expired";
-        o += b.qty; s += sd; rev += sd * (b.unitPrice || 0);
-        if (b.unitCost != null) {
-          cost += sd * b.unitCost;
-          if (gone) cost += remaining(b) * b.unitCost;
-        }
-        if (gone) w += remaining(b);
+        var sd = sold(b), gv = given(b), bn = binned(b), gone = status(b) === "expired";
+        o += b.qty; s += sd; gf += gv; rev += sd * (b.unitPrice || 0);
+        if (b.unitCost != null) cost += (sd + gv + bn) * b.unitCost + (gone ? remaining(b) * b.unitCost : 0);
+        w += bn + (gone ? remaining(b) : 0);
       });
       if (!any) return;
       h += "<tr><td>" + esc(it.name) + '</td><td class="r num">' + o + '</td><td class="r num">' + s +
-        '</td><td class="r num">' + w + '</td><td class="r num">' + money(rev) +
+        '</td><td class="r num">' + gf + '</td><td class="r num">' + w + '</td><td class="r num">' + money(rev) +
         '</td><td class="r num">' + money(cost) + '</td><td class="r num">' + money(rev - cost) + "</td></tr>";
     });
     h += "</tbody></table></div>";
@@ -2344,15 +2447,28 @@
     app.querySelectorAll("[data-sell]").forEach(function (b) {
       b.onclick = function () { logSale(b.getAttribute("data-sell"), +b.getAttribute("data-n")); };
     });
-    app.querySelectorAll("[data-sellmany]").forEach(function (b) {
-      b.onclick = function () {
-        var bid = b.getAttribute("data-sellmany");
-        var bt = S.batches.filter(function (x) { return x.id === bid; })[0];
-        ask({ title: "How many sold?", ok: "LOG SALE",
-              input: { label: plural(bPortion(bt)).toUpperCase() + " (UP TO " + remaining(bt) + ")",
-                       value: 1, min: 1, max: remaining(bt) } })
-          .then(function (n) { if (n != null) logSale(bid, n); });
-      };
+    var MOVE = {
+      sellmany: { kind: "sale",  title: "How many sold?",       ok: "LOG SALE",  body: "" },
+      gift:     { kind: "gift",  title: "How many given away?", ok: "LOG IT",
+                  body: "Samples, staff, a comp for a regular. They cost the same to make and " +
+                        "bring nothing in, so both sides carry half of it." },
+      waste:    { kind: "waste", title: "How many written off?", ok: "WRITE OFF", danger: true,
+                  body: "Dropped, spoiled, or left over past the date. Gone for good, and both " +
+                        "sides carry half the cost." }
+    };
+    Object.keys(MOVE).forEach(function (act) {
+      app.querySelectorAll("[data-" + act + "]").forEach(function (b) {
+        b.onclick = function () {
+          var bid = b.getAttribute("data-" + act);
+          var bt = S.batches.filter(function (x) { return x.id === bid; })[0];
+          if (!bt) return;
+          var m = MOVE[act];
+          ask({ title: m.title, ok: m.ok, body: m.body || undefined, danger: m.danger,
+                input: { label: plural(bPortion(bt)).toUpperCase() + " (UP TO " + remaining(bt) + ")",
+                         value: 1, min: 1, max: remaining(bt) } })
+            .then(function (n) { if (n != null) logSale(bid, n, m.kind); });
+        };
+      });
     });
     app.querySelectorAll("[data-fix]").forEach(function (b) {
       b.onclick = function () {
@@ -2360,11 +2476,11 @@
         if (!bt) return;
         var now = sold(bt);
         ask({ title: "Fix the sold count",
-              body: "This lot is recorded as " + now + " sold out of " + bt.qty +
+              body: "This lot is recorded as " + now + " sold, with " + remaining(bt) + " still on it" +
                 ". Enter what has actually sold — the difference is logged as a correction, " +
                 "the original entries stay on the record.",
               ok: "SAVE CORRECTION",
-              input: { label: "ACTUALLY SOLD", value: now, min: 0, max: bt.qty } })
+              input: { label: "ACTUALLY SOLD", value: now, min: 0, max: now + remaining(bt) } })
           .then(function (target) {
             if (target == null || target === now) return;
             save(function (nx) {
@@ -2380,13 +2496,13 @@
       b.onclick = function () {
         var bt = S.batches.filter(function (x) { return x.id === b.getAttribute("data-void"); })[0];
         if (!bt) return;
-        var s0 = sold(bt);
+        var s0 = movedOut(bt);
         if (s0 > 0 && !ROLES[me.role].canSetup) {
-          toast("This lot already has " + s0 + " sold. Fix the count to 0 first, or ask an admin.", true);
+          toast("This lot already has " + s0 + " logged against it. Ask an admin.", true);
           return;
         }
         ask({ title: "Void this order?",
-              body: (s0 > 0 ? "Warning: " + s0 + " already recorded as sold — those go too.\n\n" : "") +
+              body: (s0 > 0 ? "Warning: " + s0 + " already logged against it — those go too.\n\n" : "") +
                 "It stays on the record marked voided, and drops out of stock, cost and the split.",
               ok: "VOID IT", danger: true,
               input: { type: "text", label: "REASON", placeholder: "logged twice, wrong item…" } })
@@ -2616,16 +2732,23 @@
     set("margin", margin == null ? "—" : (Math.round(margin * 10) / 10) + "%", margin == null ? "" : margin >= 0 ? "good" : "bad");
   }
 
-  function logSale(bid, n) {
+  function logSale(bid, n, kind) {
     var b = S.batches.filter(function (x) { return x.id === bid; })[0];
     if (!b) return;
     if (n > remaining(b)) { toast("Only " + count(remaining(b), bPortion(b)) + " left in that lot.", true); return; }
+    kind = kind || "sale";
     var ch = curChannel(), on = saleDate();
+    var word = count(n, bPortion(b));
+    var msg = kind === "gift" ? word + " given away on " + niceDate(on) + " — logged."
+            : kind === "waste" ? word + " written off on " + niceDate(on) + " — logged."
+            : word + " sold at " + ch.toLowerCase() + " on " + niceDate(on) + " — logged.";
     save(function (nx) {
       var t = nx.batches.filter(function (x) { return x.id === bid; })[0];
       t.sales = t.sales || [];
-      t.sales.push({ qty: n, by: me.id, at: new Date().toISOString(), on: on, ch: ch });
-    }, n + " sold at " + ch.toLowerCase() + " on " + niceDate(on) + " — logged.");
+      var entry = { qty: n, by: me.id, at: new Date().toISOString(), on: on };
+      if (kind === "sale") entry.ch = ch; else entry.kind = kind;
+      t.sales.push(entry);
+    }, msg);
   }
 
   function itemOptions(sel) {
