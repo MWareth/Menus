@@ -1,0 +1,2496 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#4A2C2A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Dee's Stock">
+<title>Dee's Stock</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8D%AE%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Cairo:wght@400;600;700;900&display=swap">
+<style>
+:root{
+    --brown:#4A2C2A; --cream:#FAF3E7; --gold:#C99334; --char:#1C1917;
+    --butter:#FFD21C; --ketchup:#F02820; --paper:#FFF9EE;
+    --ok:#2F7D4F; --warn:#C2650B; --bad:#C0271C;
+    --ink:#2B1E1A; --ink-2:#6B584D; --ink-3:#9A8A7C;
+    --line:#E6DBC8; --card:#FFFFFF; --shade:#F5EDDD;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--cream);color:var(--ink);
+    font-family:Cairo,'Segoe UI',system-ui,sans-serif;font-size:16px;line-height:1.55}
+  img{max-width:100%}
+  [hidden]{display:none!important}
+  button{font:inherit;cursor:pointer}
+  input,select{font:inherit;color:inherit}
+  .num{font-variant-numeric:tabular-nums}
+  .disp{font-family:'Baloo 2',Cairo,sans-serif;font-weight:800}
+
+  .wrap{max-width:880px;margin:0 auto;padding:0 16px}
+
+  /* ---------- top bar ---------- */
+  .bar{background:var(--paper);border-bottom:1px solid var(--line);padding:22px 0 16px}
+  .bar .wrap{display:flex;flex-direction:column;align-items:center;gap:9px;text-align:center}
+  .logo{width:126px;height:51px;flex-shrink:0;
+    background:url(data:image/png;base64,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) center/contain no-repeat}
+  .brandline{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:23px;line-height:1;
+    color:var(--brown);letter-spacing:.01em}
+  .who{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700;color:var(--ink-2);
+    flex-wrap:wrap;justify-content:center;margin-top:2px}
+  .avatar{width:28px;height:28px;border-radius:50%;background:var(--gold);color:#2B1E1A;
+    display:grid;place-items:center;font-weight:900;font-size:11px}
+  .out{background:none;border:1.5px solid var(--line);color:var(--ink-3);border-radius:999px;
+    padding:5px 11px;font-size:11px;font-weight:900;letter-spacing:.08em}
+  .out:hover{border-color:var(--brown);color:var(--brown)}
+
+  /* ---------- tabs ---------- */
+  .tabs{background:var(--char);position:sticky;top:0;z-index:49;
+    overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .tabs::-webkit-scrollbar{display:none}
+  .tabs .wrap{display:flex;gap:2px;padding:0 12px}
+  .tab{background:none;border:0;color:#8C8279;padding:13px 14px;font-size:13px;font-weight:900;
+    letter-spacing:.06em;white-space:nowrap;border-bottom:3px solid transparent;min-height:46px}
+  .tab[aria-current="true"]{color:var(--butter);border-bottom-color:var(--butter)}
+  .tab:focus-visible{outline:2px solid var(--butter);outline-offset:-4px}
+  .tab .dot{display:inline-block;min-width:17px;height:17px;line-height:17px;border-radius:999px;
+    background:var(--ketchup);color:#fff;font-size:10px;margin-left:6px;padding:0 4px}
+
+  main{padding:20px 0 60px}
+  h2.sec{font-family:'Baloo 2',sans-serif;font-weight:700;font-size:22px;margin:0 0 4px}
+  p.sub{margin:0 0 18px;color:var(--ink-2);font-size:15px}
+
+  /* ---------- cards & banners ---------- */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+  .banner{border-radius:12px;padding:14px 16px;margin-bottom:14px;font-size:14.5px;line-height:1.5}
+  .banner b{font-weight:900}
+  .banner.warn{background:#FDF1DC;border:1px solid #EBC98A;color:#6A4708}
+  .banner.bad{background:#FCE9E7;border:1px solid #F0B6B0;color:#7C1E16}
+  .banner.info{background:var(--shade);border:1px solid var(--line);color:var(--ink-2)}
+
+  /* ---------- stats ---------- */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .stat .k{font-size:11px;font-weight:900;letter-spacing:.14em;color:var(--ink-3)}
+  .stat .v{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:26px;line-height:1.15;margin-top:4px}
+  .stat .n{font-size:12.5px;color:var(--ink-2);margin-top:2px}
+  .stat.good .v{color:var(--ok)} .stat.bad .v{color:var(--bad)} .stat.warn .v{color:var(--warn)}
+
+  /* ---------- batch rows ---------- */
+  .rows{display:flex;flex-direction:column;gap:10px}
+  .row{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;
+    display:grid;grid-template-columns:6px 1fr;align-items:stretch}
+  .row .stripe{background:var(--line)}
+  .row.s-fresh .stripe{background:var(--ok)}
+  .row.s-soon .stripe{background:var(--warn)}
+  .row.s-today .stripe{background:var(--ketchup)}
+  .row.s-expired .stripe{background:var(--bad)}
+  .row.s-done .stripe{background:var(--ink-3)}
+  .row.s-void .stripe{background:var(--ink-3)}
+  .row .in{padding:14px 16px;min-width:0}
+  .rt{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .rt .nm{font-weight:900;font-size:17px}
+  .rt .qty{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:17px;color:var(--brown)}
+  .rt .unit{font-size:12.5px;font-weight:900;letter-spacing:.06em;color:var(--ink-3);text-transform:uppercase}
+  .meta{font-size:13px;color:var(--ink-2);margin-top:4px}
+  .meta b{color:var(--ink);font-weight:700}
+  .pill{display:inline-block;font-size:10.5px;font-weight:900;letter-spacing:.07em;
+    padding:3px 9px;border-radius:999px;vertical-align:middle}
+  .p-fresh{background:#E4F1E8;color:#1F5D39}
+  .p-soon{background:#FBEBD3;color:#8A4A06}
+  .p-today{background:#FDE3E0;color:#93221A}
+  .p-expired{background:var(--bad);color:#fff}
+  .p-done{background:var(--shade);color:var(--ink-2)}
+  .p-void{background:var(--shade);color:var(--ink-3)}
+  .p-lock{background:var(--char);color:var(--butter)}
+
+  .bar-track{height:7px;border-radius:4px;background:var(--shade);margin-top:10px;overflow:hidden}
+  .bar-fill{height:100%;background:var(--gold);border-radius:4px}
+
+  .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+
+  /* ---------- buttons ---------- */
+  .btn{border:0;border-radius:10px;padding:11px 16px;font-size:14px;font-weight:900;
+    min-height:44px;letter-spacing:.02em}
+  .btn:focus-visible{outline:2px solid var(--char);outline-offset:2px}
+  .btn.pri{background:var(--butter);color:var(--char)}
+  .btn.pri:hover{background:#F0C316}
+  .btn.dark{background:var(--char);color:var(--paper)}
+  .btn.dark:hover{background:#332C28}
+  .btn.ghost{background:transparent;color:var(--ink-2);border:1.5px solid var(--line)}
+  .btn.ghost:hover{border-color:var(--ink-3);color:var(--ink)}
+  .btn.danger{background:transparent;color:var(--bad);border:1.5px solid #F0B6B0}
+  .btn.danger:hover{background:#FCE9E7}
+  .btn.sm{padding:8px 12px;font-size:13px;min-height:38px}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+
+  /* ---------- forms ---------- */
+  .field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+  .field label{font-size:12px;font-weight:900;letter-spacing:.1em;color:var(--ink-3)}
+  .field input,.field select{border:1.5px solid var(--line);border-radius:10px;padding:11px 13px;
+    background:#fff;min-height:44px;width:100%}
+  .field input:focus,.field select:focus{outline:2px solid var(--gold);outline-offset:-1px;border-color:var(--gold)}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0 12px}
+  .hint{font-size:12.5px;color:var(--ink-3)}
+
+  /* ---------- table ---------- */
+  .tw{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+  table{border-collapse:collapse;width:100%;min-width:520px}
+  th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--line);font-size:14.5px}
+  th{font-size:11px;font-weight:900;letter-spacing:.1em;color:var(--ink-3);background:var(--shade)}
+  tr:last-child td{border-bottom:0}
+  td.r,th.r{text-align:right}
+
+  /* ---------- lock screen ---------- */
+  .lock{min-height:100vh;display:grid;place-items:center;padding:24px;background:var(--char)}
+  .lockbox{background:var(--card);border-radius:18px;padding:30px 26px;width:100%;max-width:390px}
+  .lockbox .logo{margin:0 auto 14px}
+  .lockbox h1{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:26px;margin:0 0 4px;text-align:center}
+  .lockbox p{margin:0 0 22px;color:var(--ink-2);font-size:14.5px;text-align:center}
+  .err{color:var(--bad);font-size:13.5px;font-weight:700;margin-top:8px}
+
+  /* ---------- dialog (native confirm/prompt are blocked in the sandbox) ---------- */
+  .modal{position:fixed;inset:0;background:rgba(28,25,23,.6);display:grid;place-items:center;
+    z-index:300;padding:18px}
+  .modalbox{background:var(--card);border-radius:16px;padding:24px 22px;max-width:430px;width:100%;
+    box-shadow:0 22px 60px rgba(0,0,0,.32);max-height:86vh;overflow-y:auto}
+  .modalbox h3{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:20px;margin:0 0 8px}
+  .modalbox .msg{font-size:14.5px;line-height:1.55;color:var(--ink-2);white-space:pre-line}
+  .modalacts{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap}
+  .modalbox.wide{max-width:620px}
+  .modalbox textarea{width:100%;margin-top:14px;padding:12px 13px;border:1px solid var(--line);
+    border-radius:10px;background:var(--shade);color:var(--ink);font-family:var(--mono);
+    font-size:12.5px;line-height:1.6;resize:vertical}
+  .modalacts .btn{flex:1 1 auto}
+
+  /* ---------- settlement ---------- */
+  .settle{background:var(--brown);color:var(--cream);border-radius:16px;padding:22px;margin-bottom:14px}
+  .settle .k{font-size:11px;font-weight:900;letter-spacing:.14em;color:#CBB6A6}
+  .settle .big{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:clamp(30px,8vw,42px);
+    line-height:1.05;margin:6px 0 2px;color:var(--gold)}
+  .settle .who2{font-size:15px;font-weight:700;color:var(--cream)}
+  .settle.clear .big{color:#7BD69B}
+  .calc{margin-top:18px;border-top:1px solid #6B4A42;padding-top:14px}
+  .crow{display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-size:14px;color:#CBB6A6}
+  .crow .num,.erow .num{white-space:nowrap}
+  .crow b{color:var(--cream);font-weight:900}
+  .crow.tot{border-top:1px solid #6B4A42;margin-top:6px;padding-top:11px;font-size:15px;color:var(--cream);font-weight:900}
+
+  /* ---------- misc ---------- */
+  .empty{text-align:center;padding:34px 20px;color:var(--ink-3);font-size:15px}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:200;
+    background:var(--char);color:var(--paper);padding:12px 20px;border-radius:999px;
+    font-size:14px;font-weight:700;box-shadow:0 6px 24px rgba(0,0,0,.25);max-width:90vw}
+  .toast.bad{background:var(--bad)}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .sp{border-radius:12px;padding:16px;text-align:center}
+  .sp.d{background:var(--brown);color:var(--cream)}
+  .sp.t{background:var(--butter);color:var(--char)}
+  .sp .k{font-size:11px;font-weight:900;letter-spacing:.12em;opacity:.8}
+  .sp .v{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:25px;margin-top:3px}
+
+  /* ---------- what each partner makes ---------- */
+  .earn{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:600px){.earn{grid-template-columns:1fr}}
+  .ecard{border-radius:14px;padding:17px 16px 15px}
+  .ecard.d{background:var(--brown);color:var(--cream)}
+  .ecard.t{background:var(--butter);color:var(--char)}
+  .ecard .who3{font-size:11px;font-weight:900;letter-spacing:.12em;opacity:.72}
+  .ecard .make{font-family:'Baloo 2',sans-serif;font-weight:800;
+    font-size:clamp(27px,6.5vw,34px);line-height:1.05;margin:5px 0 1px}
+  .ecard.d .make{color:var(--gold)}
+  .ecard .lab{font-size:12.5px;font-weight:700;opacity:.72;margin-bottom:13px}
+  .erow{display:flex;justify-content:space-between;gap:14px;padding:5px 0;font-size:13.5px;opacity:.86}
+  .erow.top{margin-top:6px;padding-top:10px;opacity:1;font-weight:900;font-size:14.5px}
+  .ecard.d .erow.top{border-top:1px solid #6B4A42}
+  .ecard.t .erow.top{border-top:1px solid rgba(28,25,23,.22)}
+  .enote{margin-top:11px;font-size:12.5px;line-height:1.5;opacity:.72}
+  .proj{margin-top:12px;background:var(--shade);border:1px solid var(--line);
+    border-radius:12px;padding:14px 16px;font-size:14px;line-height:1.55;color:var(--ink-2)}
+  .proj b{color:var(--ink)}
+  .subhead{font-size:12px;font-weight:900;letter-spacing:.14em;color:var(--ink-3);
+    margin:22px 0 10px;padding-top:4px;border-top:1px solid var(--line)}
+  /* ---------- where the sale came from ---------- */
+  .chbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--card);
+    border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:14px}
+  .chlab{font-size:11px;font-weight:900;letter-spacing:.12em;color:var(--ink-3)}
+  .chset{display:flex;gap:6px;flex-wrap:wrap}
+  .ch{background:transparent;border:1.5px solid var(--line);color:var(--ink-2);border-radius:999px;
+    padding:8px 15px;font-size:13px;font-weight:900;min-height:40px}
+  .ch:hover{border-color:var(--ink-3);color:var(--ink)}
+  .ch.on{background:var(--char);border-color:var(--char);color:var(--butter)}
+  .chbar input[type="date"]{border:1.5px solid var(--line);border-radius:10px;padding:9px 12px;
+    min-height:40px;background:#fff;font-weight:700}
+  .chbar input[type="date"]:focus{outline:2px solid var(--gold);outline-offset:-1px;border-color:var(--gold)}
+
+  /* ---------- multi-item order ---------- */
+  .drow{display:grid;grid-template-columns:1fr 84px auto 42px;gap:8px;align-items:center;margin-bottom:9px}
+  .drow select,.drow input{border:1.5px solid var(--line);border-radius:10px;padding:10px 11px;
+    min-height:44px;width:100%;background:#fff}
+  .drow select:focus,.drow input:focus{outline:2px solid var(--gold);outline-offset:-1px;border-color:var(--gold)}
+  .drow .w{font-size:12.5px;font-weight:900;letter-spacing:.04em;color:var(--brown);line-height:1.35}
+  .drow .x{background:none;border:1.5px solid var(--line);border-radius:10px;min-height:44px;
+    color:var(--ink-3);font-weight:900}
+  .drow .x:hover{border-color:#F0B6B0;color:var(--bad)}
+  .drow .x:disabled{opacity:.3;cursor:not-allowed}
+  @media(max-width:560px){
+    .drow{grid-template-columns:78px 1fr 42px;grid-template-areas:"i i i" "n w x"}
+    .drow select{grid-area:i}.drow input{grid-area:n}.drow .w{grid-area:w}.drow .x{grid-area:x}
+  }
+  .dline{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:13.5px;
+    border-bottom:1px dashed var(--line)}
+  .dline:last-child{border-bottom:0;font-weight:900;color:var(--ink);padding-top:9px}
+
+  /* ---------- recipe editor ---------- */
+  .ing{display:grid;grid-template-columns:1fr 78px 58px 86px 78px 92px 40px;gap:8px;align-items:end;margin-bottom:8px}
+  .ing input{border:1.5px solid var(--line);border-radius:9px;padding:9px 10px;min-height:42px;width:100%;background:#fff}
+  .ing input:focus{outline:2px solid var(--gold);outline-offset:-1px;border-color:var(--gold)}
+  .ing .lbl{font-size:10px;font-weight:900;letter-spacing:.09em;color:var(--ink-3);display:block;margin-bottom:4px}
+  .ing .out{background:var(--shade);border:1.5px solid var(--line);border-radius:9px;padding:9px 10px;
+    min-height:42px;display:flex;align-items:center;justify-content:flex-end;font-weight:900;color:var(--brown)}
+  .ing .x{background:none;border:1.5px solid var(--line);border-radius:9px;min-height:42px;color:var(--ink-3);font-weight:900}
+  .ing .x:hover{border-color:#F0B6B0;color:var(--bad)}
+  @media(max-width:760px){
+    .ing{grid-template-columns:1fr 1fr;gap:8px}
+    .ing .out{justify-content:flex-start}
+  }
+  .costcard{background:var(--char);color:var(--paper);border-radius:12px;padding:16px;margin-top:14px}
+  .costcard .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:12px}
+  .cc{text-align:center}
+  .cc .k{font-size:10px;font-weight:900;letter-spacing:.1em;color:#8C8279}
+  .cc .v{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:19px;margin-top:3px}
+  .cc.good .v{color:#7BD69B} .cc.bad .v{color:#FF8D82} .cc.hi .v{color:var(--butter)}
+  .recipe-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .recipe-h h3{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:20px;margin:0}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function () {
+  "use strict";
+
+  /* ============ state ============ */
+  var S = null;                  /* the board, once the server hands it over */
+  var version = 0;               /* what we last saw; a save carries it back */
+  var app = document.getElementById("app");
+  var dl = true;                 /* a browser can always be handed a file */
+  var readOnly = false;
+  var busy = false;
+  var tab = "stock";
+  var me = null;
+  var lockErr = "";
+
+  var ROLES = {
+    admin: { label: "ADMIN", canDeliver: true, canSell: true, canSetup: true },
+    dees:  { label: "DEE'S", canDeliver: true, canSell: false, canSetup: false },
+    truck: { label: "TRUCK", canDeliver: false, canSell: true, canSetup: false }
+  };
+
+  /* ============ helpers ============ */
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function id(p) { S.seq = (S.seq || 1) + 1; return p + S.seq; }
+  function money(n) {
+    if (n == null || isNaN(n)) return "—";
+    var v = Math.round(n * 100) / 100;
+    return v.toLocaleString("en-US", { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 });
+  }
+  function cur() { return esc(S.currency || "AED"); }
+  function todayStr() {
+    var d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  function addDays(ds, n) {
+    var p = ds.split("-");
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    d.setDate(d.getDate() + n);
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+  function daysBetween(a, b) {
+    var pa = a.split("-"), pb = b.split("-");
+    var da = Date.UTC(+pa[0], +pa[1] - 1, +pa[2]), db = Date.UTC(+pb[0], +pb[1] - 1, +pb[2]);
+    return Math.round((db - da) / 86400000);
+  }
+  function stamp(iso) {
+    if (!iso) return "—";
+    var d = new Date(iso);
+    if (isNaN(d)) return "—";
+    return d.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  }
+  function niceDate(ds) {
+    var p = ds.split("-");
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  }
+  function item(iid) {
+    for (var i = 0; i < S.items.length; i++) if (S.items[i].id === iid) return S.items[i];
+    return null;
+  }
+  function user(uid) {
+    for (var i = 0; i < S.team.length; i++) if (S.team[i].id === uid) return S.team[i];
+    return null;
+  }
+  function uname(uid) { var u = user(uid); return u ? u.name : "—"; }
+
+  /* ============ naming the units ============
+     A tray is what Dee bakes; a slice is what the truck sells. Both words
+     are stamped onto a batch when it is saved, so renaming an item later
+     never rewrites what already went out. */
+  function plural(w) {
+    if (/(s|x|z|ch|sh)$/i.test(w)) return w + "es";
+    if (/[^aeiou]y$/i.test(w)) return w.slice(0, -1) + "ies";
+    return w + "s";
+  }
+  function count(n, w) { return n + " " + (Math.abs(n) === 1 ? w : plural(w)); }
+  function batchWordOf(x) { return (x && x.batchWord) || "batch"; }
+  function portionWordOf(x) { return (x && x.portionWord) || "portion"; }
+  /* a batch keeps its own words; fall back to the item for anything saved
+     before the portion word existed */
+  function bPortion(b) {
+    return b.portionWord || portionWordOf(item(b.itemId)) || "portion";
+  }
+  function initials(n) {
+    return n.trim().split(/\s+/).slice(0, 2).map(function (w) { return w[0]; }).join("").toUpperCase();
+  }
+  function hash(pin) {
+    var data = new TextEncoder().encode("deeserts:" + pin);
+    return crypto.subtle.digest("SHA-256", data).then(function (b) {
+      return Array.prototype.map.call(new Uint8Array(b), function (x) {
+        return x.toString(16).padStart(2, "0");
+      }).join("");
+    });
+  }
+
+  /* ============ recipe costing ============
+     Costed per BATCH (one cake / tray), from supermarket pack prices.
+     line cost = recipe qty / pack qty x pack price
+     portions  = pieces per batch / pieces per portion
+     unit cost = batch cost / portions + packaging                        */
+  function lineCost(r) {
+    var q = +r.q, pq = +r.pq, pp = +r.pp;
+    if (!(pq > 0) || isNaN(q) || isNaN(pp)) return 0;
+    return (q / pq) * pp;
+  }
+  function batchCost(it) {
+    return (it.recipe || []).reduce(function (a, r) { return a + lineCost(r); }, 0);
+  }
+  function portionsPer(it) {
+    var p = +it.perPortion || 1, y = +it.yieldPieces || 0;
+    if (!(y > 0) || !(p > 0)) return 0;
+    return Math.floor(y / p);
+  }
+  function leftoverPcs(it) {
+    var p = +it.perPortion || 1, y = +it.yieldPieces || 0;
+    if (!(y > 0) || !(p > 0)) return 0;
+    return y - Math.floor(y / p) * p;
+  }
+  function costed(it) { return (it.recipe || []).length > 0 && portionsPer(it) > 0; }
+  function unitCostOf(it) {
+    if (!costed(it)) return null;
+    return batchCost(it) / portionsPer(it) + (+it.packaging || 0);
+  }
+
+  /* ============ batch maths ============ */
+  /* Every line in b.sales is one movement off the lot. A sale earns money;
+     a giveaway and a binned piece do not, but all three take stock away.
+     Anything logged before giveaways existed has no kind, and is a sale. */
+  function kindOf(s) { return s.kind || "sale"; }
+  function tally(b, kind) {
+    var t = 0, l = b.sales || [];
+    for (var i = 0; i < l.length; i++) if (!kind || kindOf(l[i]) === kind) t += l[i].qty;
+    return t;
+  }
+  function sold(b) { return tally(b, "sale"); }
+  function given(b) { return tally(b, "gift"); }
+  function binned(b) { return tally(b, "waste"); }
+  function movedOut(b) { return tally(b, null); }
+  function remaining(b) { return b.qty - movedOut(b); }
+  var KIND_LABEL = { sale: "SOLD", gift: "GIVEN", waste: "BINNED" };
+  function expiresOn(b) { return addDays(b.madeOn, b.shelf); }
+  function status(b) {
+    if (b.voided) return "void";
+    var left = remaining(b);
+    if (left <= 0) return "done";
+    var d = daysBetween(todayStr(), expiresOn(b));
+    if (d < 0) return "expired";
+    if (d === 0) return "today";
+    if (d === 1) return "soon";
+    return "fresh";
+  }
+  var STATUS_LABEL = {
+    fresh: "IN DATE", soon: "EXPIRES TOMORROW", today: "LAST DAY",
+    expired: "EXPIRED", done: "NONE LEFT", "void": "VOIDED"
+  };
+  function live() {
+    return S.batches.filter(function (b) { return !b.voided; });
+  }
+
+  /* ============ where a sale came from ============
+     The window, or one of the delivery apps. Whatever a sale was logged
+     under is stamped on it, so renaming a channel later never rewrites
+     what already happened. */
+  function channels() {
+    var c = S.channels;
+    return (c && c.length) ? c : ["Window", "Delivery app"];
+  }
+  /* A sale is stamped with the day it happened, not the moment it was typed:
+     the board is often filled in after the fact, and the day-by-day split
+     is only honest if the sale lands on the right day. */
+  function saleDate() {
+    var v = "";
+    try { v = sessionStorage.getItem("deeserts.sdate") || ""; } catch (e) {}
+    return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : todayStr();
+  }
+  function setSaleDate(v) {
+    try {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) sessionStorage.setItem("deeserts.sdate", v);
+      else sessionStorage.removeItem("deeserts.sdate");
+    } catch (e) {}
+    render();
+  }
+  function saleOn(s) { return s.on || (s.at || "").slice(0, 10); }
+
+  function curChannel() {
+    var list = channels(), v = "";
+    try { v = sessionStorage.getItem("deeserts.ch") || ""; } catch (e) {}
+    return list.indexOf(v) >= 0 ? v : list[0];
+  }
+  function setChannel(v) {
+    try { sessionStorage.setItem("deeserts.ch", v); } catch (e) {}
+    render();
+  }
+  function byChannel() {
+    var map = {}, order = channels().slice();
+    live().forEach(function (b) {
+      (b.sales || []).forEach(function (s) {
+        var k = s.ch || order[0];
+        if (!map[k]) map[k] = { units: 0, revenue: 0 };
+        map[k].units += s.qty;
+        map[k].revenue += s.qty * (b.unitPrice || 0);
+      });
+    });
+    Object.keys(map).forEach(function (k) { if (order.indexOf(k) < 0) order.push(k); });
+    return { map: map, order: order.filter(function (k) { return map[k]; }) };
+  }
+  function channelBar(perm) {
+    if (!perm.canSell || readOnly) return "";
+    var now = curChannel(), sd = saleDate(), back = sd !== todayStr();
+    var h = '<div class="chbar"><span class="chlab">THIS SALE CAME FROM</span><div class="chset">';
+    channels().forEach(function (c) {
+      h += '<button class="ch' + (c === now ? " on" : "") + '" type="button" data-ch="' + esc(c) + '">' +
+        esc(c) + "</button>";
+    });
+    h += "</div></div>";
+    h += '<div class="chbar"><span class="chlab">SOLD ON</span>' +
+      '<input id="s-date" type="date" value="' + esc(sd) + '" max="' + esc(todayStr()) + '">' +
+      (back ? '<button class="ch" type="button" data-sdate="today">BACK TO TODAY</button>' : "") +
+      "</div>";
+    if (back) {
+      h += '<div class="banner warn"><b>Logging sales on ' + esc(niceDate(sd)) +
+        ", not today.</b> Every SOLD you tap lands on that date until you change it back.</div>";
+    }
+    return h;
+  }
+  /* Stock that is made but not yet sold is not a loss — it is Dee's money
+     sitting on the truck as cake. Only what has actually been sold, or has
+     expired unsold, has been used up, and only that belongs against the
+     takings. The rest is inventory and settles when it sells. */
+  function totals(days) {
+    var cutoff = days ? addDays(todayStr(), -days + 1) : null;
+    var t = { spent: 0, costSold: 0, costGift: 0, costWaste: 0, costStock: 0, revenue: 0,
+              unitsOut: 0, unitsSold: 0, unitsGiven: 0, unitsWasted: 0, unitsLeft: 0, unknownCost: 0 };
+    live().forEach(function (b) {
+      if (cutoff && b.madeOn < cutoff) return;
+      var s = sold(b), g = given(b), w = binned(b);
+      var left = remaining(b), gone = status(b) === "expired";
+      t.unitsOut += b.qty;
+      t.unitsSold += s;
+      t.revenue += s * (b.unitPrice || 0);
+      t.unitsGiven += g;
+      t.unitsWasted += w + (gone ? left : 0);
+      if (!gone) t.unitsLeft += left;
+      if (b.unitCost == null) { t.unknownCost += b.qty; return; }
+      var c = b.unitCost;
+      t.spent += b.qty * c;
+      t.costSold += s * c;
+      t.costGift += g * c;
+      t.costWaste += w * c + (gone ? left * c : 0);
+      if (!gone) t.costStock += left * c;
+    });
+    t.waste = t.costWaste;
+    /* sold, given away and binned have all been used up; only stock still
+       in date is money that has not been spent on anything yet */
+    t.cost = t.costSold + t.costGift + t.costWaste;
+    t.profit = t.revenue - t.cost;
+    return t;
+  }
+
+  /* ============ the 50/50 settlement ============
+     Dee's fronts every ingredient cost C. The truck takes all the cash R.
+     For Dee's to end on its share d of the profit, the truck must hand over
+     C x (1-d) + R x d  — its share of what Dee's spent, plus Dee's share of
+     what the truck holds. At 50/50 that is simply half of each.            */
+  function payments() { return S.payments || []; }
+  function paidSoFar() {
+    return payments().reduce(function (a, p) { return a + (+p.amount || 0); }, 0);
+  }
+  function settlement() {
+    var t = totals(null);
+    var d = (S.split.deesPct || 0) / 100;
+    var costShare = t.cost * (1 - d);   // truck's share of the cost that has been used up
+    var revShare = t.revenue * d;       // Dee's share of what the truck took
+    var owed = costShare + revShare;
+    var paid = paidSoFar();
+    return { cost: t.cost, spent: t.spent, stock: t.costStock, waste: t.costWaste,
+             gift: t.costGift, stockUnits: t.unitsLeft,
+             revenue: t.revenue, profit: t.profit, d: d,
+             costShare: costShare, revShare: revShare, owed: owed,
+             paid: paid, outstanding: owed - paid, unknownCost: t.unknownCost };
+  }
+
+  /* Everything still sellable on the truck: what it would fetch, what it
+     cost Dee's, and the profit in it if it all sells. */
+  function upside() {
+    var units = 0, revenue = 0, profit = 0, cost = 0;
+    live().forEach(function (b) {
+      if (status(b) === "expired") return;
+      var left = remaining(b);
+      if (left <= 0) return;
+      units += left;
+      revenue += left * (b.unitPrice || 0);
+      if (b.unitCost != null) {
+        cost += left * b.unitCost;
+        profit += left * ((b.unitPrice || 0) - b.unitCost);
+      }
+    });
+    return { units: units, revenue: revenue, cost: cost, profit: profit };
+  }
+
+  /* What each partner ends up with once the outstanding balance is settled.
+     Not cash in hand today — Dee's is out of pocket until the truck pays. */
+  function earnings() {
+    var s = settlement(), up = upside();
+    var proj = s.profit + up.profit;
+    return { s: s, up: up,
+             deesNow: s.profit * s.d, truckNow: s.profit * (1 - s.d),
+             projProfit: proj, deesProj: proj * s.d, truckProj: proj * (1 - s.d) };
+  }
+
+  /* ============ persistence ============
+     The board lives in the database behind this site. Every save carries the
+     version it was built on, so two people saving at once cannot silently
+     overwrite each other — the loser is handed the winner's board instead. */
+  function api(path, body) {
+    return fetch(path, {
+      method: body ? "POST" : "GET",
+      headers: body ? { "content-type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+      credentials: "same-origin",
+      cache: "no-store"
+    }).then(function (r) {
+      return r.json().then(function (j) { return { status: r.status, body: j }; },
+                           function () { return { status: r.status, body: {} }; });
+    });
+  }
+
+  function adopt(r) {
+    S = r.body.state;
+    version = r.body.version;
+    if (r.body.me) me = r.body.me;
+  }
+
+  function loadState() {
+    return api("/api/state").then(function (r) {
+      if (r.status === 401) { me = null; S = null; return false; }
+      if (!r.body.ok) { toast("Could not load the board.", true); return false; }
+      adopt(r);
+      return true;
+    }, function () { toast("No connection.", true); return false; });
+  }
+
+
+  function save(mutate, okMsg) {
+    if (busy) return;
+    var next = clone(S);
+    var restoreSeq = S.seq;
+    S.seq = next.seq = restoreSeq;
+    try { mutate(next); } catch (e) { toast(e.message || "Could not save.", true); return; }
+    next.seq = S.seq;
+    busy = true; render();
+    api("/api/state", { version: version, state: next }).then(function (r) {
+      busy = false;
+      if (r.status === 401) { me = null; S = null; render(); return; }
+      if (r.status === 409) {
+        adopt(r); render();
+        toast("Someone saved first \u2014 this is their board.", true);
+        return;
+      }
+      if (!r.body.ok) { toast("Could not save. Try again.", true); render(); return; }
+      adopt(r); render();
+      toast(okMsg || "Saved.");
+    }, function () {
+      busy = false; render();
+      toast("No connection \u2014 that was not saved.", true);
+    });
+  }
+
+  /* Sandboxed frames block window.confirm / window.prompt — they return without
+     asking, which silently cancels whatever they were guarding. Own dialog instead. */
+  function ask(opts) {
+    return new Promise(function (resolve) {
+      var back = document.createElement("div");
+      back.className = "modal";
+      var h = '<div class="modalbox" role="dialog" aria-modal="true" aria-label="' + esc(opts.title || "Confirm") + '">';
+      if (opts.title) h += "<h3>" + esc(opts.title) + "</h3>";
+      if (opts.body) h += '<div class="msg">' + esc(opts.body) + "</div>";
+      if (opts.input) {
+        h += '<div class="field" style="margin-top:16px"><label for="m-val">' + esc(opts.input.label) + "</label>";
+        h += opts.input.type === "text"
+          ? '<input id="m-val" type="text" maxlength="80" value="' + esc(opts.input.value || "") +
+            '" placeholder="' + esc(opts.input.placeholder || "") + '">'
+          : '<input id="m-val" type="number" inputmode="numeric" value="' + esc(opts.input.value) +
+            '" min="' + esc(opts.input.min) + '" max="' + esc(opts.input.max) + '">';
+        h += "</div>";
+      }
+      h += '<div class="modalacts">' +
+        '<button class="btn ghost" type="button" data-m="no">Cancel</button>' +
+        '<button class="btn ' + (opts.danger ? "danger" : "pri") + '" type="button" data-m="yes">' +
+        esc(opts.ok || "Confirm") + "</button></div></div>";
+      back.innerHTML = h;
+      document.body.appendChild(back);
+
+      var done = false;
+      function finish(val) {
+        if (done) return;
+        done = true;
+        document.removeEventListener("keydown", onKey, true);
+        back.remove();
+        resolve(val);
+      }
+      function onKey(e) {
+        if (e.key === "Escape") { e.preventDefault(); finish(null); }
+        else if (e.key === "Enter" && !opts.input) { e.preventDefault(); accept(); }
+      }
+      function accept() {
+        if (!opts.input) { finish(true); return; }
+        var el = back.querySelector("#m-val");
+        if (opts.input.type === "text") {
+          var txt = el.value.trim();
+          if (!txt) { toast("Type a short reason so the record explains itself.", true); return; }
+          finish(txt); return;
+        }
+        var v = parseInt(el.value, 10);
+        var lo = opts.input.min != null ? +opts.input.min : 1;
+        if (isNaN(v) || v < lo) { toast("Enter a whole number, " + lo + " or more.", true); return; }
+        if (opts.input.max != null && v > +opts.input.max) {
+          toast("That is more than the " + opts.input.max + " available.", true); return;
+        }
+        finish(v);
+      }
+      back.querySelector('[data-m="no"]').onclick = function () { finish(null); };
+      back.querySelector('[data-m="yes"]').onclick = accept;
+      back.onclick = function (e) { if (e.target === back) finish(null); };
+      document.addEventListener("keydown", onKey, true);
+      var f = back.querySelector("#m-val") || back.querySelector('[data-m="yes"]');
+      if (f) { f.focus(); if (f.select) f.select(); }
+      if (opts.input) {
+        back.querySelector("#m-val").addEventListener("keydown", function (e) {
+          if (e.key === "Enter") { e.preventDefault(); accept(); }
+        });
+      }
+    });
+  }
+
+  /* ============ the PDF invoice ============
+     Written by hand rather than pulled from a CDN: the page has to keep
+     working offline and after it republishes itself, and a one-page
+     invoice is a small enough slice of PDF 1.4 to own outright.
+     Helvetica and Helvetica-Bold are built into every reader, so only
+     their widths are carried here — enough to right-align money. */
+  var HW = ("278 278 355 556 556 889 667 191 333 333 389 584 278 333 278 278 " +
+    "556 556 556 556 556 556 556 556 556 556 278 278 584 584 584 556 " +
+    "1015 667 667 722 722 667 611 778 722 278 500 667 556 833 722 778 " +
+    "667 778 722 667 611 722 667 944 667 667 611 278 278 278 469 556 " +
+    "333 556 556 500 556 556 278 556 556 222 222 500 222 833 556 556 " +
+    "556 556 333 500 278 556 500 722 500 500 500 334 260 334 584").split(" ").map(Number);
+  var HB = ("278 333 474 556 556 889 722 238 333 333 389 584 278 333 278 278 " +
+    "556 556 556 556 556 556 556 556 556 556 333 333 584 584 584 611 " +
+    "975 722 722 722 722 667 611 778 722 278 556 722 611 833 722 778 " +
+    "667 778 722 667 611 722 667 944 667 667 611 333 278 333 584 556 " +
+    "333 556 611 556 611 556 333 611 611 278 278 556 278 889 611 611 " +
+    "611 611 389 556 333 611 556 778 556 556 500 389 280 389 584").split(" ").map(Number);
+
+  /* WinAnsi is Latin-1 over 0xA0-0xFF, so accents pass straight through;
+     the typographic characters the app uses get plain equivalents. */
+  var PDF_FALLBACK = { "—": "-", "–": "-", "→": "->", "·": "-",
+                       "‘": "'", "’": "'", "“": '"', "”": '"',
+                       "÷": "/", "…": "..." };
+  function winAnsi(s) {
+    var out = "";
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charAt(i), n = s.charCodeAt(i);
+      if (n >= 0x20 && n <= 0x7e) out += c;
+      else if (n >= 0xa0 && n <= 0xff) out += c;
+      else out += (PDF_FALLBACK[c] || (n === 10 ? " " : "?"));
+    }
+    return out;
+  }
+  function textWidth(s, size, bold) {
+    var tbl = bold ? HB : HW, w = 0;
+    for (var i = 0; i < s.length; i++) {
+      var n = s.charCodeAt(i);
+      w += (n >= 32 && n <= 126) ? tbl[n - 32] : 556;
+    }
+    return w * size / 1000;
+  }
+  function pdfStr(s) { return "(" + winAnsi(s).replace(/[\\()]/g, function (c) { return "\\" + c; }) + ")"; }
+
+  /* a tiny drawing surface that accumulates content-stream operators */
+  function pdfPage() {
+    var ops = [];
+    return {
+      ops: ops,
+      rect: function (x, y, w, h, rgb) {
+        ops.push(rgb.join(" ") + " rg " + x + " " + y + " " + w + " " + h + " re f");
+        return this;
+      },
+      text: function (s, x, y, size, bold, rgb) {
+        if (s == null || s === "") return this;
+        ops.push("BT " + (rgb || [0, 0, 0]).join(" ") + " rg /" + (bold ? "F2" : "F1") + " " +
+                 size + " Tf " + x + " " + y + " Td " + pdfStr(String(s)) + " Tj ET");
+        return this;
+      },
+      right: function (s, xRight, y, size, bold, rgb) {
+        s = String(s == null ? "" : s);
+        return this.text(s, Math.round((xRight - textWidth(winAnsi(s), size, bold)) * 100) / 100,
+                         y, size, bold, rgb);
+      }
+    };
+  }
+  function pdfDoc(content) {
+    var objs = [
+      "<</Type/Catalog/Pages 2 0 R>>",
+      "<</Type/Pages/Kids[3 0 R]/Count 1>>",
+      "<</Type/Page/Parent 2 0 R/MediaBox[0 0 595.28 841.89]" +
+        "/Resources<</Font<</F1 5 0 R/F2 6 0 R>>>>/Contents 4 0 R>>",
+      "<</Length " + content.length + ">>\nstream\n" + content + "\nendstream",
+      "<</Type/Font/Subtype/Type1/BaseFont/Helvetica/Encoding/WinAnsiEncoding>>",
+      "<</Type/Font/Subtype/Type1/BaseFont/Helvetica-Bold/Encoding/WinAnsiEncoding>>"
+    ];
+    var out = "%PDF-1.4\n%\xe2\xe3\xcf\xd3\n", offsets = [];
+    objs.forEach(function (body, i) {
+      offsets.push(out.length);
+      out += (i + 1) + " 0 obj\n" + body + "\nendobj\n";
+    });
+    var xref = out.length;
+    out += "xref\n0 " + (objs.length + 1) + "\n0000000000 65535 f \n";
+    offsets.forEach(function (o) {
+      out += ("0000000000" + o).slice(-10) + " 00000 n \n";
+    });
+    out += "trailer\n<</Size " + (objs.length + 1) + "/Root 1 0 R>>\nstartxref\n" + xref + "\n%%EOF\n";
+    var bytes = new Uint8Array(out.length);
+    for (var i = 0; i < out.length; i++) bytes[i] = out.charCodeAt(i) & 0xff;
+    return bytes;
+  }
+
+  var BROWN = [0.29, 0.17, 0.16], GREY = [0.42, 0.35, 0.30], RULE = [0.90, 0.86, 0.78];
+
+  function invoice(dropKey) {
+    var list = S.batches.filter(function (b) { return dropOf(b) === dropKey; });
+    if (!list.length) return null;
+    var b0 = list[0];
+    var no = "INV-" + b0.madeOn.replace(/-/g, "") + "-" + String(dropKey).toUpperCase();
+    var pg = pdfPage(), L = 48, R = 547, y = 792;
+
+    pg.text("Dee's Treats", L, y, 22, true, BROWN);
+    pg.right(no, R, y, 11, true, BROWN);
+    y -= 17;
+    pg.text("STOCK INVOICE", L, y, 9, true, GREY);
+    pg.right("Made " + niceDate(b0.madeOn), R, y, 9, false, GREY);
+    y -= 14;
+    pg.rect(L, y, R - L, 1.4, BROWN);
+
+    y -= 34;
+    pg.text("FROM", L, y, 8, true, GREY);
+    pg.text("TO", 320, y, 8, true, GREY);
+    y -= 15;
+    pg.text("Dee's Treats", L, y, 12, true);
+    pg.text("Smash & Pass", 320, y, 12, true);
+    y -= 14;
+    pg.text("Baked and delivered by " + uname(b0.by), L, y, 9.5, false, GREY);
+    pg.text("Food truck", 320, y, 9.5, false, GREY);
+    y -= 13;
+    pg.text("Logged " + stamp(b0.at), L, y, 9.5, false, GREY);
+    pg.text("Expires " + niceDate(expiresOn(b0)), 320, y, 9.5, false, GREY);
+
+    /* the line items */
+    y -= 36;
+    pg.rect(L, y - 6, R - L, 20, [0.96, 0.93, 0.87]);
+    pg.text("ITEM", L + 8, y, 8, true, GREY);
+    pg.right("QUANTITY", 372, y, 8, true, GREY);
+    pg.right("UNIT COST", 460, y, 8, true, GREY);
+    pg.right("TOTAL", R - 8, y, 8, true, GREY);
+    y -= 22;
+
+    var total = 0, units = 0, uncosted = false;
+    list.forEach(function (b) {
+      var it = item(b.itemId);
+      var line = b.unitCost == null ? null : b.qty * b.unitCost;
+      if (line == null) uncosted = true; else total += line;
+      units += b.qty;
+      pg.text((it ? it.name : "Deleted item") + (b.voided ? "  (VOIDED)" : ""), L + 8, y, 10.5, false);
+      pg.right(count(b.qty, bPortion(b)), 372, y, 10, false, GREY);
+      pg.right(b.unitCost == null ? "-" : money(b.unitCost), 460, y, 10, false);
+      pg.right(line == null ? "-" : money(line), R - 8, y, 10, true);
+      y -= 12;
+      pg.rect(L, y + 2, R - L, 0.6, RULE);
+      y -= 12;
+    });
+
+    y -= 6;
+    pg.right("TOTAL COST TO DEE'S", 460, y, 9, true, GREY);
+    pg.right(cur() + " " + money(total), R - 8, y, 14, true, BROWN);
+    y -= 18;
+    var d = (S.split.deesPct || 0) / 100;
+    pg.right("Smash & Pass " + Math.round((1 - d) * 100) + "% share of this cost", 460, y, 9, false, GREY);
+    pg.right(cur() + " " + money(total * (1 - d)), R - 8, y, 10, false, GREY);
+    y -= 14;
+    pg.right(count(units, "unit") + " out in total", 460, y, 9, false, GREY);
+    if (uncosted) {
+      y -= 16;
+      pg.text("Some lines have no recipe costed yet, so this total is incomplete.", L, y, 9, false, GREY);
+    }
+
+    /* footer */
+    pg.rect(L, 74, R - L, 0.6, RULE);
+    pg.text("Cost of ingredients and packaging only. It excludes labour, utilities and wastage.",
+            L, 60, 8.5, false, GREY);
+    pg.text("Generated from Dee's Stock on " + stamp(new Date().toISOString()) + ".",
+            L, 48, 8.5, false, GREY);
+
+    return { filename: no + ".pdf", bytes: pdfDoc(pg.ops.join("\n")) };
+  }
+
+  /* ============ notices ============
+     A published artifact cannot reach a mail server — nothing here can post
+     to the outside world. So the app writes the notice and hands it over:
+     open it in the phone's mail app with everyone already in the To field,
+     or copy it and paste it into the group chat. */
+  function notifyList() {
+    return (S.notify || "").split(/[,;\s]+/).filter(function (x) { return x.indexOf("@") > 0; });
+  }
+  function appLink() {
+    var u = "";
+    try { u = String(location.href); } catch (e) {}
+    return u.indexOf("http") === 0 ? u : "";
+  }
+  function dropOf(b) { return b.drop || b.id; }
+  function deliveryNotice(dropKey) {
+    var list = S.batches.filter(function (b) { return dropOf(b) === dropKey; });
+    if (!list.length) return null;
+    var b0 = list[0], units = 0, cost = 0, unknown = false, lines = [];
+    list.forEach(function (b) {
+      var it = item(b.itemId);
+      units += b.qty;
+      if (b.unitCost == null) unknown = true; else cost += b.qty * b.unitCost;
+      lines.push("- " + (it ? it.name : "Deleted item") + ": " + count(b.qty, bPortion(b)) +
+        ", expires " + niceDate(expiresOn(b)));
+    });
+    var link = appLink();
+    return {
+      subject: "Dee's order " + niceDate(b0.madeOn) + " \u2014 " + units + " portions",
+      body: "Logged by " + uname(b0.by) + " at " + stamp(b0.at) + ".\n\n" +
+        lines.join("\n") + "\n\n" +
+        "Out in total: " + units + " portions\n" +
+        "Cost to Dee's: " + (unknown ? "part of it not costed yet" : cur() + " " + money(cost)) + "\n\n" +
+        "Sell the earliest date first, and log every sale in the app." +
+        (link ? "\n\n" + link : "")
+    };
+  }
+  function stockNotice() {
+    var open = live().filter(function (b) { return remaining(b) > 0; });
+    var onHand = open.reduce(function (a, b) { return a + remaining(b); }, 0);
+    var pick = function (st) { return open.filter(function (b) { return status(b) === st; }); };
+    var line = function (b) {
+      var it = item(b.itemId);
+      return "- " + (it ? it.name : "Deleted item") + ": " + count(remaining(b), bPortion(b)) +
+        " left, expires " + niceDate(expiresOn(b));
+    };
+    var expired = pick("expired"), lastDay = pick("today"), soon = pick("soon");
+    var today = todayStr(), soldToday = {}, soldTotal = 0;
+    live().forEach(function (b) {
+      (b.sales || []).forEach(function (s) {
+        if (kindOf(s) !== "sale" || saleOn(s) !== today) return;
+        var k = s.ch || channels()[0];
+        soldToday[k] = (soldToday[k] || 0) + s.qty;
+        soldTotal += s.qty;
+      });
+    });
+    var body = "Stock on the truck, " + niceDate(today) + "\n\n" +
+      onHand + " portion" + (onHand === 1 ? "" : "s") + " on hand.\n";
+    if (soldTotal) body += "Sold today: " + soldTotal + " (" + Object.keys(soldToday).map(function (k) {
+      return k + " " + soldToday[k];
+    }).join(", ") + ")\n";
+    if (expired.length) body += "\nEXPIRED \u2014 take these off the counter:\n" + expired.map(line).join("\n") + "\n";
+    if (lastDay.length) body += "\nLAST DAY \u2014 sell these first:\n" + lastDay.map(line).join("\n") + "\n";
+    if (soon.length) body += "\nGone tomorrow:\n" + soon.map(line).join("\n") + "\n";
+    if (open.length) {
+      var byName = {};
+      open.forEach(function (b) {
+        var it = item(b.itemId), k = it ? it.name : "Deleted item";
+        if (!byName[k]) byName[k] = { n: 0, w: bPortion(b) };
+        byName[k].n += remaining(b);
+      });
+      body += "\nEverything on hand:\n" + Object.keys(byName).map(function (k) {
+        return "- " + k + ": " + count(byName[k].n, byName[k].w);
+      }).join("\n") + "\n";
+    } else {
+      body += "\nNothing in stock.\n";
+    }
+    var link = appLink();
+    if (link) body += "\n" + link;
+    return {
+      subject: "Dee's stock " + niceDate(todayStr()) + " \u2014 " + onHand + " on hand" +
+        (expired.length ? ", " + expired.length + " expired" : lastDay.length ? ", " + lastDay.length + " on last day" : ""),
+      body: body
+    };
+  }
+  function notice(title, n) {
+    if (!n) { toast("Nothing to send.", true); return; }
+    var to = notifyList();
+    var back = document.createElement("div");
+    back.className = "modal";
+    back.innerHTML = '<div class="modalbox wide" role="dialog" aria-modal="true" aria-label="' + esc(title) + '">' +
+      "<h3>" + esc(title) + "</h3>" +
+      '<div class="msg">' +
+      (to.length ? "Addressed to " + esc(to.join(", ")) + "."
+                 : "No addresses saved yet \u2014 an admin adds them in Setup. You can still copy this and send it however you like.") +
+      "</div>" +
+      '<textarea id="n-body" rows="13" spellcheck="false"></textarea>' +
+      '<div class="modalacts">' +
+      '<button class="btn ghost" type="button" data-m="close">CLOSE</button>' +
+      '<button class="btn dark" type="button" data-m="copy">COPY</button>' +
+      '<button class="btn pri" type="button" data-m="mail">OPEN EMAIL</button>' +
+      "</div></div>";
+    document.body.appendChild(back);
+    var ta = back.querySelector("#n-body");
+    ta.value = n.subject + "\n\n" + n.body;
+
+    function shut() { document.removeEventListener("keydown", onKey, true); back.remove(); }
+    function onKey(e) { if (e.key === "Escape") { e.preventDefault(); shut(); } }
+    document.addEventListener("keydown", onKey, true);
+    back.onclick = function (e) { if (e.target === back) shut(); };
+    back.querySelector('[data-m="close"]').onclick = shut;
+    back.querySelector('[data-m="copy"]').onclick = function () {
+      var txt = ta.value;
+      var ok = function () { toast("Copied \u2014 paste it into the chat."); };
+      var no = function () { ta.focus(); ta.select(); toast("Select it and copy by hand.", true); };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(txt).then(ok, function () {
+            ta.focus(); ta.select();
+            try { document.execCommand("copy") ? ok() : no(); } catch (e) { no(); }
+          });
+          return;
+        }
+      } catch (e) {}
+      ta.focus(); ta.select();
+      try { document.execCommand("copy") ? ok() : no(); } catch (e) { no(); }
+    };
+    back.querySelector('[data-m="mail"]').onclick = function () {
+      var url = "mailto:" + to.join(",") +
+        "?subject=" + encodeURIComponent(n.subject) +
+        "&body=" + encodeURIComponent(n.body);
+      var w = null;
+      try { w = window.open(url, "_blank"); } catch (e) {}
+      if (!w) {
+        try {
+          var a2 = document.createElement("a");
+          a2.href = url; a2.target = "_blank"; a2.rel = "noopener";
+          document.body.appendChild(a2); a2.click(); a2.remove();
+        } catch (e) {}
+      }
+      toast(to.length ? "Opening your mail app\u2026" : "No addresses saved \u2014 copy it instead.", !to.length);
+    };
+    ta.focus();
+  }
+
+  function saveInvoice(dropKey) {
+    var inv;
+    try { inv = invoice(dropKey); } catch (e) { inv = null; }
+    if (!inv) { toast("Could not build that invoice.", true); return; }
+    try {
+      var url = URL.createObjectURL(new Blob([inv.bytes], { type: "application/pdf" }));
+      var a = document.createElement("a");
+      a.href = url; a.download = inv.filename; a.rel = "noopener";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 8000);
+      toast(inv.filename + " saved.");
+    } catch (e) { toast("Could not save the invoice here.", true); }
+  }
+
+  var toastT = null;
+  function toast(msg, bad) {
+    var el = document.querySelector(".toast");
+    if (el) el.remove();
+    el = document.createElement("div");
+    el.className = "toast" + (bad ? " bad" : "");
+    el.setAttribute("role", "status");
+    el.textContent = msg;
+    document.body.appendChild(el);
+    clearTimeout(toastT);
+    toastT = setTimeout(function () { el.remove(); }, 3200);
+  }
+
+  /* ============ session ============ */
+  function loadSession() {
+    try {
+      var t = sessionStorage.getItem("deeserts.tab");
+      if (t) tab = t;
+    } catch (e) {}
+  }
+  /* the truck is here to sell, so it opens on Orders rather than on the count */
+  function homeTab(u) {
+    var pm = ROLES[u.role] || ROLES.truck;
+    return pm.canSell && !pm.canDeliver ? "out" : "stock";
+  }
+  function setTab(t) {
+    tab = t;
+    try { sessionStorage.setItem("deeserts.tab", t); } catch (e) {}
+    render();
+    window.scrollTo(0, 0);
+  }
+  function signOut() {
+    try { sessionStorage.removeItem("deeserts.tab"); } catch (e) {}
+    api("/api/logout", {}).then(function () { me = null; S = null; tab = "stock"; render(); });
+  }
+
+  /* ============ render ============ */
+  function render() {
+    if (!me || !S) { renderLock(); return; }
+    var perm = ROLES[me.role] || ROLES.truck;
+    var alerts = live().filter(function (b) {
+      var s = status(b);
+      return s === "expired" || s === "today";
+    }).length;
+
+    var html = "";
+    html += '<header class="bar"><div class="wrap">' +
+      '<div class="logo" role="img" aria-label="Dee\'s Treats"></div>' +
+      '<div class="brandline">Stock</div>' +
+      '<div class="who"><span class="avatar">' + esc(initials(me.name)) + "</span>" +
+      "<span>" + esc(me.name) + " &middot; " + perm.label + "</span>" +
+      '<button class="out" type="button" data-act="signout">EXIT</button>' +
+      "</div></div></header>";
+
+    var tabs = [["stock", "STOCK", alerts], ["out", "ORDERS", 0], ["money", "MONEY", 0]];
+    if (perm.canDeliver) tabs.push(["recipes", "RECIPES", 0]);
+    if (perm.canSetup) tabs.push(["setup", "SETUP", 0]);
+    tabs.push(["account", "MY PIN", 0]);
+    html += '<nav class="tabs"><div class="wrap">';
+    tabs.forEach(function (t) {
+      html += '<button class="tab" type="button" data-tab="' + t[0] + '" aria-current="' + (tab === t[0]) + '">' +
+        t[1] + (t[2] ? '<span class="dot">' + t[2] + "</span>" : "") + "</button>";
+    });
+    html += "</div></nav>";
+
+    html += '<main><div class="wrap">';
+    if (readOnly) html += '<div class="banner info"><b>View only.</b> You can see everything here but not record anything — you need edit access to this board.</div>';
+    if (S.defaultPins) html += '<div class="banner warn"><b>Everyone still has PIN 1234.</b> Change them in Setup before you share this link.</div>';
+    var noCost = S.items.filter(function (i) { return i.active && !costed(i); }).length;
+    if (noCost && perm.canDeliver) html += '<div class="banner warn"><b>' + noCost + " item" + (noCost > 1 ? "s have" : " has") +
+      " no recipe costed yet.</b> Add ingredients and yield on the Recipes tab — cost, profit and the split stay incomplete until you do.</div>";
+
+    var allowed = {};
+    tabs.forEach(function (t) { allowed[t[0]] = true; });
+    if (tab === "sell") tab = "out";          /* sales moved into orders */
+    if (!allowed[tab]) tab = "stock";
+    if (tab === "stock") html += viewStock(perm);
+    else if (tab === "out") html += viewOut(perm);
+    else if (tab === "money") html += viewMoney();
+    else if (tab === "recipes") html += viewRecipes(perm);
+    else if (tab === "setup") html += viewSetup(perm);
+    else if (tab === "account") html += viewAccount();
+    else html += viewStock(perm);
+    html += "</div></main>";
+
+    app.innerHTML = html;
+    wire();
+  }
+
+  /* ---------- lock ---------- */
+  function failState() {
+    try { return JSON.parse(sessionStorage.getItem("deeserts.fail") || "{}"); } catch (e) { return {}; }
+  }
+  function lockedFor() {
+    var f = failState();
+    return f.until && Date.now() < f.until ? Math.ceil((f.until - Date.now()) / 1000) : 0;
+  }
+  function noteFail() {
+    var f = failState();
+    f.n = (f.n || 0) + 1;
+    if (f.n >= 5) { f.until = Date.now() + 30000; f.n = 0; }
+    try { sessionStorage.setItem("deeserts.fail", JSON.stringify(f)); } catch (e) {}
+  }
+  function clearFail() { try { sessionStorage.removeItem("deeserts.fail"); } catch (e) {} }
+
+  function renderLock() {
+    var wait = lockedFor();
+    var h = '<div class="lock"><form class="lockbox" id="loginform" autocomplete="on">' +
+      '<div class="logo" role="img" aria-label="Dee\'s Treats"></div>' +
+      "<h1>Stock</h1>" +
+      "<p>Sign in with your own login.</p>" +
+      '<div class="field"><label for="who">USERNAME</label>' +
+      '<input id="who" type="text" name="username" autocomplete="username" autocapitalize="none" ' +
+      'autocorrect="off" spellcheck="false" placeholder="your username"' + (wait ? " disabled" : "") + "></div>" +
+      '<div class="field"><label for="pin">PIN</label>' +
+      '<input id="pin" type="password" name="password" inputmode="numeric" autocomplete="current-password" ' +
+      'placeholder="••••"' + (wait ? " disabled" : "") + "></div>" +
+      '<button class="btn pri" type="submit" style="width:100%"' + (wait ? " disabled" : "") + ">SIGN IN</button>";
+    if (wait) h += '<div class="err">Too many attempts. Try again in ' + wait + "s.</div>";
+    else if (lockErr) h += '<div class="err">' + esc(lockErr) + "</div>";
+    h += '<p class="hint" style="margin-top:16px">Ask an admin if you do not have a login yet.</p>';
+    h += "</form></div>";
+    app.innerHTML = h;
+    var form = document.getElementById("loginform");
+    form.onsubmit = function (e) { e.preventDefault(); doLogin(); };
+    if (wait) { setTimeout(function () { if (!me) renderLock(); }, 1000); return; }
+    var w = document.getElementById("who");
+    if (w) w.focus();
+  }
+
+  function doLogin() {
+    if (lockedFor()) { renderLock(); return; }
+    var whoEl = document.getElementById("who"), pinEl = document.getElementById("pin");
+    if (!whoEl || !pinEl) return;
+    var who = (whoEl.value || "").trim(), pin = (pinEl.value || "").trim();
+    if (!who || !pin) { lockErr = "Enter your username and PIN."; renderLock(); return; }
+    var btn = document.querySelector('#loginform button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.textContent = "SIGNING IN\u2026"; }
+    api("/api/login", { user: who, pin: pin }).then(function (r) {
+      if (r.status !== 200 || !r.body.ok) {
+        noteFail();
+        lockErr = r.body.error || "That username and PIN don't match.";
+        renderLock();
+        return;
+      }
+      clearFail(); lockErr = "";
+      loadState().then(function (ok) {
+        if (!ok) { renderLock(); return; }
+        var seen = "";
+        try { seen = sessionStorage.getItem("deeserts.tab") || ""; } catch (e) {}
+        if (!seen) tab = homeTab(me);
+        render();
+      });
+    }, function () { lockErr = "No connection. Try again."; renderLock(); });
+  }
+
+  /* ---------- stock ---------- */
+  function viewStock(perm) {
+    var t = todayStr();
+    var open = live().filter(function (b) { return remaining(b) > 0; });
+    var expired = open.filter(function (b) { return status(b) === "expired"; });
+    var expiredLeft = 0;
+    var lastDay = open.filter(function (b) { return status(b) === "today"; });
+    var leftIn = function (l) { return l.reduce(function (a, b) { return a + remaining(b); }, 0); };
+    expiredLeft = leftIn(expired);
+    var tomorrow = open.filter(function (b) { return status(b) === "soon"; });
+    var onHand = 0, onHandCost = 0, onHandRetail = 0, noCost = 0;
+    open.forEach(function (b) {
+      var left = remaining(b);
+      onHand += left;
+      onHandRetail += left * (b.unitPrice || 0);
+      if (b.unitCost == null) noCost += left; else onHandCost += left * b.unitCost;
+    });
+    var todaySold = 0;
+    live().forEach(function (b) {
+      (b.sales || []).forEach(function (s) {
+        if (kindOf(s) === "sale" && saleOn(s) === t) todaySold += s.qty;
+      });
+    });
+
+    var h = '<h2 class="sec">In stock</h2><p class="sub">' + niceDate(t) +
+      " \u00b7 everything sent out and not yet sold.</p>";
+    h += '<div class="stats">' +
+      stat("ON HAND", onHand, count(onHand, "portion") + " unsold, across every item", "") +
+      stat("WHAT IT COST", cur() + " " + money(onHandCost),
+           noCost ? count(noCost, "portion") + " of it not costed yet" : "ingredients and packaging, already paid", "") +
+      stat("WORTH AT MENU", cur() + " " + money(onHandRetail), "if every one of them sells", "good") +
+      stat("SOLD TODAY", todaySold, "logged by the truck", "good") +
+      stat("LAST DAY", leftIn(lastDay), "sell these first", lastDay.length ? "warn" : "") +
+      stat("EXPIRED", expiredLeft, "to write off, past their date", expiredLeft ? "bad" : "") +
+      "</div>";
+
+    if (expired.length) {
+      h += '<div class="banner bad"><b>' + count(expiredLeft, "piece") +
+        " past the date.</b> Pull them off the counter and write them off \u2014 they still count as cost.</div>";
+    }
+    if (lastDay.length) {
+      h += '<div class="banner warn"><b>' + count(leftIn(lastDay), "piece") +
+        " on the last day.</b> Anything unsold tonight becomes waste tomorrow.</div>";
+    }
+
+    if (open.length || expired.length) {
+      h += '<div style="margin:14px 0 4px"><button class="btn ghost sm" type="button" data-act="notifystock">' +
+        "EMAIL THE STOCK NOTE</button></div>";
+    }
+
+    h += orderForm(perm);
+
+    var order = { expired: 0, today: 1, soon: 2, fresh: 3 };
+    var sorted = open.slice().sort(function (a, b) {
+      var d = order[status(a)] - order[status(b)];
+      return d !== 0 ? d : (expiresOn(a) < expiresOn(b) ? -1 : 1);
+    });
+    if (open.length) {
+      var byItem = {};
+      open.forEach(function (b) {
+        var k = b.itemId;
+        if (!byItem[k]) byItem[k] = { n: 0, soonest: null, batches: 0, cost: 0, retail: 0, unknown: false };
+        var left2 = remaining(b);
+        byItem[k].n += left2;
+        byItem[k].batches += 1;
+        byItem[k].retail += left2 * (b.unitPrice || 0);
+        if (b.unitCost == null) byItem[k].unknown = true;
+        else byItem[k].cost += left2 * b.unitCost;
+        var e = expiresOn(b);
+        if (!byItem[k].soonest || e < byItem[k].soonest) byItem[k].soonest = e;
+      });
+      h += '<div class="subhead">BY ITEM</div><div class="tw"><table><thead><tr><th>ITEM</th>' +
+        '<th class="r">ON HAND</th><th class="r">COST</th>' +
+        '<th class="r">AT MENU</th><th class="r">ENTRIES</th><th>FIRST TO EXPIRE</th>' +
+        "</tr></thead><tbody>";
+      Object.keys(byItem).forEach(function (k) {
+        var g = byItem[k], it = item(k);
+        var d = daysBetween(t, g.soonest);
+        var when = d < 0 ? "expired" : d === 0 ? "today" : d === 1 ? "tomorrow" : niceDate(g.soonest);
+        var cls = d <= 0 ? "p-today" : d === 1 ? "p-soon" : "p-fresh";
+        h += "<tr><td>" + esc(it ? it.name : "Deleted item") + '</td><td class="r num">' +
+          esc(count(g.n, it ? portionWordOf(it) : "portion")) +
+          '</td><td class="r num">' + money(g.cost) + (g.unknown ? "+" : "") +
+          '</td><td class="r num">' + money(g.retail) +
+          '</td><td class="r num">' + g.batches + '</td><td><span class="pill ' + cls + '">' +
+          esc(when.toUpperCase()) + "</span></td></tr>";
+      });
+      h += "</tbody></table></div>";
+    }
+
+    h += '<div class="subhead">EVERYTHING ON THE TRUCK</div>';
+    h += sorted.length ? rows(sorted, perm, false) :
+      '<div class="empty">Nothing in stock. Add some above to start.</div>';
+    if (sorted.length && perm.canSell && !readOnly) {
+      h += '<p class="hint" style="margin-top:12px">This is the count, not the till \u2014 ' +
+        "log what sells on <b>Orders</b>, where you also say whether it went out of the window " +
+        "or through a delivery app.</p>";
+    }
+    if (tomorrow.length) h += '<p class="hint" style="margin-top:12px">' +
+      count(leftIn(tomorrow), "piece") + " expire tomorrow.</p>";
+    return h;
+  }
+  function stat(k, v, n, cls) {
+    return '<div class="stat ' + cls + '"><div class="k">' + k + '</div><div class="v num">' + v +
+      '</div><div class="n">' + esc(n) + "</div></div>";
+  }
+
+  /* one partner's earnings card: the headline they make, the two moves that
+     get them there, and where that money actually is right now */
+  function ecard(cls, who, makes, sub, rows, totLabel, note) {
+    var h = '<div class="ecard ' + cls + '"><div class="who3">' + who + "</div>" +
+      '<div class="make num">' + cur() + " " + money(makes) + "</div>" +
+      '<div class="lab">' + sub + "</div>";
+    rows.forEach(function (r) {
+      h += '<div class="erow"><span>' + r[0] + '</span><span class="num">' +
+        (r[1] < 0 ? "\u2212 " : "+ ") + cur() + " " + money(Math.abs(r[1])) + "</span></div>";
+    });
+    h += '<div class="erow top"><span>' + totLabel + '</span><span class="num">' +
+      cur() + " " + money(makes) + "</span></div>";
+    if (note) h += '<div class="enote">' + note + "</div>";
+    return h + "</div>";
+  }
+
+  /* ---------- rows ---------- */
+  function rows(list, perm, withSell, withVoid) {
+    var h = '<div class="rows">';
+    var seenDrop = {};                 /* one notice and one invoice per order */
+    list.forEach(function (b) {
+      var it = item(b.itemId);
+      var st = status(b);
+      var s = sold(b), left = remaining(b);
+      var exp = expiresOn(b);
+      var d = daysBetween(todayStr(), exp);
+      h += '<div class="row s-' + st + '"><div class="stripe"></div><div class="in">' +
+        '<div class="rt"><span class="nm">' + esc(it ? it.name : "Deleted item") + "</span>" +
+        '<span class="qty num">' + left + " / " + b.qty + "</span>" +
+        '<span class="unit">' + esc(plural(bPortion(b))) + "</span>" +
+        '<span class="pill p-' + st + '">' + STATUS_LABEL[st] + "</span>" +
+        (b.voided ? "" : '<span class="pill p-lock">LOCKED</span>') + "</div>";
+      h += '<div class="meta">' + "Made <b>" + niceDate(b.madeOn) + "</b> · expires <b>" + niceDate(exp) + "</b>" +
+        (st === "expired" ? " (" + Math.abs(d) + "d ago)" : d >= 0 && !b.voided && left > 0 ? " (" + (d === 0 ? "today" : d + "d") + ")" : "") +
+        " · logged <b>" + esc(stamp(b.at)) + "</b> by <b>" + esc(uname(b.by)) + "</b></div>";
+      var fixes = (b.sales || []).filter(function (x) { return x.fix; }).length;
+      var gv = given(b), bn = binned(b);
+      h += '<div class="meta">Sold <b>' + s + "</b>" +
+        (gv ? " \u00b7 given away <b>" + gv + "</b>" : "") +
+        (bn ? " \u00b7 binned <b>" + bn + "</b>" : "") +
+        (fixes ? " <span class=\"pill p-soon\">CORRECTED</span>" : "") +
+        " \u00b7 cost of the lot " +
+        (b.unitCost == null ? "<b>not set</b>" : "<b>" + cur() + " " + money(b.qty * b.unitCost) + "</b>") +
+        " \u00b7 sells at <b>" + cur() + " " + money(b.unitPrice) + "</b> each</div>";
+      if (b.unitCost != null && left > 0 && !b.voided) {
+        h += '<div class="meta">Still on the truck: <b>' + esc(count(left, bPortion(b))) +
+          "</b> \u00b7 cost <b>" + cur() + " " + money(left * b.unitCost) +
+          "</b> \u00b7 worth <b>" + cur() + " " + money(left * (b.unitPrice || 0)) + "</b> at menu price</div>";
+      }
+      if (b.voided) h += '<div class="meta">Voided by <b>' + esc(uname(b.voidedBy)) + "</b>" +
+        (b.voidReason ? ": " + esc(b.voidReason) : "") + "</div>";
+      var pct = b.qty ? Math.round((movedOut(b) / b.qty) * 100) : 0;
+      h += '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>';
+      var acts = "";
+      if (withSell && !b.voided && left > 0 && perm.canSell && !readOnly) {
+        acts += '<button class="btn pri sm" type="button" data-sell="' + b.id + '" data-n="1">SOLD 1</button>' +
+          '<button class="btn dark sm" type="button" data-sell="' + b.id + '" data-n="2">SOLD 2</button>' +
+          '<button class="btn ghost sm" type="button" data-sellmany="' + b.id + '">OTHER…</button>' +
+          '<button class="btn ghost sm" type="button" data-gift="' + b.id + '">GAVE AWAY</button>' +
+          '<button class="btn danger sm" type="button" data-waste="' + b.id + '">BINNED</button>';
+      }
+      if (withSell && !b.voided && s > 0 && perm.canSell && !readOnly) {
+        acts += '<button class="btn ghost sm" type="button" data-fix="' + b.id + '">FIX COUNT</button>';
+      }
+      if (withVoid && !b.voided && perm.canDeliver && !readOnly) {
+        acts += '<button class="btn danger sm" type="button" data-void="' + b.id + '">VOID</button>';
+      }
+      if (withVoid && b.voided && perm.canSetup && !readOnly) {
+        acts += '<button class="btn ghost sm" type="button" data-unvoid="' + b.id + '">RESTORE</button>';
+      }
+      if (withVoid && !b.voided && !seenDrop[dropOf(b)]) {
+        seenDrop[dropOf(b)] = true;
+        acts += '<button class="btn ghost sm" type="button" data-notify="' + dropOf(b) + '">EMAIL NOTICE</button>';
+        if (dl) acts += '<button class="btn dark sm" type="button" data-pdf="' + dropOf(b) + '">PDF INVOICE</button>';
+      }
+      if (acts) h += '<div class="acts">' + acts + "</div>";
+      h += "</div></div>";
+    });
+    return h + "</div>";
+  }
+
+  /* ---------- orders ---------- */
+
+  /* The one form that puts stock on the truck. It lives on both Stock and
+     Orders because Dee's side thinks of it as adding stock and the truck
+     thinks of it as an order arriving; only one tab renders at a time, so
+     the ids never collide. */
+  /* Everything is counted in the pieces that get sold — slices, bags,
+     ramekins. The batch each item is baked in is still what the recipe is
+     costed from, but it stays out of the way of whoever is counting. */
+  function linePortions(L) { return L.n; }
+
+  function orderForm(perm) {
+    if (!perm.canDeliver || readOnly) return "";
+    return '<div class="subhead">ADD STOCK</div><div class="card">' +
+      '<div class="field" style="max-width:220px"><label for="d-date">MADE ON</label>' +
+      '<input id="d-date" type="date" value="' + todayStr() + '"></div>' +
+      '<div id="d-rows"></div>' +
+      '<button class="btn ghost sm" type="button" data-act="addrow2">+ ADD ANOTHER ITEM</button>' +
+      '<div id="d-preview" style="margin-top:14px"></div>' +
+      '<button class="btn pri" type="button" data-act="deliver" style="margin-top:14px">SAVE ORDER &amp; LOCK</button>' +
+      "</div>";
+  }
+
+  function viewOut(perm) {
+    var h = '<h2 class="sec">Orders</h2>' +
+      '<p class="sub">Everything about an order in one place \u2014 what Dee sends out, what sells, ' +
+      'and where each sale came from. An order locks the moment it is saved, and sales are never edited ' +
+      'or deleted: if a count is wrong, <b>FIX COUNT</b> logs the difference as a correction and both ' +
+      'stay on the record.</p>';
+
+    /* --- what Dee hands to the truck --- */
+    var form = orderForm(perm);
+    if (!form && !readOnly) {
+      form = '<div class="banner info">Only Dee\'s side sends stock out. Your part here is logging what sells, and where it sold.</div>';
+    }
+
+    /* --- selling: what is on the truck, and where each sale came from.
+           Anything past its date still needs accounting for: some of it sold
+           before it turned, and only the rest is waste. --- */
+    var unsold = live().filter(function (b) { return remaining(b) > 0; });
+    var stale = unsold.filter(function (b) { return status(b) === "expired"; });
+    var open = unsold.filter(function (b) { return status(b) !== "expired"; });
+    var sell = "";
+    if (!perm.canSell && !readOnly) {
+      sell += '<div class="banner info">Only the truck side records sales. Everything sold shows below.</div>';
+    }
+    sell += channelBar(perm);
+    if (stale.length) {
+      var staleLeft = stale.reduce(function (a, b) { return a + remaining(b); }, 0);
+      sell += '<div class="subhead">PAST ITS DATE \u2014 STILL TO ACCOUNT FOR</div>';
+      sell += '<div class="banner warn"><b>' + esc(count(staleLeft, "piece")) +
+        " is sitting past its date with nothing logged against it.</b> If it sold before it turned, " +
+        "set <b>SOLD ON</b> to the day it went and log it. Whatever is genuinely left over stays as waste.</div>";
+      sell += rows(stale, perm, true);
+    }
+    sell += '<div class="subhead">ON THE TRUCK NOW</div>';
+    sell += open.length ? rows(open, perm, true) :
+      '<div class="empty">Nothing in date on the truck.</div>';
+
+    /* --- the sales log --- */
+    var log = [];
+    live().forEach(function (b) {
+      (b.sales || []).forEach(function (s) {
+        log.push({ at: s.at, on: saleOn(s), qty: s.qty, by: s.by, fix: s.fix, kind: kindOf(s),
+                   ch: s.ch || channels()[0], item: (item(b.itemId) || {}).name || "\u2014" });
+      });
+    });
+    log.sort(function (a, b) { return a.at < b.at ? 1 : -1; });
+    if (log.length) {
+      sell += '<div class="subhead">EVERYTHING LOGGED (' + log.length + ")</div><div class=\"tw\"><table><thead><tr>" +
+        "<th>ON</th><th>ITEM</th><th class=\"r\">QTY</th><th>WHAT</th><th>WHERE</th><th>BY</th></tr></thead><tbody>";
+      log.sort(function (a, b) { return a.on < b.on ? 1 : a.on > b.on ? -1 : (a.at < b.at ? 1 : -1); });
+      log.slice(0, 25).forEach(function (r) {
+        sell += "<tr><td>" + esc(niceDate(r.on)) +
+          "</td><td>" + esc(r.item) + (r.fix ? ' <span class="pill p-soon">FIX</span>' : "") +
+          '</td><td class="r num">' + (r.qty > 0 ? "+" + r.qty : r.qty) + "</td><td>" +
+          '<span class="pill ' + (r.kind === "waste" ? "p-today" : r.kind === "gift" ? "p-soon" : "p-fresh") +
+          '">' + KIND_LABEL[r.kind] + "</span></td><td>" +
+          (r.kind === "sale" ? esc(r.ch) : "\u2014") + "</td><td>" + esc(uname(r.by)) + "</td></tr>";
+      });
+      sell += "</tbody></table></div>";
+      if (log.length > 25) sell += '<p class="hint" style="margin-top:10px">Showing the last 25.</p>';
+    }
+
+    /* --- the full history --- */
+    var all = S.batches.slice().sort(function (a, b) { return a.at < b.at ? 1 : -1; });
+    var hist = '<div class="subhead">EVERY ORDER OUT (' + all.length + ")</div>";
+    hist += all.length ? rows(all, perm, false, true) : '<div class="empty">No orders logged yet.</div>';
+
+    /* the truck is here to sell, so it gets the sell buttons first;
+       Dee's side is here to send stock out, so the form comes first */
+    return perm.canSell && !perm.canDeliver ? h + sell + form + hist
+                                            : h + form + sell + hist;
+  }
+
+  /* ---------- recipes ---------- */
+  function viewRecipes(perm) {
+    if (!perm.canDeliver) {
+      return '<h2 class="sec">Recipes &amp; cost</h2>' +
+        '<div class="banner info">Recipes are kept to Dee\'s side. The truck sees the cost totals on Money and on each order, not the ingredients behind them.</div>';
+    }
+    var editable = perm.canDeliver && !readOnly;
+    var h = '<h2 class="sec">Recipes &amp; cost</h2>' +
+      '<p class="sub">Cost is worked out for one whole recipe, from supermarket pack prices, ' +
+      'then divided by how many pieces it makes. ' +
+      'Numbers update as you type; nothing is saved until you press save.</p>';
+    if (!editable) h += '<div class="banner info">Only Dee\'s side and admins can change recipes.</div>';
+
+    S.items.forEach(function (it) {
+      var ro = editable ? "" : " disabled";
+      h += '<div class="card" data-recipe="' + it.id + '">';
+      h += '<div class="recipe-h"><h3>' + esc(it.name) + "</h3>" +
+        '<span class="pill ' + (costed(it) ? "p-fresh" : "p-today") + '">' +
+        (costed(it) ? "COSTED" : "NEEDS RECIPE") + "</span></div>";
+
+      h += '<div class="ing"><span><span class="lbl">INGREDIENT</span></span>' +
+        '<span><span class="lbl">RECIPE QTY</span></span><span><span class="lbl">UNIT</span></span>' +
+        '<span><span class="lbl">PACK PRICE</span></span><span><span class="lbl">PACK QTY</span></span>' +
+        '<span><span class="lbl">COST USED</span></span><span></span></div>';
+      (it.recipe || []).forEach(function (r, ix) {
+        h += '<div class="ing" data-row="' + ix + '">' +
+          '<input data-f="n" value="' + esc(r.n) + '" placeholder="ingredient"' + ro + ">" +
+          '<input data-f="q" type="number" min="0" step="any" value="' + r.q + '"' + ro + ">" +
+          '<input data-f="u" value="' + esc(r.u || "") + '" placeholder="g"' + ro + ">" +
+          '<input data-f="pp" type="number" min="0" step="0.01" value="' + r.pp + '"' + ro + ">" +
+          '<input data-f="pq" type="number" min="0" step="any" value="' + r.pq + '"' + ro + ">" +
+          '<span class="out">0</span>' +
+          (editable ? '<button class="x" type="button" data-delrow="' + it.id + ":" + ix + '" aria-label="Remove">×</button>' : "<span></span>") +
+          "</div>";
+      });
+      if (!(it.recipe || []).length) h += '<p class="hint" style="margin:4px 0 10px">No ingredients yet.</p>';
+      if (editable) h += '<button class="btn ghost sm" type="button" data-addrow="' + it.id + '">+ ADD INGREDIENT</button>';
+
+      h += '<div class="grid2" style="margin-top:16px">' +
+        '<div class="field"><label>PIECES THIS RECIPE MAKES</label>' +
+        '<input data-f="yieldPieces" type="number" min="0" step="any" value="' + (it.yieldPieces || 0) + '"' + ro + "></div>" +
+        '<div class="field"><label>PIECES IN ONE ' + esc(portionWordOf(it).toUpperCase()) + '</label>' +
+        '<input data-f="perPortion" type="number" min="1" step="any" value="' + (it.perPortion || 1) + '"' + ro + "></div>" +
+        '<div class="field"><label>PACKAGING PER ' + esc(portionWordOf(it).toUpperCase()) + ' (' + cur() + ')</label>' +
+        '<input data-f="packaging" type="number" min="0" step="0.01" value="' + (it.packaging || 0) + '"' + ro + "></div>" +
+        '<div class="field"><label>SELLING PRICE (' + cur() + ')</label>' +
+        '<input data-f="price" type="number" min="0" step="0.01" value="' + it.price + '"' + ro + "></div>" +
+        '<div class="field"><label>CALL ONE PIECE A…</label>' +
+        '<input data-f="portionWord" value="' + esc(portionWordOf(it)) + '" placeholder="slice, bag"' + ro + "></div>" +
+        "</div>";
+
+      h += '<div class="costcard"><div class="grid">' +
+        cc("batch", "RECIPE COST") + cc("yield", "YIELD") + cc("ing", "INGREDIENT / UNIT") +
+        cc("pack", "PACKAGING") + cc("price", "SELLS AT") + cc("profit", "GROSS PROFIT") + cc("margin", "MARGIN") +
+        "</div></div>";
+      h += '<p class="hint" style="margin-top:10px" data-spare></p>';
+      h += '<p class="hint" style="margin-top:6px">Direct cost only — excludes labour, utilities, delivery and wastage.</p>';
+      if (editable) h += '<div class="acts"><button class="btn dark sm" type="button" data-saverecipe="' + it.id + '">SAVE RECIPE</button></div>';
+      h += "</div>";
+    });
+    return h;
+  }
+  function cc(k, label) {
+    return '<div class="cc"><div class="k">' + label + '</div><div class="v num" data-cc="' + k + '">—</div></div>';
+  }
+
+  /* ---------- money ---------- */
+  function viewMoney() {
+    var t = totals(null);
+    var pct = S.split.deesPct;
+    var basis = S.split.basis === "revenue" ? t.revenue : t.profit;
+    var deesCut = basis * (pct / 100), truckCut = basis * (1 - pct / 100);
+    var S1 = settlement();
+    var out = S1.outstanding;
+    var owes = out >= 0 ? "SMASH &amp; PASS owes DEE'S TREATS" : "DEE'S TREATS owes SMASH &amp; PASS";
+    var h = '<h2 class="sec">Money</h2><p class="sub">Profit counts only what has actually sold. ' +
+      "Stock still sitting on the truck is Dee's money, not a loss \u2014 it settles the day it sells.</p>";
+
+    h += '<div class="settle' + (Math.abs(out) < 0.005 ? " clear" : "") + '">' +
+      '<div class="k">OUTSTANDING RIGHT NOW</div>' +
+      '<div class="big num">' + cur() + " " + money(Math.abs(out)) + "</div>" +
+      '<div class="who2">' + (Math.abs(out) < 0.005 ? "All square — nothing owed either way." : owes) + "</div>";
+    h += '<div class="calc">' +
+      '<div class="crow"><span>Ingredients in everything used up' +
+        (S1.gift || S1.waste ? " \u2014 sold, given away, binned" : "") +
+        '</span><span class="num">' + cur() + " " + money(S1.cost) + "</span></div>" +
+      '<div class="crow"><span>Truck\'s ' + Math.round((1 - S1.d) * 100) + '% share of that</span><span class="num">+ ' +
+        cur() + " " + money(S1.costShare) + "</span></div>" +
+      '<div class="crow"><span>Truck collected in sales</span><span class="num">' +
+        cur() + " " + money(S1.revenue) + "</span></div>" +
+      '<div class="crow"><span>Dee\'s ' + Math.round(S1.d * 100) + '% share of those takings</span><span class="num">+ ' +
+        cur() + " " + money(S1.revShare) + "</span></div>" +
+      (S1.paid ? '<div class="crow"><span>Already paid across</span><span class="num">- ' +
+        cur() + " " + money(S1.paid) + "</span></div>" : "") +
+      '<div class="crow tot"><span>' + (out >= 0 ? "Truck pays Dee\'s" : "Dee\'s pays truck") +
+        '</span><span class="num">' + cur() + " " + money(Math.abs(out)) + "</span></div>" +
+      "</div></div>";
+    if (S1.stock > 0.005) {
+      h += '<p class="hint" style="margin:-4px 0 16px">Not in that figure: ' +
+        esc(count(S1.stockUnits, "piece")) + " still on the truck, " + cur() + " " + money(S1.stock) +
+        " of Dee's money. That settles the day they sell, not before.</p>";
+    }
+    if (t.unknownCost) h += '<div class="banner warn"><b>' + t.unknownCost +
+      " pieces have no cost recorded.</b> Profit and waste are flattered until those items have an ingredient cost.</div>";
+    var E = earnings();
+    h += '<div class="subhead">WHAT EACH PARTNER MAKES</div>';
+    h += '<div class="earn">' +
+      ecard("d", "DEE'S TREATS", E.deesNow,
+        Math.round(S1.d * 100) + "% of the profit made so far",
+        [[S1.gift || S1.waste ? "Ingredients used up" : "Ingredients in what has sold", -S1.cost],
+         ["Comes back from the truck", S1.owed]],
+        "Dee's makes",
+        S1.paid ? cur() + " " + money(S1.paid) + " already received · " + cur() + " " +
+          money(S1.outstanding) + " still due."
+                : "None of it is in hand until the truck settles.") +
+      ecard("t", "SMASH &amp; PASS", E.truckNow,
+        Math.round((1 - S1.d) * 100) + "% of the profit made so far",
+        [["Taken at the window", S1.revenue],
+         ["Goes across to Dee's", -S1.owed]],
+        "The truck makes",
+        S1.paid ? cur() + " " + money(S1.paid) + " already handed over · " + cur() + " " +
+          money(S1.outstanding) + " still to pay."
+                : "Hold back what is owed — the rest is yours.") +
+      "</div>";
+    if (E.up.units > 0) {
+      h += '<div class="proj"><b>' + esc(count(E.up.units, "piece")) +
+        " still on the truck</b>, worth " + cur() + " " + money(E.up.revenue) +
+        " at menu price against " + cur() + " " + money(E.up.cost) +
+        " of ingredients \u2014 " + cur() + " " + money(E.up.profit) + " of profit still in them. " +
+        "Sell the lot and the two sides make " + cur() + " " + money(E.deesProj) +
+        " (Dee's) and " + cur() + " " + money(E.truckProj) + " (the truck).</div>";
+    }
+    h += '<div class="stats">' +
+      stat("REVENUE", cur() + " " + money(t.revenue), count(t.unitsSold, "piece") + " sold", "good") +
+      stat("COST OF SALES", cur() + " " + money(t.costSold), "ingredients in the " + t.unitsSold + " sold", "") +
+      stat("PROFIT", cur() + " " + money(t.profit), "on what has actually sold", t.profit >= 0 ? "good" : "bad") +
+      stat("GIVEN AWAY", cur() + " " + money(t.costGift),
+           count(t.unitsGiven, "piece") + " out for free", t.costGift > 0.005 ? "warn" : "") +
+      stat("WASTE", cur() + " " + money(t.waste),
+           count(t.unitsWasted, "piece") + " binned or expired", t.waste > 0 ? "bad" : "") +
+      stat("STOCK ON THE TRUCK", cur() + " " + money(t.costStock),
+           count(t.unitsLeft, "piece") + " not sold yet", "") +
+      "</div>";
+
+    if (S.split.basis === "revenue") {
+      h += '<div class="subhead">SETUP SAYS SPLIT THE REVENUE</div>';
+      h += '<div class="split">' +
+        '<div class="sp d"><div class="k">DEE\'S TREATS</div><div class="v num">' + cur() + " " + money(deesCut) + "</div></div>" +
+        '<div class="sp t"><div class="k">SMASH &amp; PASS</div><div class="v num">' + cur() + " " + money(truckCut) + "</div></div>" +
+        "</div>";
+      h += '<div class="banner warn"><b>The split is set on revenue, not profit.</b> Those are the raw ' +
+        pct + "/" + (100 - pct) + " cuts of the takings, before the ingredients are paid for. " +
+        "The settlement and the earnings above are worked on profit, which is what a 50/50 partnership normally means. " +
+        "Change the basis in Setup if revenue really is what you agreed.</div>";
+    } else {
+      h += '<p class="hint" style="margin-top:12px">Split percentage and basis are set in Setup. ' +
+        "These are direct-cost figures \u2014 they take no account of labour, gas, the truck itself or anyone's time.</p>";
+    }
+
+    var BC = byChannel();
+    if (BC.order.length) {
+      h += '<div class="subhead">WHERE THE SALES CAME FROM</div><div class="tw"><table><thead><tr>' +
+        '<th>CHANNEL</th><th class="r">UNITS</th><th class="r">REVENUE</th><th class="r">SHARE</th>' +
+        "</tr></thead><tbody>";
+      BC.order.forEach(function (k) {
+        var g = BC.map[k];
+        var share = t.revenue ? Math.round((g.revenue / t.revenue) * 1000) / 10 : 0;
+        h += "<tr><td>" + esc(k) + '</td><td class="r num">' + g.units +
+          '</td><td class="r num">' + cur() + " " + money(g.revenue) +
+          '</td><td class="r num">' + share + "%</td></tr>";
+      });
+      h += "</tbody></table></div>";
+      h += '<p class="hint" style="margin-top:10px">Revenue here is the menu price. ' +
+        "If a delivery app keeps a commission, what actually lands is less \u2014 tell me the rate and " +
+        "I will take it off before the split.</p>";
+    }
+
+    var byWho = {};
+    live().forEach(function (b) {
+      if (b.unitCost == null) return;
+      if (!byWho[b.by]) byWho[b.by] = { units: 0, cost: 0, stock: 0, drops: {} };
+      byWho[b.by].units += b.qty;
+      byWho[b.by].cost += b.qty * b.unitCost;
+      if (status(b) !== "expired") byWho[b.by].stock += remaining(b) * b.unitCost;
+      byWho[b.by].drops[b.drop || b.id] = 1;
+    });
+    var whoKeys = Object.keys(byWho);
+    if (whoKeys.length) {
+      h += '<div class="subhead">WHO PAID FOR THE STOCK</div><div class="tw"><table><thead><tr>' +
+        '<th>MADE BY</th><th class="r">ORDERS</th><th class="r">PIECES</th><th class="r">SPENT</th>' +
+        '<th class="r">STILL AS STOCK</th></tr></thead><tbody>';
+      whoKeys.forEach(function (k) {
+        var g = byWho[k];
+        h += "<tr><td>" + esc(uname(k)) + '</td><td class="r num">' + Object.keys(g.drops).length +
+          '</td><td class="r num">' + g.units + '</td><td class="r num">' + money(g.cost) +
+          '</td><td class="r num">' + money(g.stock) + "</td></tr>";
+      });
+      h += "</tbody></table></div>";
+    }
+
+    if (ROLES[me.role].canDeliver && !readOnly) {
+      h += '<div style="margin-top:12px"><button class="btn dark sm" type="button" data-act="pay">RECORD A PAYMENT</button></div>';
+    }
+    if (payments().length) {
+      h += '<div class="subhead">PAYMENTS</div><div class="tw"><table><thead><tr>' +
+        '<th>WHEN</th><th class="r">AMOUNT</th><th>NOTE</th><th>LOGGED BY</th></tr></thead><tbody>';
+      payments().slice().reverse().forEach(function (pm) {
+        h += "<tr><td>" + esc(stamp(pm.at)) + '</td><td class="r num">' + cur() + " " + money(pm.amount) +
+          "</td><td>" + esc(pm.note || "—") + "</td><td>" + esc(uname(pm.by)) + "</td></tr>";
+      });
+      h += "</tbody></table></div>";
+    }
+
+    /* ---- the investment: what Dee's has put in, and where it is now ----
+       Money, not ingredients. The truck sees every figure here; the names
+       of what went into the mixing bowl stay on the Recipes tab. */
+    var INV = { spent: 0, sold: 0, gift: 0, stock: 0, waste: 0, pieces: 0, unknown: 0 };
+    var invItems = [];
+    S.items.forEach(function (it) {
+      var g = { name: it.name, w: portionWordOf(it), pieces: 0, spent: 0,
+                sold: 0, gift: 0, stock: 0, waste: 0, each: null, any: false };
+      live().forEach(function (b) {
+        if (b.itemId !== it.id) return;
+        g.any = true;
+        var s = sold(b), gv = given(b), bn = binned(b);
+        var left = remaining(b), gone = status(b) === "expired";
+        g.pieces += b.qty;
+        if (b.unitCost == null) { INV.unknown += b.qty; return; }
+        var c = b.unitCost;
+        if (g.each == null) g.each = c;
+        g.spent += b.qty * c;
+        g.sold += s * c;
+        g.gift += gv * c;
+        g.waste += bn * c + (gone ? left * c : 0);
+        if (!gone) g.stock += left * c;
+      });
+      if (!g.any) return;
+      INV.spent += g.spent; INV.sold += g.sold; INV.gift += g.gift;
+      INV.stock += g.stock; INV.waste += g.waste; INV.pieces += g.pieces;
+      invItems.push(g);
+    });
+    if (invItems.length) {
+      h += '<div class="subhead">THE INVESTMENT — WHAT DEE\'S HAS PUT IN</div>';
+      h += '<div class="stats">' +
+        stat("PUT IN", cur() + " " + money(INV.spent),
+             count(INV.pieces, "piece") + " made and sent", "") +
+        stat("SOLD THROUGH", cur() + " " + money(INV.sold),
+             "the part that has earned", "good") +
+        stat("STILL IN STOCK", cur() + " " + money(INV.stock),
+             "on the truck, not sold yet", "") +
+        stat("GIVEN AWAY", cur() + " " + money(INV.gift),
+             "handed out for nothing", INV.gift > 0.005 ? "warn" : "") +
+        stat("LOST TO WASTE", cur() + " " + money(INV.waste),
+             "binned or past its date", INV.waste > 0.005 ? "bad" : "") +
+        "</div>";
+      h += '<div class="tw"><table><thead><tr><th>ITEM</th>' +
+        '<th class="r">PIECES</th><th class="r">COST EACH</th><th class="r">PUT IN</th>' +
+        '<th class="r">SOLD</th><th class="r">GIVEN</th><th class="r">IN STOCK</th><th class="r">WASTE</th>' +
+        "</tr></thead><tbody>";
+      invItems.forEach(function (g) {
+        h += "<tr><td>" + esc(g.name) + '</td><td class="r num">' + esc(count(g.pieces, g.w)) +
+          '</td><td class="r num">' + (g.each == null ? "—" : money(g.each)) +
+          '</td><td class="r num">' + money(g.spent) +
+          '</td><td class="r num">' + money(g.sold) +
+          '</td><td class="r num">' + money(g.gift) +
+          '</td><td class="r num">' + money(g.stock) +
+          '</td><td class="r num">' + money(g.waste) + "</td></tr>";
+      });
+      h += '<tr><td><b>Total</b></td><td class="r num"><b>' + INV.pieces +
+        '</b></td><td class="r num">—</td><td class="r num"><b>' + money(INV.spent) +
+        '</b></td><td class="r num"><b>' + money(INV.sold) +
+        '</b></td><td class="r num"><b>' + money(INV.gift) +
+        '</b></td><td class="r num"><b>' + money(INV.stock) +
+        '</b></td><td class="r num"><b>' + money(INV.waste) + "</b></td></tr>";
+      h += "</tbody></table></div>";
+      h += '<p class="hint" style="margin-top:10px">Dee\'s pays this up front. ' +
+        "SOLD is the part that has earned its keep, and the truck settles half of it. " +
+        "IN STOCK is still Dee\u2019s money sitting on the truck \u2014 it settles the day it sells. " +
+        "GIVEN and WASTE brought nothing in, so both sides carry half of each.</p>";
+      if (INV.unknown) {
+        h += '<p class="hint" style="margin-top:6px">' + INV.unknown +
+          " pieces went out before their item had a recipe costed, so they are missing from these totals.</p>";
+      }
+      /* what one piece is built from — money only, no ingredient names */
+      h += '<div class="subhead">WHAT ONE PIECE COSTS TO MAKE</div>';
+      h += '<div class="tw"><table><thead><tr><th>ITEM</th>' +
+        '<th class="r">MAKES</th><th class="r">INGREDIENTS</th><th class="r">PACKAGING</th>' +
+        '<th class="r">COST EACH</th><th class="r">SELLS AT</th><th class="r">MARGIN</th>' +
+        "</tr></thead><tbody>";
+      S.items.forEach(function (it) {
+        if (!costed(it)) return;
+        var per = portionsPer(it), ing = batchCost(it) / per, pk = +it.packaging || 0;
+        var u = ing + pk, m = it.price ? ((it.price - u) / it.price) * 100 : 0;
+        h += "<tr><td>" + esc(it.name) + '</td><td class="r num">' +
+          esc(count(per, portionWordOf(it))) + " a bake" +
+          '</td><td class="r num">' + money(ing) +
+          '</td><td class="r num">' + money(pk) +
+          '</td><td class="r num"><b>' + money(u) +
+          '</b></td><td class="r num">' + money(it.price) +
+          '</td><td class="r num">' + (Math.round(m * 10) / 10) + "%</td></tr>";
+      });
+      h += "</tbody></table></div>";
+      h += '<p class="hint" style="margin-top:10px">Today’s recipe prices. ' +
+        "Stock already sent out keeps the cost it was locked in at, which is what every figure above uses." +
+        (ROLES[me.role].canDeliver ? " The ingredients behind these numbers are on the Recipes tab." : "") +
+        "</p>";
+    }
+
+    /* the split for one day's stock: what was made that day, what has sold
+       off it, and where the two sides stand on it */
+    var byDay = {};
+    live().forEach(function (b) {
+      var k = b.madeOn;
+      if (!byDay[k]) byDay[k] = { made: 0, units: 0, sold: 0, gift: 0, left: 0, wasted: 0,
+                                  revenue: 0, used: 0, unknown: false };
+      var g = byDay[k], s = sold(b), gv = given(b), bn = binned(b);
+      var left = remaining(b), gone = status(b) === "expired";
+      g.units += b.qty;
+      g.sold += s;
+      g.gift += gv;
+      g.wasted += bn + (gone ? left : 0);
+      if (!gone) g.left += left;
+      g.revenue += s * (b.unitPrice || 0);
+      if (b.unitCost == null) { g.unknown = true; return; }
+      var c2 = b.unitCost;
+      g.made += b.qty * c2;
+      g.used += (s + gv + bn) * c2 + (gone ? left * c2 : 0);
+    });
+    var days = Object.keys(byDay).sort().reverse();
+    if (days.length) {
+      h += '<div class="subhead">DAY BY DAY — THE SPLIT ON EACH DAY\'S STOCK</div>';
+      h += '<div class="tw"><table><thead><tr><th>MADE ON</th>' +
+        '<th class="r">SOLD</th><th class="r">LEFT</th><th class="r">TAKEN</th>' +
+        '<th class="r">COST USED</th><th class="r">PROFIT</th>' +
+        '<th class="r">DEE\'S ' + Math.round(S1.d * 100) + '%</th>' +
+        '<th class="r">TRUCK ' + Math.round((1 - S1.d) * 100) + '%</th>' +
+        "</tr></thead><tbody>";
+      days.forEach(function (k) {
+        var g = byDay[k], pr = g.revenue - g.used;
+        h += "<tr><td>" + esc(niceDate(k)) + '</td><td class="r num">' + g.sold + " / " + g.units +
+          '</td><td class="r num">' + g.left +
+          (g.gift ? " \u00b7 " + g.gift + " free" : "") +
+          (g.wasted ? " \u00b7 " + g.wasted + " lost" : "") +
+          '</td><td class="r num">' + money(g.revenue) +
+          '</td><td class="r num">' + money(g.used) + (g.unknown ? "+" : "") +
+          '</td><td class="r num">' + money(pr) +
+          '</td><td class="r num">' + money(pr * S1.d) +
+          '</td><td class="r num">' + money(pr * (1 - S1.d)) + "</td></tr>";
+      });
+      h += "</tbody></table></div>";
+      h += '<p class="hint" style="margin-top:10px">Each row is the stock made that day. ' +
+        "LEFT is still unsold, so nothing has been counted on it either way — " +
+        "its share lands on the day it sells.</p>";
+    }
+    h += '<div class="subhead">BY ITEM</div><div class="tw"><table><thead><tr><th>ITEM</th>' +
+      '<th class="r">OUT</th><th class="r">SOLD</th><th class="r">GIVEN</th><th class="r">WASTED</th><th class="r">REVENUE</th><th class="r">COST USED</th><th class="r">PROFIT</th>' +
+      "</tr></thead><tbody>";
+    S.items.forEach(function (it) {
+      var o = 0, s = 0, w = 0, gf = 0, rev = 0, cost = 0, any = false;
+      live().forEach(function (b) {
+        if (b.itemId !== it.id) return;
+        any = true;
+        var sd = sold(b), gv = given(b), bn = binned(b), gone = status(b) === "expired";
+        o += b.qty; s += sd; gf += gv; rev += sd * (b.unitPrice || 0);
+        if (b.unitCost != null) cost += (sd + gv + bn) * b.unitCost + (gone ? remaining(b) * b.unitCost : 0);
+        w += bn + (gone ? remaining(b) : 0);
+      });
+      if (!any) return;
+      h += "<tr><td>" + esc(it.name) + '</td><td class="r num">' + o + '</td><td class="r num">' + s +
+        '</td><td class="r num">' + gf + '</td><td class="r num">' + w + '</td><td class="r num">' + money(rev) +
+        '</td><td class="r num">' + money(cost) + '</td><td class="r num">' + money(rev - cost) + "</td></tr>";
+    });
+    h += "</tbody></table></div>";
+    return h;
+  }
+
+  /* ---------- your own login ---------- */
+  function viewAccount() {
+    var h = '<h2 class="sec">Your login</h2>' +
+      '<p class="sub">Signed in as <b>' + esc(me.name) + '</b> — username <b>' + esc(me.user || "—") +
+      '</b>. Change your own PIN here; nobody else can see it.</p>';
+    if (readOnly) return h + '<div class="banner info">This view is read-only, so your PIN cannot be changed from here.</div>';
+    h += '<div class="card"><div class="grid2">' +
+      '<div class="field"><label for="pw-old">CURRENT PIN</label>' +
+      '<input id="pw-old" type="password" inputmode="numeric" autocomplete="current-password" placeholder="••••"></div>' +
+      '<div class="field"><label for="pw-new">NEW PIN</label>' +
+      '<input id="pw-new" type="password" inputmode="numeric" autocomplete="new-password" placeholder="4–8 digits"></div>' +
+      '<div class="field"><label for="pw-two">REPEAT NEW PIN</label>' +
+      '<input id="pw-two" type="password" inputmode="numeric" autocomplete="new-password" placeholder="••••"></div>' +
+      "</div>" +
+      '<button class="btn pri" type="button" data-act="changepin">CHANGE MY PIN</button>' +
+      '<p class="hint" style="margin-top:12px">4 to 8 digits. If you forget it, an admin can set a new one for you in Setup.</p>' +
+      "</div>";
+    return h;
+  }
+
+  function changePin() {
+    var oldEl = document.getElementById("pw-old"),
+        newEl = document.getElementById("pw-new"),
+        twoEl = document.getElementById("pw-two");
+    var oldPin = (oldEl.value || "").trim(),
+        newPin = (newEl.value || "").trim(),
+        twoPin = (twoEl.value || "").trim();
+    if (!oldPin || !newPin) { toast("Fill in your current PIN and the new one.", true); return; }
+    if (!/^\d{4,8}$/.test(newPin)) { toast("New PIN must be 4\u20138 digits.", true); return; }
+    if (newPin !== twoPin) { toast("The two new PINs do not match.", true); return; }
+    if (newPin === oldPin) { toast("That is already your PIN.", true); return; }
+    api("/api/pin", { oldPin: oldPin, newPin: newPin }).then(function (r) {
+      if (!r.body.ok) { toast(r.body.error || "Could not change your PIN.", true); return; }
+      loadState().then(function () { render(); toast("PIN changed."); });
+    }, function () { toast("No connection.", true); });
+  }
+
+  /* ---------- setup ---------- */
+  function viewSetup(perm) {
+    if (!perm.canSetup) return '<div class="empty">Setup is admin only.</div>';
+    var h = '<h2 class="sec">Setup</h2><p class="sub">Edit anything here. Changes apply to <em>future</em> orders only — anything already logged keeps the price, cost and shelf life it was saved with.</p>';
+
+    h += '<div class="subhead">ITEMS</div>';
+    S.items.forEach(function (it) {
+      h += '<div class="card" data-item="' + it.id + '"><div class="grid2">' +
+        '<div class="field"><label>NAME</label><input data-f="name" value="' + esc(it.name) + '"></div>' +
+        '<div class="field"><label>NOTE</label><input data-f="note" value="' + esc(it.note || "") + '" placeholder="4 pcs, weekends…"></div>' +
+        '<div class="field"><label>SELL PRICE (' + cur() + ')</label><input data-f="price" type="number" min="0" step="0.01" value="' + it.price + '"></div>' +
+        '<div class="field"><label>SHELF LIFE (DAYS)</label><input data-f="shelf" type="number" min="0" step="1" value="' + it.shelf + '"></div>' +
+        '<div class="field"><label>ON THE MENU</label><select data-f="active"><option value="1"' + (it.active ? " selected" : "") + ">Yes</option><option value=\"0\"" + (!it.active ? " selected" : "") + ">No</option></select></div>" +
+        '</div><div class="acts"><button class="btn dark sm" type="button" data-saveitem="' + it.id + '">SAVE ITEM</button>' +
+        '<button class="btn danger sm" type="button" data-delitem="' + it.id + '">REMOVE</button></div></div>';
+    });
+    h += '<button class="btn ghost" type="button" data-act="additem">+ ADD ITEM</button>';
+
+    h += '<div class="subhead">TEAM</div>';
+    S.team.forEach(function (u) {
+      h += '<div class="card" data-user="' + u.id + '"><div class="grid2">' +
+        '<div class="field"><label>NAME</label><input data-f="name" value="' + esc(u.name) + '"></div>' +
+        '<div class="field"><label>USERNAME (THEY TYPE THIS)</label><input data-f="user" value="' + esc(u.user || "") +
+        '" autocapitalize="none" autocorrect="off" spellcheck="false"></div>' +
+        '<div class="field"><label>SIDE</label><select data-f="role">' +
+        '<option value="dees"' + (u.role === "dees" ? " selected" : "") + ">Dee's — logs orders</option>" +
+        '<option value="truck"' + (u.role === "truck" ? " selected" : "") + ">Truck — logs sales</option>" +
+        '<option value="admin"' + (u.role === "admin" ? " selected" : "") + ">Admin — everything</option>" +
+        "</select></div>" +
+        '<div class="field"><label>NEW PIN (BLANK = KEEP)</label><input data-f="pin" type="password" inputmode="numeric" autocomplete="off" placeholder="••••"></div>' +
+        '</div><div class="acts"><button class="btn dark sm" type="button" data-saveuser="' + u.id + '">SAVE PERSON</button>' +
+        (S.team.length > 1 ? '<button class="btn danger sm" type="button" data-deluser="' + u.id + '">REMOVE</button>' : "") +
+        "</div></div>";
+    });
+    h += '<button class="btn ghost" type="button" data-act="adduser">+ ADD PERSON</button>';
+
+    h += '<div class="subhead">THE SPLIT</div><div class="card"><div class="grid2">' +
+      '<div class="field"><label for="sp-pct">DEE\'S SHARE (%)</label><input id="sp-pct" type="number" min="0" max="100" step="1" value="' + S.split.deesPct + '"></div>' +
+      '<div class="field"><label for="sp-basis">SPLIT ON</label><select id="sp-basis">' +
+      '<option value="profit"' + (S.split.basis === "profit" ? " selected" : "") + ">Profit (after cost)</option>" +
+      '<option value="revenue"' + (S.split.basis === "revenue" ? " selected" : "") + ">Revenue (before cost)</option>" +
+      "</select></div>" +
+      '<div class="field"><label for="sp-cur">CURRENCY</label><input id="sp-cur" value="' + cur() + '"></div>' +
+      "</div>" +
+      '<button class="btn dark sm" type="button" data-act="savesplit">SAVE</button></div>';
+
+    h += '<div class="subhead">WHERE SALES COME FROM</div><div class="card">' +
+      '<div class="field"><label for="ch-list">CHANNELS</label>' +
+      '<input id="ch-list" value="' + esc(channels().join(", ")) + '" placeholder="Window, Talabat, Deliveroo"></div>' +
+      '<button class="btn dark sm" type="button" data-act="savechannels">SAVE</button>' +
+      "<p class=\"hint\" style=\"margin-top:12px\">Separate them with commas \u2014 the first is the one " +
+      "the truck starts on. Every sale is stamped with whichever channel was picked at the time, so " +
+      "renaming one here does not rewrite sales already logged under the old name.</p></div>";
+
+    h += '<div class="subhead">WHO GETS TOLD</div><div class="card">' +
+      '<div class="field"><label for="nt-mails">EMAIL ADDRESSES</label>' +
+      '<input id="nt-mails" value="' + esc(S.notify || "") + '" ' +
+      'placeholder="dina@example.com, marwan@example.com" autocapitalize="none" autocorrect="off" spellcheck="false"></div>' +
+      '<button class="btn dark sm" type="button" data-act="savenotify">SAVE</button>' +
+      "<p class=\"hint\" style=\"margin-top:12px\">Separate them with commas. These addresses are filled in for you " +
+      "whenever someone presses <b>EMAIL NOTICE</b> on an order or <b>EMAIL THE STOCK NOTE</b>. " +
+      "The page itself cannot post to a mail server, so it opens the note in your own mail app \u2014 " +
+      "you press send.</p></div>";
+
+    var oldOnes = S.batches.filter(function (b) {
+      return daysBetween(todayStr(), expiresOn(b)) < -30;
+    }).length;
+    h += '<div class="subhead">HOUSEKEEPING</div><div class="card">' +
+      "<p style=\"margin:0 0 12px;font-size:14.5px;color:var(--ink-2)\">The whole board is saved inside this page, so it should not grow forever. " +
+      (oldOnes ? "<b>" + count(oldOnes, "entry") + "</b> expired more than 30 days ago." : "Nothing is older than 30 days yet.") + "</p>" +
+      '<button class="btn danger sm" type="button" data-act="archive"' + (oldOnes ? "" : " disabled") + ">CLEAR STOCK OVER 30 DAYS OLD</button></div>";
+    return h;
+  }
+
+  /* ============ actions ============ */
+  function wire() {
+    app.querySelectorAll("[data-tab]").forEach(function (b) {
+      b.onclick = function () { setTab(b.getAttribute("data-tab")); };
+    });
+    app.querySelectorAll("[data-ch]").forEach(function (b) {
+      b.onclick = function () { setChannel(b.getAttribute("data-ch")); };
+    });
+    app.querySelectorAll("[data-sdate]").forEach(function (b) {
+      b.onclick = function () { setSaleDate(""); };
+    });
+    var sdEl = document.getElementById("s-date");
+    if (sdEl) sdEl.onchange = function () { setSaleDate(sdEl.value); };
+    app.querySelectorAll("[data-sell]").forEach(function (b) {
+      b.onclick = function () { logSale(b.getAttribute("data-sell"), +b.getAttribute("data-n")); };
+    });
+    var MOVE = {
+      sellmany: { kind: "sale",  title: "How many sold?",       ok: "LOG SALE",  body: "" },
+      gift:     { kind: "gift",  title: "How many given away?", ok: "LOG IT",
+                  body: "Samples, staff, a comp for a regular. They cost the same to make and " +
+                        "bring nothing in, so both sides carry half of it." },
+      waste:    { kind: "waste", title: "How many written off?", ok: "WRITE OFF", danger: true,
+                  body: "Dropped, spoiled, or left over past the date. Gone for good, and both " +
+                        "sides carry half the cost." }
+    };
+    Object.keys(MOVE).forEach(function (act) {
+      app.querySelectorAll("[data-" + act + "]").forEach(function (b) {
+        b.onclick = function () {
+          var bid = b.getAttribute("data-" + act);
+          var bt = S.batches.filter(function (x) { return x.id === bid; })[0];
+          if (!bt) return;
+          var m = MOVE[act];
+          ask({ title: m.title, ok: m.ok, body: m.body || undefined, danger: m.danger,
+                input: { label: plural(bPortion(bt)).toUpperCase() + " (UP TO " + remaining(bt) + ")",
+                         value: 1, min: 1, max: remaining(bt) } })
+            .then(function (n) { if (n != null) logSale(bid, n, m.kind); });
+        };
+      });
+    });
+    app.querySelectorAll("[data-fix]").forEach(function (b) {
+      b.onclick = function () {
+        var bt = S.batches.filter(function (x) { return x.id === b.getAttribute("data-fix"); })[0];
+        if (!bt) return;
+        var now = sold(bt);
+        ask({ title: "Fix the sold count",
+              body: "This lot is recorded as " + now + " sold, with " + remaining(bt) + " still on it" +
+                ". Enter what has actually sold — the difference is logged as a correction, " +
+                "the original entries stay on the record.",
+              ok: "SAVE CORRECTION",
+              input: { label: "ACTUALLY SOLD", value: now, min: 0, max: now + remaining(bt) } })
+          .then(function (target) {
+            if (target == null || target === now) return;
+            save(function (nx) {
+              var t = nx.batches.filter(function (x) { return x.id === bt.id; })[0];
+              t.sales = t.sales || [];
+              t.sales.push({ qty: target - now, by: me.id, at: new Date().toISOString(),
+                             on: saleDate(), fix: true, ch: curChannel() });
+            }, "Count corrected to " + target + ".");
+          });
+      };
+    });
+    app.querySelectorAll("[data-void]").forEach(function (b) {
+      b.onclick = function () {
+        var bt = S.batches.filter(function (x) { return x.id === b.getAttribute("data-void"); })[0];
+        if (!bt) return;
+        var s0 = movedOut(bt);
+        if (s0 > 0 && !ROLES[me.role].canSetup) {
+          toast("This lot already has " + s0 + " logged against it. Ask an admin.", true);
+          return;
+        }
+        ask({ title: "Void this order?",
+              body: (s0 > 0 ? "Warning: " + s0 + " already logged against it — those go too.\n\n" : "") +
+                "It stays on the record marked voided, and drops out of stock, cost and the split.",
+              ok: "VOID IT", danger: true,
+              input: { type: "text", label: "REASON", placeholder: "logged twice, wrong item…" } })
+          .then(function (reason) {
+            if (!reason) return;
+            save(function (nx) {
+              var t = nx.batches.filter(function (x) { return x.id === bt.id; })[0];
+              t.voided = true; t.voidedBy = me.id; t.voidReason = reason;
+              t.voidedAt = new Date().toISOString();
+            }, "Order voided.");
+          });
+      };
+    });
+    app.querySelectorAll("[data-pdf]").forEach(function (b) {
+      b.onclick = function () { saveInvoice(b.getAttribute("data-pdf")); };
+    });
+    app.querySelectorAll("[data-notify]").forEach(function (b) {
+      b.onclick = function () {
+        notice("Order notice", deliveryNotice(b.getAttribute("data-notify")));
+      };
+    });
+    app.querySelectorAll("[data-unvoid]").forEach(function (b) {
+      b.onclick = function () {
+        var bid = b.getAttribute("data-unvoid");
+        ask({ title: "Restore this order?", body: "It counts towards stock and the split again.",
+              ok: "RESTORE" }).then(function (go) {
+          if (!go) return;
+          save(function (nx) {
+            var t = nx.batches.filter(function (x) { return x.id === bid; })[0];
+            delete t.voided; delete t.voidedBy; delete t.voidReason; delete t.voidedAt;
+          }, "Order restored.");
+        });
+      };
+    });
+    app.querySelectorAll("[data-saveitem]").forEach(function (b) {
+      b.onclick = function () { saveItem(b.getAttribute("data-saveitem")); };
+    });
+    app.querySelectorAll("[data-delitem]").forEach(function (b) {
+      b.onclick = function () {
+        var iid = b.getAttribute("data-delitem");
+        var used = S.batches.some(function (x) { return x.itemId === iid; });
+        if (used) { toast("This item has orders against it — set it to 'not on the menu' instead.", true); return; }
+        ask({ title: "Remove this item?", body: "It disappears from the menu and from future orders.",
+              ok: "REMOVE", danger: true }).then(function (go) {
+          if (!go) return;
+          save(function (n) { n.items = n.items.filter(function (i) { return i.id !== iid; }); }, "Item removed.");
+        });
+      };
+    });
+    app.querySelectorAll("[data-saveuser]").forEach(function (b) {
+      b.onclick = function () { saveUser(b.getAttribute("data-saveuser")); };
+    });
+    app.querySelectorAll("[data-deluser]").forEach(function (b) {
+      b.onclick = function () {
+        var uid = b.getAttribute("data-deluser");
+        if (uid === me.id) { toast("You cannot remove yourself.", true); return; }
+        ask({ title: "Remove this person?", body: "They lose their login. Everything they already logged stays on the board.",
+              ok: "REMOVE", danger: true }).then(function (go) {
+          if (!go) return;
+          save(function (n) { n.team = n.team.filter(function (u) { return u.id !== uid; }); }, "Person removed.");
+        });
+      };
+    });
+    var acts = {
+      signout: signOut,
+      login: doLogin,
+      changepin: changePin,
+      pay: function () {
+        var due = Math.max(0, Math.round(settlement().outstanding * 100) / 100);
+        ask({ title: "Record a payment",
+              body: "Money handed from the truck to Dee's. It comes off the outstanding balance.\n\n" +
+                    "Outstanding right now: " + cur() + " " + money(due),
+              ok: "RECORD IT",
+              input: { label: "AMOUNT (" + cur() + ")", value: Math.round(due) || 0, min: 1 } })
+          .then(function (amt) {
+            if (amt == null) return;
+            save(function (n) {
+              n.payments = n.payments || [];
+              n.payments.push({ id: id("p"), amount: amt, by: me.id, at: new Date().toISOString() });
+            }, cur() + " " + money(amt) + " recorded.");
+          });
+      },
+      addrow2: addDeliveryRow,
+      deliver: addDelivery,
+      notifystock: function () { notice("Stock note", stockNotice()); },
+      savechannels: function () {
+        var list = document.getElementById("ch-list").value.split(",").map(function (x) {
+          return x.trim();
+        }).filter(Boolean);
+        if (!list.length) { toast("Keep at least one channel.", true); return; }
+        if (list.length > 6) { toast("Six channels is plenty \u2014 the truck has to tap one every sale.", true); return; }
+        save(function (n) { n.channels = list; }, list.join(", ") + " saved.");
+      },
+      savenotify: function () {
+        var raw = document.getElementById("nt-mails").value;
+        var list = raw.split(/[,;\s]+/).filter(Boolean);
+        var bad = list.filter(function (x) { return !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x); });
+        if (bad.length) { toast("Not an email address: " + bad[0], true); return; }
+        save(function (n) { n.notify = list.join(", "); },
+          list.length ? list.length + " address" + (list.length > 1 ? "es" : "") + " saved." : "Address list cleared.");
+      },
+      additem: function () {
+        save(function (n) {
+          n.items.push({ id: id("i"), name: "New item", note: "", price: 0, shelf: n.defaultShelf || 2,
+            active: true, batchWord: "batch", portionWord: "portion",
+            yieldPieces: 0, perPortion: 1, packaging: 0.25, recipe: [] });
+        }, "Item added.");
+      },
+      adduser: function () {
+        save(function (n) {
+          var nid = id("u");
+          n.team.push({ id: nid, name: "New person", user: nid, role: "truck",
+            pin: "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117" });
+          n.defaultPins = true;
+        }, "Person added with PIN 1234 — change it.");
+      },
+      savesplit: function () {
+        var pct = parseFloat(document.getElementById("sp-pct").value);
+        var basis = document.getElementById("sp-basis").value;
+        var c = document.getElementById("sp-cur").value.trim().slice(0, 6) || "AED";
+        if (!(pct >= 0 && pct <= 100)) { toast("Share must be between 0 and 100.", true); return; }
+        save(function (n) { n.split = { deesPct: pct, basis: basis }; n.currency = c; }, "Split saved.");
+      },
+      archive: function () {
+        ask({ title: "Clear old stock?",
+              body: "Anything that expired over 30 days ago is deleted permanently, and its totals go with it.",
+              ok: "CLEAR", danger: true }).then(function (go) {
+          if (!go) return;
+          save(function (n) {
+            n.batches = n.batches.filter(function (b) { return daysBetween(todayStr(), addDays(b.madeOn, b.shelf)) >= -30; });
+          }, "Old stock cleared.");
+        });
+      }
+    };
+    app.querySelectorAll("[data-act]").forEach(function (b) {
+      var fn = acts[b.getAttribute("data-act")];
+      if (fn) b.onclick = fn;
+      if (busy) b.disabled = true;
+    });
+    if (busy) app.querySelectorAll(".btn").forEach(function (b) { b.disabled = true; });
+
+    var rowsBox = document.getElementById("d-rows");
+    if (rowsBox) {
+      if (!rowsBox.children.length) addDeliveryRow();
+      refreshPreview();
+    }
+
+    app.querySelectorAll("[data-saverecipe]").forEach(function (b) {
+      b.onclick = function () { saveRecipe(b.getAttribute("data-saverecipe")); };
+    });
+    app.querySelectorAll("[data-addrow]").forEach(function (b) {
+      b.onclick = function () {
+        var iid = b.getAttribute("data-addrow");
+        save(function (n) {
+          var t = n.items.filter(function (i) { return i.id === iid; })[0];
+          t.recipe = t.recipe || [];
+          t.recipe.push({ n: "", q: 0, u: "g", pp: 0, pq: 100 });
+        }, "Ingredient row added.");
+      };
+    });
+    app.querySelectorAll("[data-delrow]").forEach(function (b) {
+      b.onclick = function () {
+        var p = b.getAttribute("data-delrow").split(":");
+        save(function (n) {
+          var t = n.items.filter(function (i) { return i.id === p[0]; })[0];
+          t.recipe.splice(+p[1], 1);
+        }, "Ingredient removed.");
+      };
+    });
+    app.querySelectorAll("[data-recipe]").forEach(function (card) {
+      var recalc = function () { liveCost(card); };
+      card.querySelectorAll("input").forEach(function (el) { el.oninput = recalc; });
+      recalc();
+    });
+  }
+
+  /* live recalculation inside a recipe card, no save */
+  function liveCost(card) {
+    var g = function (el) { var v = parseFloat(el.value); return isNaN(v) ? 0 : v; };
+    var total = 0;
+    card.querySelectorAll("[data-row]").forEach(function (row) {
+      var q = g(row.querySelector('[data-f="q"]')),
+          pp = g(row.querySelector('[data-f="pp"]')),
+          pq = g(row.querySelector('[data-f="pq"]'));
+      var c = pq > 0 ? (q / pq) * pp : 0;
+      total += c;
+      row.querySelector(".out").textContent = money(c);
+    });
+    var pieces = g(card.querySelector('[data-f="yieldPieces"]')),
+        per = g(card.querySelector('[data-f="perPortion"]')),
+        pack = g(card.querySelector('[data-f="packaging"]')),
+        price = g(card.querySelector('[data-f="price"]'));
+    var portions = per > 0 ? pieces / per : 0;
+    var ing = portions > 0 ? total / portions : null;
+    var unit = ing == null ? null : ing + pack;
+    var profit = unit == null ? null : price - unit;
+    var margin = profit == null || !price ? null : (profit / price) * 100;
+    var set = function (k, v, cls) {
+      var el = card.querySelector('[data-cc="' + k + '"]');
+      if (!el) return;
+      el.textContent = v;
+      var box = el.closest(".cc");
+      box.classList.remove("good", "bad", "hi");
+      if (cls) box.classList.add(cls);
+    };
+    set("batch", money(total), "hi");
+    var whole = per > 0 ? Math.floor(pieces / per) : 0;
+    var spare = per > 0 ? pieces - whole * per : 0;
+    portions = whole;
+    ing = portions > 0 ? total / portions : null;
+    unit = ing == null ? null : ing + pack;
+    profit = unit == null ? null : price - unit;
+    margin = profit == null || !price ? null : (profit / price) * 100;
+    var pw = (card.querySelector('[data-f="portionWord"]').value || "").trim() || "portion";
+    set("yield", portions ? (pieces + " pcs / " + count(portions, pw)) : "set yield", portions ? "" : "bad");
+    var note = card.querySelector("[data-spare]");
+    if (note) note.innerHTML = portions
+      ? (spare
+          ? "<b>" + count(spare, "piece") + " left over</b> \u2014 not enough for another " + pw +
+            ", so their cost sits on the " + count(portions, pw) + " that are sellable."
+          : pieces + " pcs \u00f7 " + per + " divides evenly — nothing wasted.")
+      : "";
+    set("ing", ing == null ? "—" : money(ing));
+    set("pack", money(pack));
+    set("price", money(price));
+    set("profit", profit == null ? "—" : money(profit), profit == null ? "" : profit >= 0 ? "good" : "bad");
+    set("margin", margin == null ? "—" : (Math.round(margin * 10) / 10) + "%", margin == null ? "" : margin >= 0 ? "good" : "bad");
+  }
+
+  function logSale(bid, n, kind) {
+    var b = S.batches.filter(function (x) { return x.id === bid; })[0];
+    if (!b) return;
+    if (n > remaining(b)) { toast("Only " + count(remaining(b), bPortion(b)) + " left in that lot.", true); return; }
+    kind = kind || "sale";
+    var ch = curChannel(), on = saleDate();
+    var word = count(n, bPortion(b));
+    var msg = kind === "gift" ? word + " given away on " + niceDate(on) + " — logged."
+            : kind === "waste" ? word + " written off on " + niceDate(on) + " — logged."
+            : word + " sold at " + ch.toLowerCase() + " on " + niceDate(on) + " — logged.";
+    save(function (nx) {
+      var t = nx.batches.filter(function (x) { return x.id === bid; })[0];
+      t.sales = t.sales || [];
+      var entry = { qty: n, by: me.id, at: new Date().toISOString(), on: on };
+      if (kind === "sale") entry.ch = ch; else entry.kind = kind;
+      t.sales.push(entry);
+    }, msg);
+  }
+
+  function itemOptions(sel) {
+    return S.items.filter(function (i) { return i.active; }).map(function (i) {
+      return '<option value="' + i.id + '"' + (i.id === sel ? " selected" : "") + ">" +
+        esc(i.name + (i.note ? " (" + i.note + ")" : "")) + "</option>";
+    }).join("");
+  }
+
+  function addDeliveryRow() {
+    var box = document.getElementById("d-rows");
+    if (!box) return;
+    var row = document.createElement("div");
+    row.className = "drow";
+    row.innerHTML = '<select data-d="item">' + itemOptions(null) + "</select>" +
+      '<input data-d="n" type="number" min="1" step="1" value="1" aria-label="How many pieces">' +
+      '<span class="w" data-d="word"></span>' +
+      '<button class="x" type="button" data-d="rm" aria-label="Remove this line">&times;</button>';
+    box.appendChild(row);
+    row.querySelector('[data-d="rm"]').onclick = function () {
+      row.remove();
+      if (!box.children.length) addDeliveryRow();
+      refreshPreview();
+    };
+    row.querySelectorAll("select,input").forEach(function (el) {
+      el.oninput = refreshPreview; el.onchange = refreshPreview;
+    });
+    refreshPreview();
+  }
+
+  /* read the form into a list of lines */
+  function readDeliveryRows() {
+    var out = [];
+    var box = document.getElementById("d-rows");
+    if (!box) return out;
+    Array.prototype.forEach.call(box.children, function (row) {
+      var it = item(row.querySelector('[data-d="item"]').value);
+      var n = parseInt(row.querySelector('[data-d="n"]').value, 10);
+      out.push({ it: it, n: n > 0 ? n : 0, row: row });
+    });
+    return out;
+  }
+
+  function refreshPreview() {
+    var box = document.getElementById("d-rows"), pv = document.getElementById("d-preview");
+    if (!box || !pv) return;
+    var lines = readDeliveryRows();
+    var madeOn = (document.getElementById("d-date") || {}).value || todayStr();
+    var only = box.children.length < 2;
+    var html = "", total = 0, units = 0, anyUncosted = false, words = {};
+    lines.forEach(function (L) {
+      var w = L.row.querySelector('[data-d="word"]');
+      if (L.it) {
+        var pw2 = portionWordOf(L.it);
+        w.textContent = L.n === 1 ? pw2 : plural(pw2);
+      }
+      L.row.querySelector('[data-d="rm"]').disabled = only;
+      if (!L.it || !L.n) return;
+      if (!costed(L.it)) {
+        anyUncosted = true;
+        html += '<div class="dline"><span>' + esc(L.it.name) + " — no recipe costed</span><span>no cost</span></div>";
+        return;
+      }
+      var u = linePortions(L), c = u * unitCostOf(L.it);
+      units += u; total += c;
+      words[portionWordOf(L.it)] = 1;
+      html += '<div class="dline"><span><b>' + esc(count(u, portionWordOf(L.it))) + "</b> " +
+        esc(L.it.name) + ", expires " + niceDate(addDays(madeOn, L.it.shelf)) +
+        "</span><span class=\"num\">" + cur() + " " + money(c) + "</span></div>";
+    });
+    var wk = Object.keys(words);
+    if (html) html += '<div class="dline"><span>' + esc(count(units, wk.length === 1 ? wk[0] : "portion")) +
+      " in total</span><span class=\"num\">" + cur() + " " + money(total) + "</span></div>";
+    if (anyUncosted) html += '<p class="hint" style="margin-top:8px">Items without a recipe go in with no cost recorded.</p>';
+    pv.innerHTML = html;
+  }
+
+  function addDelivery() {
+    var madeOn = document.getElementById("d-date").value || todayStr();
+    var lines = readDeliveryRows().filter(function (L) { return L.it && L.n > 0; });
+    if (!lines.length) { toast("Add at least one item with a quantity.", true); return; }
+    var summary = [], uncosted = [];
+    lines.forEach(function (L) {
+      if (costed(L.it)) {
+        summary.push(count(linePortions(L), portionWordOf(L.it)) + " " + L.it.name);
+      } else {
+        summary.push(L.n + " " + L.it.name + " (no cost)");
+        uncosted.push(L.it.name);
+      }
+    });
+    var msg = summary.join("\n") + "\n\nQuantity, cost and date cannot be changed after this.";
+    if (uncosted.length) msg = "No recipe costed for: " + uncosted.join(", ") + " — they go in with no cost.\n\n" + msg;
+    ask({ title: "Lock this order?", body: msg, ok: "SAVE & LOCK" }).then(function (go) {
+      if (!go) return;
+      doSaveDelivery(lines, madeOn);
+    });
+  }
+
+  function doSaveDelivery(lines, madeOn) {
+    var at = new Date().toISOString();
+    save(function (nx) {
+      var drop = id("d");
+      lines.forEach(function (L) {
+        nx.batches.push({
+          id: id("b"), drop: drop, itemId: L.it.id,
+          qty: linePortions(L),
+          unitCost: unitCostOf(L.it), unitPrice: L.it.price,
+          batches: null,
+          batchWord: batchWordOf(L.it), portionWord: portionWordOf(L.it),
+          shelf: L.it.shelf, madeOn: madeOn,
+          by: me.id, at: at, sales: []
+        });
+      });
+    }, lines.length > 1 ? lines.length + " items locked in." : "Order locked in.");
+  }
+
+  function saveRecipe(iid) {
+    var card = app.querySelector('[data-recipe="' + iid + '"]');
+    var val = function (el) { var v = parseFloat(el.value); return isNaN(v) ? 0 : v; };
+    var rows = [];
+    var bad = false;
+    card.querySelectorAll("[data-row]").forEach(function (row) {
+      var nm = row.querySelector('[data-f="n"]').value.trim();
+      var q = val(row.querySelector('[data-f="q"]'));
+      var pp = val(row.querySelector('[data-f="pp"]'));
+      var pq = val(row.querySelector('[data-f="pq"]'));
+      var u = row.querySelector('[data-f="u"]').value.trim();
+      if (!nm) return;
+      if (pq <= 0) { bad = true; return; }
+      rows.push({ n: nm, q: q, u: u, pp: pp, pq: pq });
+    });
+    if (bad) { toast("Pack quantity must be above zero — that is what the price divides by.", true); return; }
+    var pieces = val(card.querySelector('[data-f="yieldPieces"]'));
+    var per = val(card.querySelector('[data-f="perPortion"]'));
+    var pack = val(card.querySelector('[data-f="packaging"]'));
+    var price = val(card.querySelector('[data-f="price"]'));
+    var pword = card.querySelector('[data-f="portionWord"]').value.trim() || "portion";
+    if (per <= 0) { toast("Pieces in one of them must be above zero.", true); return; }
+    if (pieces > 0 && per > pieces) { toast("One piece cannot take more than the whole recipe makes.", true); return; }
+    save(function (nx) {
+      var t = nx.items.filter(function (i) { return i.id === iid; })[0];
+      t.recipe = rows; t.yieldPieces = pieces; t.perPortion = per;
+      t.packaging = pack; t.price = price; t.portionWord = pword;
+    }, "Recipe saved.");
+  }
+
+  function saveItem(iid) {
+    var card = app.querySelector('[data-item="' + iid + '"]');
+    var g = function (f) { return card.querySelector('[data-f="' + f + '"]').value; };
+    var price = parseFloat(g("price")), shelf = parseInt(g("shelf"), 10);
+    if (!g("name").trim()) { toast("Item needs a name.", true); return; }
+    if (isNaN(price) || price < 0) { toast("Price must be zero or more.", true); return; }
+    if (isNaN(shelf) || shelf < 0) { toast("Shelf life must be zero or more days.", true); return; }
+    save(function (n) {
+      var t = n.items.filter(function (i) { return i.id === iid; })[0];
+      t.name = g("name").trim(); t.note = g("note").trim();
+      t.price = price; t.shelf = shelf; t.active = g("active") === "1";
+    }, "Item saved.");
+  }
+
+  function saveUser(uid) {
+    var card = app.querySelector('[data-user="' + uid + '"]');
+    var g = function (f) { return card.querySelector('[data-f="' + f + '"]').value; };
+    var name = g("name").trim(), role = g("role"), pin = g("pin").trim();
+    var handle = g("user").trim().toLowerCase();
+    if (!name) { toast("Person needs a name.", true); return; }
+    if (!/^[a-z0-9._-]{2,20}$/.test(handle)) {
+      toast("Username: 2–20 characters, lowercase letters, digits, dot, dash or underscore.", true); return;
+    }
+    if (S.team.some(function (t) { return t.id !== uid && (t.user || "").toLowerCase() === handle; })) {
+      toast("That username is already taken.", true); return;
+    }
+    if (pin && !/^\d{4,8}$/.test(pin)) { toast("PIN must be 4–8 digits.", true); return; }
+    var apply = function (h) {
+      save(function (n) {
+        var t = n.team.filter(function (u) { return u.id === uid; })[0];
+        t.name = name; t.role = role; t.user = handle;
+        if (h) t.pin = h;
+        var DEF = "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117";
+        n.defaultPins = n.team.some(function (u) { return u.pin === DEF; });
+      }, "Person saved.");
+    };
+    if (pin) hash(pin).then(apply); else apply(null);
+  }
+
+  /* ============ boot ============ */
+  loadSession();
+  app.innerHTML = '<div class="lock"><div class="lockbox" style="text-align:center">' +
+    '<div class="logo" role="img" aria-label="Dee\'s Treats" style="margin:0 auto 14px"></div>' +
+    "<p style=\"margin:0\">Loading the board\u2026</p></div></div>";
+  loadState().then(function (ok) {
+    if (!ok) { renderLock(); return; }
+    var seen = "";
+    try { seen = sessionStorage.getItem("deeserts.tab") || ""; } catch (e) {}
+    if (!seen) tab = homeTab(me);
+    render();
+  });
+
+  /* the board is shared, so pick up other people's changes when the phone
+     comes back to the front rather than showing a stale count */
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible" && me && !busy) {
+      loadState().then(function (ok) { if (ok) render(); });
+    }
+  });
+})();
+
+</script>
+</body>
+</html>

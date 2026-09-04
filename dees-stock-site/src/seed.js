@@ -1,0 +1,489 @@
+/**
+ * The board as it stood when the site was built — carried across from the
+ * old link so nothing was re-typed. It is written to the database once, on
+ * the very first request, and never read again.
+ */
+export const SEED = {
+  "v": 1,
+  "currency": "AED",
+  "split": {
+    "deesPct": 50,
+    "basis": "profit"
+  },
+  "defaultShelf": 2,
+  "notify": "",
+  "channels": [
+    "Window",
+    "Delivery app"
+  ],
+  "items": [
+    {
+      "id": "i1",
+      "name": "Lazy Cake",
+      "note": "4 pcs",
+      "price": 26,
+      "shelf": 2,
+      "active": true,
+      "batchWord": "tray",
+      "portionWord": "portion",
+      "yieldPieces": 26,
+      "perPortion": 4,
+      "packaging": 0.45,
+      "recipe": [
+        {
+          "n": "Leibniz biscuits",
+          "q": 500,
+          "u": "g",
+          "pp": 14.29,
+          "pq": 200
+        },
+        {
+          "n": "Milk",
+          "q": 250,
+          "u": "ml",
+          "pp": 9.91,
+          "pq": 1000
+        },
+        {
+          "n": "Sugar",
+          "q": 120,
+          "u": "g",
+          "pp": 5.5,
+          "pq": 1000
+        },
+        {
+          "n": "Vanilla",
+          "q": 20,
+          "u": "g",
+          "pp": 3.78,
+          "pq": 20
+        },
+        {
+          "n": "Cocoa powder",
+          "q": 60,
+          "u": "g",
+          "pp": 15.3,
+          "pq": 100
+        },
+        {
+          "n": "Lurpak butter",
+          "q": 150,
+          "u": "g",
+          "pp": 24.3,
+          "pq": 100
+        },
+        {
+          "n": "Chocolate slab",
+          "q": 140,
+          "u": "g",
+          "pp": 8.81,
+          "pq": 35
+        },
+        {
+          "n": "Baking sheet",
+          "q": 1,
+          "u": "sheet",
+          "pp": 2,
+          "pq": 1
+        }
+      ]
+    },
+    {
+      "id": "i2",
+      "name": "San Sebastian",
+      "note": "slice",
+      "price": 26,
+      "shelf": 2,
+      "active": true,
+      "batchWord": "cake",
+      "portionWord": "slice",
+      "yieldPieces": 8,
+      "perPortion": 1,
+      "packaging": 0.45,
+      "recipe": [
+        {
+          "n": "Kiri cream cheese",
+          "q": 600,
+          "u": "g",
+          "pp": 12.5,
+          "pq": 200
+        },
+        {
+          "n": "Sugar",
+          "q": 200,
+          "u": "g",
+          "pp": 5.5,
+          "pq": 1000
+        },
+        {
+          "n": "Eggs",
+          "q": 4,
+          "u": "pcs",
+          "pp": 23.75,
+          "pq": 30
+        },
+        {
+          "n": "Flour",
+          "q": 60,
+          "u": "g",
+          "pp": 13,
+          "pq": 1000
+        },
+        {
+          "n": "Cream",
+          "q": 312.5,
+          "u": "ml",
+          "pp": 37.95,
+          "pq": 1000
+        },
+        {
+          "n": "Vanilla",
+          "q": 20,
+          "u": "g",
+          "pp": 3.78,
+          "pq": 20
+        },
+        {
+          "n": "Baking sheet",
+          "q": 1,
+          "u": "sheet",
+          "pp": 1,
+          "pq": 1
+        }
+      ]
+    },
+    {
+      "id": "i3",
+      "name": "Crème Brûlée",
+      "note": "125 ml ramekin",
+      "price": 20,
+      "shelf": 2,
+      "active": true,
+      "batchWord": "batch",
+      "portionWord": "ramekin",
+      "yieldPieces": 5,
+      "perPortion": 1,
+      "packaging": 1.09,
+      "recipe": [
+        {
+          "n": "Cream",
+          "q": 500,
+          "u": "ml",
+          "pp": 37.95,
+          "pq": 1000
+        },
+        {
+          "n": "Egg yolks",
+          "q": 5,
+          "u": "pcs",
+          "pp": 23.75,
+          "pq": 30
+        },
+        {
+          "n": "Sugar",
+          "q": 100,
+          "u": "g",
+          "pp": 5.5,
+          "pq": 1000
+        },
+        {
+          "n": "Vanilla",
+          "q": 20,
+          "u": "g",
+          "pp": 3.78,
+          "pq": 20
+        }
+      ]
+    },
+    {
+      "id": "i4",
+      "name": "Brownie Bag",
+      "note": "4 pcs",
+      "price": 26,
+      "shelf": 2,
+      "active": true,
+      "batchWord": "tray",
+      "portionWord": "bag",
+      "yieldPieces": 40,
+      "perPortion": 4,
+      "packaging": 0.25,
+      "recipe": [
+        {
+          "n": "Eggs",
+          "q": 4,
+          "u": "pcs",
+          "pp": 23.75,
+          "pq": 30
+        },
+        {
+          "n": "Milk",
+          "q": 62.5,
+          "u": "ml",
+          "pp": 9.91,
+          "pq": 1000
+        },
+        {
+          "n": "Flour",
+          "q": 125,
+          "u": "g",
+          "pp": 13,
+          "pq": 1000
+        },
+        {
+          "n": "Oil",
+          "q": 250,
+          "u": "ml",
+          "pp": 18,
+          "pq": 750
+        },
+        {
+          "n": "Sugar",
+          "q": 200,
+          "u": "g",
+          "pp": 5.5,
+          "pq": 1000
+        },
+        {
+          "n": "Cocoa powder",
+          "q": 100,
+          "u": "g",
+          "pp": 15.3,
+          "pq": 100
+        },
+        {
+          "n": "Vanilla",
+          "q": 20,
+          "u": "g",
+          "pp": 3.78,
+          "pq": 20
+        },
+        {
+          "n": "Hershey's choc. chips",
+          "q": 255,
+          "u": "g",
+          "pp": 29,
+          "pq": 285
+        },
+        {
+          "n": "Baking sheet",
+          "q": 1,
+          "u": "sheet",
+          "pp": 2,
+          "pq": 1
+        }
+      ]
+    },
+    {
+      "id": "i5",
+      "name": "Mini Pavlova",
+      "note": "weekends only",
+      "price": 60,
+      "shelf": 1,
+      "active": true,
+      "batchWord": "batch",
+      "portionWord": "pavlova",
+      "yieldPieces": 7,
+      "perPortion": 1,
+      "packaging": 1.68,
+      "recipe": [
+        {
+          "n": "Egg whites",
+          "q": 6,
+          "u": "pcs",
+          "pp": 23.75,
+          "pq": 30
+        },
+        {
+          "n": "Cornstarch",
+          "q": 5,
+          "u": "g",
+          "pp": 4.32,
+          "pq": 400
+        },
+        {
+          "n": "Vinegar",
+          "q": 5,
+          "u": "ml",
+          "pp": 8.5,
+          "pq": 473
+        },
+        {
+          "n": "Vanilla",
+          "q": 20,
+          "u": "g",
+          "pp": 3.78,
+          "pq": 20
+        },
+        {
+          "n": "Cream",
+          "q": 500,
+          "u": "ml",
+          "pp": 37.95,
+          "pq": 1000
+        },
+        {
+          "n": "Blueberries",
+          "q": 248.5,
+          "u": "g",
+          "pp": 39.95,
+          "pq": 500
+        },
+        {
+          "n": "Raspberries",
+          "q": 248.5,
+          "u": "g",
+          "pp": 19.5,
+          "pq": 125
+        },
+        {
+          "n": "Blackberries",
+          "q": 248.5,
+          "u": "g",
+          "pp": 28.5,
+          "pq": 170
+        },
+        {
+          "n": "Strawberries",
+          "q": 248.5,
+          "u": "g",
+          "pp": 13.99,
+          "pq": 250
+        },
+        {
+          "n": "Baking sheet",
+          "q": 1,
+          "u": "sheet",
+          "pp": 2,
+          "pq": 1
+        }
+      ]
+    }
+  ],
+  "team": [
+    {
+      "id": "u1",
+      "name": "Marwan",
+      "user": "marwan",
+      "role": "admin",
+      "side": "dees",
+      "pin": "ba000d3fa8b9e7758aeacaf7e8882d5df77d83bf1445a174d38b751cb0c0004b"
+    },
+    {
+      "id": "u2",
+      "name": "Dina",
+      "user": "dina",
+      "role": "dees",
+      "pin": "5e66d2663a72c3fbac50719d9672eafe5aee147ffbf6f0d24815928068f8f10b"
+    },
+    {
+      "id": "u3",
+      "name": "Marwan Majid",
+      "user": "majid",
+      "role": "truck",
+      "pin": "a635091d64a82e52633fcd6a111195a670b128c80cd175f105e5bac1eaf7b88c"
+    },
+    {
+      "id": "u4",
+      "name": "Tarek",
+      "user": "tarek",
+      "role": "truck",
+      "pin": "11fbc22729a0858c3d99001c9187181dd520514ace6136dce43a44c7681ae521"
+    },
+    {
+      "id": "u5",
+      "name": "Truck Cashier",
+      "user": "cashier",
+      "role": "truck",
+      "pin": "f16e34225021f39639cfa33ca88dd9778940f7c88b25d34cc2a0cff2d774c427"
+    }
+  ],
+  "batches": [
+    {
+      "id": "b3",
+      "drop": "d2",
+      "itemId": "i2",
+      "qty": 21,
+      "unitCost": 7.848255208333334,
+      "unitPrice": 26,
+      "batches": null,
+      "batchWord": "cake",
+      "portionWord": "slice",
+      "shelf": 2,
+      "madeOn": "2026-09-04",
+      "by": "u1",
+      "at": "2026-09-04T13:45:46.886Z",
+      "sales": [
+        {
+          "qty": 16,
+          "by": "u1",
+          "at": "2026-09-04T13:47:32.234Z",
+          "on": "2026-09-04",
+          "ch": "Window"
+        },
+        {
+          "qty": 4,
+          "by": "u1",
+          "at": "2026-09-04T14:03:20.850Z",
+          "on": "2026-09-04",
+          "kind": "gift"
+        },
+        {
+          "qty": 1,
+          "by": "u1",
+          "at": "2026-09-04T14:03:31.082Z",
+          "on": "2026-09-04",
+          "kind": "waste"
+        }
+      ]
+    },
+    {
+      "id": "b4",
+      "drop": "d2",
+      "itemId": "i4",
+      "qty": 10,
+      "unitCost": 6.20384100877193,
+      "unitPrice": 26,
+      "batches": null,
+      "batchWord": "tray",
+      "portionWord": "bag",
+      "shelf": 2,
+      "madeOn": "2026-09-04",
+      "by": "u1",
+      "at": "2026-09-04T13:45:46.886Z",
+      "sales": [
+        {
+          "qty": 4,
+          "by": "u1",
+          "at": "2026-09-04T14:20:29.198Z",
+          "on": "2026-09-03",
+          "ch": "Window"
+        }
+      ]
+    },
+    {
+      "id": "b6",
+      "drop": "d5",
+      "itemId": "i2",
+      "qty": 16,
+      "unitCost": 7.848255208333334,
+      "unitPrice": 26,
+      "batches": null,
+      "batchWord": "cake",
+      "portionWord": "slice",
+      "shelf": 2,
+      "madeOn": "2026-09-04",
+      "by": "u1",
+      "at": "2026-09-04T13:46:41.539Z",
+      "sales": [],
+      "voided": true,
+      "voidedBy": "u1",
+      "voidReason": "Twice",
+      "voidedAt": "2026-09-04T13:47:21.909Z"
+    }
+  ],
+  "seq": 6,
+  "defaultPins": false,
+  "updatedAt": "2026-09-04T14:20:29.198Z",
+  "payments": [],
+  "defaultPinHash": "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117"
+};
