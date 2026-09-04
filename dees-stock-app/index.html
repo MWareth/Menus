@@ -84,6 +84,7 @@
   .rt{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
   .rt .nm{font-weight:900;font-size:17px}
   .rt .qty{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:17px;color:var(--brown)}
+  .rt .unit{font-size:12.5px;font-weight:900;letter-spacing:.06em;color:var(--ink-3);text-transform:uppercase}
   .meta{font-size:13px;color:var(--ink-2);margin-top:4px}
   .meta b{color:var(--ink);font-weight:700}
   .pill{display:inline-block;font-size:10.5px;font-weight:900;letter-spacing:.07em;
@@ -279,6 +280,7 @@
       "shelf": 2,
       "active": true,
       "batchWord": "tray",
+      "portionWord": "portion",
       "yieldPieces": 26,
       "perPortion": 4,
       "packaging": 0.45,
@@ -349,6 +351,7 @@
       "shelf": 2,
       "active": true,
       "batchWord": "cake",
+      "portionWord": "slice",
       "yieldPieces": 8,
       "perPortion": 1,
       "packaging": 0.45,
@@ -412,6 +415,7 @@
       "shelf": 2,
       "active": true,
       "batchWord": "batch",
+      "portionWord": "ramekin",
       "yieldPieces": 5,
       "perPortion": 1,
       "packaging": 1.09,
@@ -454,6 +458,7 @@
       "shelf": 2,
       "active": true,
       "batchWord": "tray",
+      "portionWord": "bag",
       "yieldPieces": 40,
       "perPortion": 4,
       "packaging": 0.25,
@@ -531,6 +536,7 @@
       "shelf": 1,
       "active": true,
       "batchWord": "batch",
+      "portionWord": "pavlova",
       "yieldPieces": 7,
       "perPortion": 1,
       "packaging": 1.68,
@@ -662,6 +668,7 @@
   var S = JSON.parse(document.getElementById("app-state").textContent);
   var app = document.getElementById("app");
   var artifact = null;
+  var dl = null;                 /* the downloads capability, once it answers */
   var readOnly = false;
   var busy = false;
   var tab = "stock";
@@ -723,6 +730,24 @@
     return null;
   }
   function uname(uid) { var u = user(uid); return u ? u.name : "—"; }
+
+  /* ============ naming the units ============
+     A tray is what Dee bakes; a slice is what the truck sells. Both words
+     are stamped onto a batch when it is saved, so renaming an item later
+     never rewrites what already went out. */
+  function plural(w) {
+    if (/(s|x|z|ch|sh)$/i.test(w)) return w + "es";
+    if (/[^aeiou]y$/i.test(w)) return w.slice(0, -1) + "ies";
+    return w + "s";
+  }
+  function count(n, w) { return n + " " + (Math.abs(n) === 1 ? w : plural(w)); }
+  function batchWordOf(x) { return (x && x.batchWord) || "batch"; }
+  function portionWordOf(x) { return (x && x.portionWord) || "portion"; }
+  /* a batch keeps its own words; fall back to the item for anything saved
+     before the portion word existed */
+  function bPortion(b) {
+    return b.portionWord || portionWordOf(item(b.itemId)) || "portion";
+  }
   function initials(n) {
     return n.trim().split(/\s+/).slice(0, 2).map(function (w) { return w[0]; }).join("").toUpperCase();
   }
@@ -1012,6 +1037,178 @@
     });
   }
 
+  /* ============ the PDF invoice ============
+     Written by hand rather than pulled from a CDN: the page has to keep
+     working offline and after it republishes itself, and a one-page
+     invoice is a small enough slice of PDF 1.4 to own outright.
+     Helvetica and Helvetica-Bold are built into every reader, so only
+     their widths are carried here — enough to right-align money. */
+  var HW = ("278 278 355 556 556 889 667 191 333 333 389 584 278 333 278 278 " +
+    "556 556 556 556 556 556 556 556 556 556 278 278 584 584 584 556 " +
+    "1015 667 667 722 722 667 611 778 722 278 500 667 556 833 722 778 " +
+    "667 778 722 667 611 722 667 944 667 667 611 278 278 278 469 556 " +
+    "333 556 556 500 556 556 278 556 556 222 222 500 222 833 556 556 " +
+    "556 556 333 500 278 556 500 722 500 500 500 334 260 334 584").split(" ").map(Number);
+  var HB = ("278 333 474 556 556 889 722 238 333 333 389 584 278 333 278 278 " +
+    "556 556 556 556 556 556 556 556 556 556 333 333 584 584 584 611 " +
+    "975 722 722 722 722 667 611 778 722 278 556 722 611 833 722 778 " +
+    "667 778 722 667 611 722 667 944 667 667 611 333 278 333 584 556 " +
+    "333 556 611 556 611 556 333 611 611 278 278 556 278 889 611 611 " +
+    "611 611 389 556 333 611 556 778 556 556 500 389 280 389 584").split(" ").map(Number);
+
+  /* WinAnsi is Latin-1 over 0xA0-0xFF, so accents pass straight through;
+     the typographic characters the app uses get plain equivalents. */
+  var PDF_FALLBACK = { "—": "-", "–": "-", "→": "->", "·": "-",
+                       "‘": "'", "’": "'", "“": '"', "”": '"',
+                       "÷": "/", "…": "..." };
+  function winAnsi(s) {
+    var out = "";
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charAt(i), n = s.charCodeAt(i);
+      if (n >= 0x20 && n <= 0x7e) out += c;
+      else if (n >= 0xa0 && n <= 0xff) out += c;
+      else out += (PDF_FALLBACK[c] || (n === 10 ? " " : "?"));
+    }
+    return out;
+  }
+  function textWidth(s, size, bold) {
+    var tbl = bold ? HB : HW, w = 0;
+    for (var i = 0; i < s.length; i++) {
+      var n = s.charCodeAt(i);
+      w += (n >= 32 && n <= 126) ? tbl[n - 32] : 556;
+    }
+    return w * size / 1000;
+  }
+  function pdfStr(s) { return "(" + winAnsi(s).replace(/[\\()]/g, function (c) { return "\\" + c; }) + ")"; }
+
+  /* a tiny drawing surface that accumulates content-stream operators */
+  function pdfPage() {
+    var ops = [];
+    return {
+      ops: ops,
+      rect: function (x, y, w, h, rgb) {
+        ops.push(rgb.join(" ") + " rg " + x + " " + y + " " + w + " " + h + " re f");
+        return this;
+      },
+      text: function (s, x, y, size, bold, rgb) {
+        if (s == null || s === "") return this;
+        ops.push("BT " + (rgb || [0, 0, 0]).join(" ") + " rg /" + (bold ? "F2" : "F1") + " " +
+                 size + " Tf " + x + " " + y + " Td " + pdfStr(String(s)) + " Tj ET");
+        return this;
+      },
+      right: function (s, xRight, y, size, bold, rgb) {
+        s = String(s == null ? "" : s);
+        return this.text(s, Math.round((xRight - textWidth(winAnsi(s), size, bold)) * 100) / 100,
+                         y, size, bold, rgb);
+      }
+    };
+  }
+  function pdfDoc(content) {
+    var objs = [
+      "<</Type/Catalog/Pages 2 0 R>>",
+      "<</Type/Pages/Kids[3 0 R]/Count 1>>",
+      "<</Type/Page/Parent 2 0 R/MediaBox[0 0 595.28 841.89]" +
+        "/Resources<</Font<</F1 5 0 R/F2 6 0 R>>>>/Contents 4 0 R>>",
+      "<</Length " + content.length + ">>\nstream\n" + content + "\nendstream",
+      "<</Type/Font/Subtype/Type1/BaseFont/Helvetica/Encoding/WinAnsiEncoding>>",
+      "<</Type/Font/Subtype/Type1/BaseFont/Helvetica-Bold/Encoding/WinAnsiEncoding>>"
+    ];
+    var out = "%PDF-1.4\n%\xe2\xe3\xcf\xd3\n", offsets = [];
+    objs.forEach(function (body, i) {
+      offsets.push(out.length);
+      out += (i + 1) + " 0 obj\n" + body + "\nendobj\n";
+    });
+    var xref = out.length;
+    out += "xref\n0 " + (objs.length + 1) + "\n0000000000 65535 f \n";
+    offsets.forEach(function (o) {
+      out += ("0000000000" + o).slice(-10) + " 00000 n \n";
+    });
+    out += "trailer\n<</Size " + (objs.length + 1) + "/Root 1 0 R>>\nstartxref\n" + xref + "\n%%EOF\n";
+    var bytes = new Uint8Array(out.length);
+    for (var i = 0; i < out.length; i++) bytes[i] = out.charCodeAt(i) & 0xff;
+    return bytes;
+  }
+
+  var BROWN = [0.29, 0.17, 0.16], GREY = [0.42, 0.35, 0.30], RULE = [0.90, 0.86, 0.78];
+
+  function invoice(dropKey) {
+    var list = S.batches.filter(function (b) { return dropOf(b) === dropKey; });
+    if (!list.length) return null;
+    var b0 = list[0];
+    var no = "INV-" + b0.madeOn.replace(/-/g, "") + "-" + String(dropKey).toUpperCase();
+    var pg = pdfPage(), L = 48, R = 547, y = 792;
+
+    pg.text("Dee's Treats", L, y, 22, true, BROWN);
+    pg.right(no, R, y, 11, true, BROWN);
+    y -= 17;
+    pg.text("STOCK INVOICE", L, y, 9, true, GREY);
+    pg.right("Made " + niceDate(b0.madeOn), R, y, 9, false, GREY);
+    y -= 14;
+    pg.rect(L, y, R - L, 1.4, BROWN);
+
+    y -= 34;
+    pg.text("FROM", L, y, 8, true, GREY);
+    pg.text("TO", 320, y, 8, true, GREY);
+    y -= 15;
+    pg.text("Dee's Treats", L, y, 12, true);
+    pg.text("Smash & Pass", 320, y, 12, true);
+    y -= 14;
+    pg.text("Baked and delivered by " + uname(b0.by), L, y, 9.5, false, GREY);
+    pg.text("Food truck", 320, y, 9.5, false, GREY);
+    y -= 13;
+    pg.text("Logged " + stamp(b0.at), L, y, 9.5, false, GREY);
+    pg.text("Expires " + niceDate(expiresOn(b0)), 320, y, 9.5, false, GREY);
+
+    /* the line items */
+    y -= 36;
+    pg.rect(L, y - 6, R - L, 20, [0.96, 0.93, 0.87]);
+    pg.text("ITEM", L + 8, y, 8, true, GREY);
+    pg.right("BATCHES", 300, y, 8, true, GREY);
+    pg.right("UNITS", 372, y, 8, true, GREY);
+    pg.right("UNIT COST", 460, y, 8, true, GREY);
+    pg.right("TOTAL", R - 8, y, 8, true, GREY);
+    y -= 22;
+
+    var total = 0, units = 0, uncosted = false;
+    list.forEach(function (b) {
+      var it = item(b.itemId);
+      var line = b.unitCost == null ? null : b.qty * b.unitCost;
+      if (line == null) uncosted = true; else total += line;
+      units += b.qty;
+      pg.text((it ? it.name : "Deleted item") + (b.voided ? "  (VOIDED)" : ""), L + 8, y, 10.5, false);
+      pg.right(count(b.batches || 1, batchWordOf(b)), 300, y, 10, false, GREY);
+      pg.right(count(b.qty, bPortion(b)), 372, y, 10, false, GREY);
+      pg.right(b.unitCost == null ? "-" : money(b.unitCost), 460, y, 10, false);
+      pg.right(line == null ? "-" : money(line), R - 8, y, 10, true);
+      y -= 12;
+      pg.rect(L, y + 2, R - L, 0.6, RULE);
+      y -= 12;
+    });
+
+    y -= 6;
+    pg.right("TOTAL COST TO DEE'S", 460, y, 9, true, GREY);
+    pg.right(cur() + " " + money(total), R - 8, y, 14, true, BROWN);
+    y -= 18;
+    var d = (S.split.deesPct || 0) / 100;
+    pg.right("Smash & Pass " + Math.round((1 - d) * 100) + "% share of this cost", 460, y, 9, false, GREY);
+    pg.right(cur() + " " + money(total * (1 - d)), R - 8, y, 10, false, GREY);
+    y -= 14;
+    pg.right(count(units, "unit") + " out in total", 460, y, 9, false, GREY);
+    if (uncosted) {
+      y -= 16;
+      pg.text("Some lines have no recipe costed yet, so this total is incomplete.", L, y, 9, false, GREY);
+    }
+
+    /* footer */
+    pg.rect(L, 74, R - L, 0.6, RULE);
+    pg.text("Cost of ingredients and packaging only. It excludes labour, utilities and wastage.",
+            L, 60, 8.5, false, GREY);
+    pg.text("Generated from Dee's Stock on " + stamp(new Date().toISOString()) + ".",
+            L, 48, 8.5, false, GREY);
+
+    return { filename: no + ".pdf", bytes: pdfDoc(pg.ops.join("\n")) };
+  }
+
   /* ============ notices ============
      A published artifact cannot reach a mail server — nothing here can post
      to the outside world. So the app writes the notice and hands it over:
@@ -1034,8 +1231,8 @@
       var it = item(b.itemId);
       units += b.qty;
       if (b.unitCost == null) unknown = true; else cost += b.qty * b.unitCost;
-      lines.push("- " + (it ? it.name : "Deleted item") + ": " + b.qty + " portions" +
-        (b.batches ? " (" + b.batches + " " + (b.batchWord || "batch") + (b.batches > 1 ? "s" : "") + ")" : "") +
+      lines.push("- " + (it ? it.name : "Deleted item") + ": " + count(b.qty, bPortion(b)) +
+        (b.batches ? " (" + count(b.batches, batchWordOf(b)) + ")" : "") +
         ", expires " + niceDate(expiresOn(b)));
     });
     var link = appLink();
@@ -1055,7 +1252,7 @@
     var pick = function (st) { return open.filter(function (b) { return status(b) === st; }); };
     var line = function (b) {
       var it = item(b.itemId);
-      return "- " + (it ? it.name : "Deleted item") + ": " + remaining(b) +
+      return "- " + (it ? it.name : "Deleted item") + ": " + count(remaining(b), bPortion(b)) +
         " left, expires " + niceDate(expiresOn(b));
     };
     var expired = pick("expired"), lastDay = pick("today"), soon = pick("soon");
@@ -1080,10 +1277,11 @@
       var byName = {};
       open.forEach(function (b) {
         var it = item(b.itemId), k = it ? it.name : "Deleted item";
-        byName[k] = (byName[k] || 0) + remaining(b);
+        if (!byName[k]) byName[k] = { n: 0, w: bPortion(b) };
+        byName[k].n += remaining(b);
       });
       body += "\nEverything on hand:\n" + Object.keys(byName).map(function (k) {
-        return "- " + k + ": " + byName[k];
+        return "- " + k + ": " + count(byName[k].n, byName[k].w);
       }).join("\n") + "\n";
     } else {
       body += "\nNothing in stock.\n";
@@ -1154,6 +1352,22 @@
       toast(to.length ? "Opening your mail app\u2026" : "No addresses saved \u2014 copy it instead.", !to.length);
     };
     ta.focus();
+  }
+
+  function saveInvoice(dropKey) {
+    if (!dl) { toast("Saving files is not available in this view.", true); return; }
+    var inv;
+    try { inv = invoice(dropKey); } catch (e) { inv = null; }
+    if (!inv) { toast("Could not build that invoice.", true); return; }
+    dl.save({ filename: inv.filename, data: inv.bytes }).then(function () {
+      toast(inv.filename + " saved.");
+    }, function (err) {
+      var code = err && err.code;
+      if (code === "declined") return;                     /* they said no; leave it */
+      if (code === "rate_limited") { toast("One at a time — try again in a moment.", true); return; }
+      if (code === "too_large") { toast("That invoice is too big to save.", true); return; }
+      toast("Could not save the invoice here.", true);
+    });
   }
 
   var toastT = null;
@@ -1331,7 +1545,13 @@
     var expired = open.filter(function (b) { return status(b) === "expired"; });
     var lastDay = open.filter(function (b) { return status(b) === "today"; });
     var tomorrow = open.filter(function (b) { return status(b) === "soon"; });
-    var onHand = open.reduce(function (a, b) { return a + remaining(b); }, 0);
+    var onHand = 0, onHandCost = 0, onHandRetail = 0, noCost = 0;
+    open.forEach(function (b) {
+      var left = remaining(b);
+      onHand += left;
+      onHandRetail += left * (b.unitPrice || 0);
+      if (b.unitCost == null) noCost += left; else onHandCost += left * b.unitCost;
+    });
     var todaySold = 0;
     live().forEach(function (b) {
       (b.sales || []).forEach(function (s) { if ((s.at || "").slice(0, 10) === t) todaySold += s.qty; });
@@ -1340,7 +1560,10 @@
     var h = '<h2 class="sec">In stock</h2><p class="sub">' + niceDate(t) +
       " \u00b7 everything sent out and not yet sold.</p>";
     h += '<div class="stats">' +
-      stat("ON HAND", onHand, onHand + " unit" + (onHand === 1 ? "" : "s") + " unsold", "") +
+      stat("ON HAND", onHand, count(onHand, "portion") + " unsold, across every item", "") +
+      stat("WHAT IT COST", cur() + " " + money(onHandCost),
+           noCost ? count(noCost, "portion") + " of it not costed yet" : "ingredients and packaging, already paid", "") +
+      stat("WORTH AT MENU", cur() + " " + money(onHandRetail), "if every one of them sells", "good") +
       stat("SOLD TODAY", todaySold, "logged by the truck", "good") +
       stat("LAST DAY", lastDay.length, "sell these first", lastDay.length ? "warn" : "") +
       stat("EXPIRED", expired.length, "batches to write off", expired.length ? "bad" : "") +
@@ -1371,21 +1594,31 @@
       var byItem = {};
       open.forEach(function (b) {
         var k = b.itemId;
-        if (!byItem[k]) byItem[k] = { n: 0, soonest: null, batches: 0 };
-        byItem[k].n += remaining(b);
+        if (!byItem[k]) byItem[k] = { n: 0, soonest: null, batches: 0, cost: 0, retail: 0, unknown: false };
+        var left2 = remaining(b);
+        byItem[k].n += left2;
         byItem[k].batches += 1;
+        byItem[k].retail += left2 * (b.unitPrice || 0);
+        if (b.unitCost == null) byItem[k].unknown = true;
+        else byItem[k].cost += left2 * b.unitCost;
         var e = expiresOn(b);
         if (!byItem[k].soonest || e < byItem[k].soonest) byItem[k].soonest = e;
       });
       h += '<div class="subhead">BY ITEM</div><div class="tw"><table><thead><tr><th>ITEM</th>' +
-        '<th class="r">ON HAND</th><th class="r">BATCHES</th><th>FIRST TO EXPIRE</th>' +
+        '<th class="r">ON HAND</th><th>ONE BATCH MAKES</th><th class="r">COST</th>' +
+        '<th class="r">AT MENU</th><th class="r">BATCHES</th><th>FIRST TO EXPIRE</th>' +
         "</tr></thead><tbody>";
       Object.keys(byItem).forEach(function (k) {
         var g = byItem[k], it = item(k);
         var d = daysBetween(t, g.soonest);
         var when = d < 0 ? "expired" : d === 0 ? "today" : d === 1 ? "tomorrow" : niceDate(g.soonest);
         var cls = d <= 0 ? "p-today" : d === 1 ? "p-soon" : "p-fresh";
-        h += "<tr><td>" + esc(it ? it.name : "Deleted item") + '</td><td class="r num">' + g.n +
+        var per = it ? portionsPer(it) : 0;
+        h += "<tr><td>" + esc(it ? it.name : "Deleted item") + '</td><td class="r num">' +
+          esc(count(g.n, it ? portionWordOf(it) : "portion")) + "</td><td>" +
+          (per ? esc("1 " + batchWordOf(it) + " \u2192 " + count(per, portionWordOf(it))) : "\u2014") +
+          '</td><td class="r num">' + money(g.cost) + (g.unknown ? "+" : "") +
+          '</td><td class="r num">' + money(g.retail) +
           '</td><td class="r num">' + g.batches + '</td><td><span class="pill ' + cls + '">' +
           esc(when.toUpperCase()) + "</span></td></tr>";
       });
@@ -1428,6 +1661,7 @@
   /* ---------- rows ---------- */
   function rows(list, perm, withSell, withVoid) {
     var h = '<div class="rows">';
+    var seenDrop = {};                 /* one notice and one invoice per order */
     list.forEach(function (b) {
       var it = item(b.itemId);
       var st = status(b);
@@ -1437,16 +1671,23 @@
       h += '<div class="row s-' + st + '"><div class="stripe"></div><div class="in">' +
         '<div class="rt"><span class="nm">' + esc(it ? it.name : "Deleted item") + "</span>" +
         '<span class="qty num">' + left + " / " + b.qty + "</span>" +
+        '<span class="unit">' + esc(plural(bPortion(b))) + "</span>" +
         '<span class="pill p-' + st + '">' + STATUS_LABEL[st] + "</span>" +
         (b.voided ? "" : '<span class="pill p-lock">LOCKED</span>') + "</div>";
-      h += '<div class="meta">' + (b.batches ? "<b>" + b.batches + " " + esc(b.batchWord || "batch") + (b.batches > 1 ? "s" : "") + "</b> · " : "") +
+      h += '<div class="meta">' + (b.batches ? "<b>" + esc(count(b.batches, batchWordOf(b))) + "</b> \u00b7 " : "") +
         "Made <b>" + niceDate(b.madeOn) + "</b> · expires <b>" + niceDate(exp) + "</b>" +
         (st === "expired" ? " (" + Math.abs(d) + "d ago)" : d >= 0 && !b.voided && left > 0 ? " (" + (d === 0 ? "today" : d + "d") + ")" : "") +
         " · logged <b>" + esc(stamp(b.at)) + "</b> by <b>" + esc(uname(b.by)) + "</b></div>";
       var fixes = (b.sales || []).filter(function (x) { return x.fix; }).length;
-      h += '<div class="meta">Sold <b>' + s + "</b>" + (fixes ? " <span class=\"pill p-soon\">CORRECTED</span>" : "") + " · cost " +
+      h += '<div class="meta">Sold <b>' + s + "</b>" + (fixes ? " <span class=\"pill p-soon\">CORRECTED</span>" : "") +
+        " \u00b7 whole batch cost " +
         (b.unitCost == null ? "<b>not set</b>" : "<b>" + cur() + " " + money(b.qty * b.unitCost) + "</b>") +
-        " · sells at <b>" + cur() + " " + money(b.unitPrice) + "</b></div>";
+        " \u00b7 sells at <b>" + cur() + " " + money(b.unitPrice) + "</b> each</div>";
+      if (b.unitCost != null && left > 0 && !b.voided) {
+        h += '<div class="meta">Still on the truck: <b>' + esc(count(left, bPortion(b))) +
+          "</b> \u00b7 cost <b>" + cur() + " " + money(left * b.unitCost) +
+          "</b> \u00b7 worth <b>" + cur() + " " + money(left * (b.unitPrice || 0)) + "</b> at menu price</div>";
+      }
       if (b.voided) h += '<div class="meta">Voided by <b>' + esc(uname(b.voidedBy)) + "</b>" +
         (b.voidReason ? ": " + esc(b.voidReason) : "") + "</div>";
       var pct = b.qty ? Math.round((s / b.qty) * 100) : 0;
@@ -1466,8 +1707,10 @@
       if (withVoid && b.voided && perm.canSetup && !readOnly) {
         acts += '<button class="btn ghost sm" type="button" data-unvoid="' + b.id + '">RESTORE</button>';
       }
-      if (withVoid && !b.voided) {
+      if (withVoid && !b.voided && !seenDrop[dropOf(b)]) {
+        seenDrop[dropOf(b)] = true;
         acts += '<button class="btn ghost sm" type="button" data-notify="' + dropOf(b) + '">EMAIL NOTICE</button>';
+        if (dl) acts += '<button class="btn dark sm" type="button" data-pdf="' + dropOf(b) + '">PDF INVOICE</button>';
       }
       if (acts) h += '<div class="acts">' + acts + "</div>";
       h += "</div></div>";
@@ -1591,14 +1834,16 @@
       h += '<div class="grid2" style="margin-top:16px">' +
         '<div class="field"><label>PIECES PER ' + esc((it.batchWord || "batch").toUpperCase()) + '</label>' +
         '<input data-f="yieldPieces" type="number" min="0" step="any" value="' + (it.yieldPieces || 0) + '"' + ro + "></div>" +
-        '<div class="field"><label>PIECES PER PORTION SOLD</label>' +
+        '<div class="field"><label>PIECES IN ONE ' + esc(portionWordOf(it).toUpperCase()) + '</label>' +
         '<input data-f="perPortion" type="number" min="1" step="any" value="' + (it.perPortion || 1) + '"' + ro + "></div>" +
-        '<div class="field"><label>PACKAGING PER PORTION (' + cur() + ')</label>' +
+        '<div class="field"><label>PACKAGING PER ' + esc(portionWordOf(it).toUpperCase()) + ' (' + cur() + ')</label>' +
         '<input data-f="packaging" type="number" min="0" step="0.01" value="' + (it.packaging || 0) + '"' + ro + "></div>" +
         '<div class="field"><label>SELLING PRICE (' + cur() + ')</label>' +
         '<input data-f="price" type="number" min="0" step="0.01" value="' + it.price + '"' + ro + "></div>" +
         '<div class="field"><label>CALL ONE BATCH A…</label>' +
-        '<input data-f="batchWord" value="' + esc(it.batchWord || "batch") + '" placeholder="tray, cake"' + ro + "></div>" +
+        '<input data-f="batchWord" value="' + esc(batchWordOf(it)) + '" placeholder="tray, cake"' + ro + "></div>" +
+        '<div class="field"><label>CALL ONE PORTION A…</label>' +
+        '<input data-f="portionWord" value="' + esc(portionWordOf(it)) + '" placeholder="slice, bag"' + ro + "></div>" +
         "</div>";
 
       h += '<div class="costcard"><div class="grid">' +
@@ -1906,7 +2151,8 @@
         var bid = b.getAttribute("data-sellmany");
         var bt = S.batches.filter(function (x) { return x.id === bid; })[0];
         ask({ title: "How many sold?", ok: "LOG SALE",
-              input: { label: "PORTIONS (UP TO " + remaining(bt) + ")", value: 1, min: 1, max: remaining(bt) } })
+              input: { label: plural(bPortion(bt)).toUpperCase() + " (UP TO " + remaining(bt) + ")",
+                       value: 1, min: 1, max: remaining(bt) } })
           .then(function (n) { if (n != null) logSale(bid, n); });
       };
     });
@@ -1955,6 +2201,9 @@
             }, "Order voided.");
           });
       };
+    });
+    app.querySelectorAll("[data-pdf]").forEach(function (b) {
+      b.onclick = function () { saveInvoice(b.getAttribute("data-pdf")); };
     });
     app.querySelectorAll("[data-notify]").forEach(function (b) {
       b.onclick = function () {
@@ -2044,7 +2293,8 @@
       additem: function () {
         save(function (n) {
           n.items.push({ id: id("i"), name: "New item", note: "", price: 0, shelf: n.defaultShelf || 2,
-            active: true, batchWord: "batch", yieldPieces: 0, perPortion: 1, packaging: 0.25, recipe: [] });
+            active: true, batchWord: "batch", portionWord: "portion",
+            yieldPieces: 0, perPortion: 1, packaging: 0.25, recipe: [] });
         }, "Item added.");
       },
       adduser: function () {
@@ -2152,11 +2402,13 @@
     unit = ing == null ? null : ing + pack;
     profit = unit == null ? null : price - unit;
     margin = profit == null || !price ? null : (profit / price) * 100;
-    set("yield", portions ? (pieces + " pcs / " + portions + " portions") : "set yield", portions ? "" : "bad");
+    var pw = (card.querySelector('[data-f="portionWord"]').value || "").trim() || "portion";
+    set("yield", portions ? (pieces + " pcs / " + count(portions, pw)) : "set yield", portions ? "" : "bad");
     var note = card.querySelector("[data-spare]");
     if (note) note.innerHTML = portions
       ? (spare
-          ? "<b>" + spare + " piece" + (spare > 1 ? "s" : "") + " left over per batch</b> — they are not sellable as a portion, so their cost sits on the " + portions + " portions that are."
+          ? "<b>" + count(spare, "piece") + " left over per batch</b> \u2014 not enough for another " + pw +
+            ", so their cost sits on the " + count(portions, pw) + " that are sellable."
           : pieces + " pcs \u00f7 " + per + " divides evenly — nothing wasted.")
       : "";
     set("ing", ing == null ? "—" : money(ing));
@@ -2228,7 +2480,7 @@
     var html = "", total = 0, units = 0, anyUncosted = false;
     lines.forEach(function (L) {
       var w = L.row.querySelector('[data-d="word"]');
-      if (L.it) w.textContent = (L.it.batchWord || "batch") + (L.n === 1 ? "" : "s");
+      if (L.it) w.textContent = L.n === 1 ? batchWordOf(L.it) : plural(batchWordOf(L.it));
       L.row.querySelector('[data-d="rm"]').disabled = only;
       if (!L.it || !L.n) return;
       if (!costed(L.it)) {
@@ -2238,8 +2490,8 @@
       }
       var u = L.n * portionsPer(L.it), c = u * unitCostOf(L.it);
       units += u; total += c;
-      html += '<div class="dline"><span>' + L.n + " " + esc(L.it.batchWord || "batch") + (L.n > 1 ? "s" : "") +
-        " " + esc(L.it.name) + " = <b>" + u + " portions</b>, expires " + niceDate(addDays(madeOn, L.it.shelf)) +
+      html += '<div class="dline"><span>' + esc(count(L.n, batchWordOf(L.it))) +
+        " " + esc(L.it.name) + " = <b>" + esc(count(u, portionWordOf(L.it))) + "</b>, expires " + niceDate(addDays(madeOn, L.it.shelf)) +
         "</span><span class=\"num\">" + cur() + " " + money(c) + "</span></div>";
     });
     if (html) html += '<div class="dline"><span>' + units + " portions in total</span><span class=\"num\">" +
@@ -2254,10 +2506,9 @@
     if (!lines.length) { toast("Add at least one item with a quantity.", true); return; }
     var summary = [], uncosted = [];
     lines.forEach(function (L) {
-      var w = L.it.batchWord || "batch";
       if (costed(L.it)) {
-        summary.push(L.n + " " + w + (L.n > 1 ? "s" : "") + " " + L.it.name +
-          " = " + (L.n * portionsPer(L.it)) + " portions");
+        summary.push(count(L.n, batchWordOf(L.it)) + " " + L.it.name +
+          " = " + count(L.n * portionsPer(L.it), portionWordOf(L.it)));
       } else {
         summary.push(L.n + " " + L.it.name + " (no cost)");
         uncosted.push(L.it.name);
@@ -2281,7 +2532,7 @@
           id: id("b"), drop: drop, itemId: L.it.id,
           qty: costed(L.it) ? L.n * per : L.n,
           unitCost: unitCostOf(L.it), unitPrice: L.it.price,
-          batches: L.n, batchWord: L.it.batchWord || "batch",
+          batches: L.n, batchWord: batchWordOf(L.it), portionWord: portionWordOf(L.it),
           shelf: L.it.shelf, madeOn: madeOn,
           by: me.id, at: at, sales: []
         });
@@ -2310,12 +2561,13 @@
     var pack = val(card.querySelector('[data-f="packaging"]'));
     var price = val(card.querySelector('[data-f="price"]'));
     var word = card.querySelector('[data-f="batchWord"]').value.trim() || "batch";
+    var pword = card.querySelector('[data-f="portionWord"]').value.trim() || "portion";
     if (per <= 0) { toast("Pieces per portion must be above zero.", true); return; }
     if (pieces > 0 && per > pieces) { toast("A portion cannot be more pieces than the whole batch makes.", true); return; }
     save(function (nx) {
       var t = nx.items.filter(function (i) { return i.id === iid; })[0];
       t.recipe = rows; t.yieldPieces = pieces; t.perPortion = per;
-      t.packaging = pack; t.price = price; t.batchWord = word;
+      t.packaging = pack; t.price = price; t.batchWord = word; t.portionWord = pword;
     }, "Recipe saved.");
   }
 
@@ -2366,5 +2618,10 @@
     if (!a) { readOnly = true; }
     render();
   }).catch(function () { readOnly = true; render(); });
+  /* saving a file is a separate grant and may never arrive; the invoice
+     button only appears once it does */
+  claude.use("downloads").then(function (d) {
+    if (d) { dl = d; render(); }
+  }).catch(function () {});
 })();
 </script>
