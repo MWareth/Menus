@@ -149,6 +149,10 @@
   .modalbox h3{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:20px;margin:0 0 8px}
   .modalbox .msg{font-size:14.5px;line-height:1.55;color:var(--ink-2);white-space:pre-line}
   .modalacts{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap}
+  .modalbox.wide{max-width:620px}
+  .modalbox textarea{width:100%;margin-top:14px;padding:12px 13px;border:1px solid var(--line);
+    border-radius:10px;background:var(--shade);color:var(--ink);font-family:var(--mono);
+    font-size:12.5px;line-height:1.6;resize:vertical}
   .modalacts .btn{flex:1 1 auto}
 
   /* ---------- settlement ---------- */
@@ -160,6 +164,7 @@
   .settle.clear .big{color:#7BD69B}
   .calc{margin-top:18px;border-top:1px solid #6B4A42;padding-top:14px}
   .crow{display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-size:14px;color:#CBB6A6}
+  .crow .num,.erow .num{white-space:nowrap}
   .crow b{color:var(--cream);font-weight:900}
   .crow.tot{border-top:1px solid #6B4A42;margin-top:6px;padding-top:11px;font-size:15px;color:var(--cream);font-weight:900}
 
@@ -175,6 +180,26 @@
   .sp.t{background:var(--butter);color:var(--char)}
   .sp .k{font-size:11px;font-weight:900;letter-spacing:.12em;opacity:.8}
   .sp .v{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:25px;margin-top:3px}
+
+  /* ---------- what each partner makes ---------- */
+  .earn{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (max-width:600px){.earn{grid-template-columns:1fr}}
+  .ecard{border-radius:14px;padding:17px 16px 15px}
+  .ecard.d{background:var(--brown);color:var(--cream)}
+  .ecard.t{background:var(--butter);color:var(--char)}
+  .ecard .who3{font-size:11px;font-weight:900;letter-spacing:.12em;opacity:.72}
+  .ecard .make{font-family:'Baloo 2',sans-serif;font-weight:800;
+    font-size:clamp(27px,6.5vw,34px);line-height:1.05;margin:5px 0 1px}
+  .ecard.d .make{color:var(--gold)}
+  .ecard .lab{font-size:12.5px;font-weight:700;opacity:.72;margin-bottom:13px}
+  .erow{display:flex;justify-content:space-between;gap:14px;padding:5px 0;font-size:13.5px;opacity:.86}
+  .erow.top{margin-top:6px;padding-top:10px;opacity:1;font-weight:900;font-size:14.5px}
+  .ecard.d .erow.top{border-top:1px solid #6B4A42}
+  .ecard.t .erow.top{border-top:1px solid rgba(28,25,23,.22)}
+  .enote{margin-top:11px;font-size:12.5px;line-height:1.5;opacity:.72}
+  .proj{margin-top:12px;background:var(--shade);border:1px solid var(--line);
+    border-radius:12px;padding:14px 16px;font-size:14px;line-height:1.55;color:var(--ink-2)}
+  .proj b{color:var(--ink)}
   .subhead{font-size:12px;font-weight:900;letter-spacing:.14em;color:var(--ink-3);
     margin:22px 0 10px;padding-top:4px;border-top:1px solid var(--line)}
   /* ---------- multi-item delivery ---------- */
@@ -230,6 +255,7 @@
     "basis": "profit"
   },
   "defaultShelf": 2,
+  "notify": "",
   "items": [
     {
       "id": "i1",
@@ -359,7 +385,7 @@
           "n": "Baking sheet",
           "q": 1,
           "u": "sheet",
-          "pp": 2.0,
+          "pp": 1,
           "pq": 1
         }
       ]
@@ -606,36 +632,10 @@
       "pin": "f16e34225021f39639cfa33ca88dd9778940f7c88b25d34cc2a0cff2d774c427"
     }
   ],
-  "batches": [
-    {
-      "id": "b7",
-      "drop": "d6",
-      "itemId": "i2",
-      "qty": 21,
-      "unitCost": null,
-      "unitPrice": 26,
-      "batches": 21,
-      "batchWord": "cake",
-      "shelf": 2,
-      "madeOn": "2026-08-31",
-      "by": "u1",
-      "at": "2026-08-31T11:21:14.388Z",
-      "sales": [
-        {
-          "qty": 1,
-          "by": "u1",
-          "at": "2026-08-31T11:21:45.441Z"
-        }
-      ],
-      "voided": true,
-      "voidedBy": "u1",
-      "voidReason": "Testing",
-      "voidedAt": "2026-08-31T11:28:34.341Z"
-    }
-  ],
+  "batches": [],
   "seq": 7,
   "defaultPins": false,
-  "updatedAt": "2026-09-04T12:20:00.000Z",
+  "updatedAt": "2026-09-04T12:30:00.000Z",
   "payments": []
 }
 </script>
@@ -816,6 +816,31 @@
              paid: paid, outstanding: owed - paid, unknownCost: t.unknownCost };
   }
 
+  /* Everything still sellable on the truck. Dee's already paid for it, and
+     that cost is already inside totals().cost, so every further sale is
+     straight profit on top of what the two sides have made so far. */
+  function upside() {
+    var units = 0, revenue = 0;
+    live().forEach(function (b) {
+      if (status(b) === "expired") return;
+      var left = remaining(b);
+      if (left <= 0) return;
+      units += left;
+      revenue += left * (b.unitPrice || 0);
+    });
+    return { units: units, revenue: revenue };
+  }
+
+  /* What each partner ends up with once the outstanding balance is settled.
+     Not cash in hand today — Dee's is out of pocket until the truck pays. */
+  function earnings() {
+    var s = settlement(), up = upside();
+    var proj = s.profit + up.revenue;
+    return { s: s, up: up,
+             deesNow: s.profit * s.d, truckNow: s.profit * (1 - s.d),
+             projProfit: proj, deesProj: proj * s.d, truckProj: proj * (1 - s.d) };
+  }
+
   /* ============ persistence ============ */
   function buildDoc(next) {
     var css = document.getElementById("app-style").textContent.trim();
@@ -930,6 +955,138 @@
         });
       }
     });
+  }
+
+  /* ============ notices ============
+     A published artifact cannot reach a mail server — nothing here can post
+     to the outside world. So the app writes the notice and hands it over:
+     open it in the phone's mail app with everyone already in the To field,
+     or copy it and paste it into the group chat. */
+  function notifyList() {
+    return (S.notify || "").split(/[,;\s]+/).filter(function (x) { return x.indexOf("@") > 0; });
+  }
+  function appLink() {
+    var u = "";
+    try { u = String(location.href); } catch (e) {}
+    return u.indexOf("http") === 0 ? u : "";
+  }
+  function dropOf(b) { return b.drop || b.id; }
+  function deliveryNotice(dropKey) {
+    var list = S.batches.filter(function (b) { return dropOf(b) === dropKey; });
+    if (!list.length) return null;
+    var b0 = list[0], units = 0, cost = 0, unknown = false, lines = [];
+    list.forEach(function (b) {
+      var it = item(b.itemId);
+      units += b.qty;
+      if (b.unitCost == null) unknown = true; else cost += b.qty * b.unitCost;
+      lines.push("- " + (it ? it.name : "Deleted item") + ": " + b.qty + " portions" +
+        (b.batches ? " (" + b.batches + " " + (b.batchWord || "batch") + (b.batches > 1 ? "s" : "") + ")" : "") +
+        ", expires " + niceDate(expiresOn(b)));
+    });
+    var link = appLink();
+    return {
+      subject: "Dee's delivery " + niceDate(b0.madeOn) + " \u2014 " + units + " portions",
+      body: "Logged by " + uname(b0.by) + " at " + stamp(b0.at) + ".\n\n" +
+        lines.join("\n") + "\n\n" +
+        "Out in total: " + units + " portions\n" +
+        "Cost to Dee's: " + (unknown ? "part of it not costed yet" : cur() + " " + money(cost)) + "\n\n" +
+        "Sell the earliest date first, and log every sale in the app." +
+        (link ? "\n\n" + link : "")
+    };
+  }
+  function stockNotice() {
+    var open = live().filter(function (b) { return remaining(b) > 0; });
+    var onHand = open.reduce(function (a, b) { return a + remaining(b); }, 0);
+    var pick = function (st) { return open.filter(function (b) { return status(b) === st; }); };
+    var line = function (b) {
+      var it = item(b.itemId);
+      return "- " + (it ? it.name : "Deleted item") + ": " + remaining(b) +
+        " left, expires " + niceDate(expiresOn(b));
+    };
+    var expired = pick("expired"), lastDay = pick("today"), soon = pick("soon");
+    var body = "Stock on the truck, " + niceDate(todayStr()) + "\n\n" +
+      onHand + " portion" + (onHand === 1 ? "" : "s") + " on hand.\n";
+    if (expired.length) body += "\nEXPIRED \u2014 take these off the counter:\n" + expired.map(line).join("\n") + "\n";
+    if (lastDay.length) body += "\nLAST DAY \u2014 sell these first:\n" + lastDay.map(line).join("\n") + "\n";
+    if (soon.length) body += "\nGone tomorrow:\n" + soon.map(line).join("\n") + "\n";
+    if (open.length) {
+      var byName = {};
+      open.forEach(function (b) {
+        var it = item(b.itemId), k = it ? it.name : "Deleted item";
+        byName[k] = (byName[k] || 0) + remaining(b);
+      });
+      body += "\nEverything on hand:\n" + Object.keys(byName).map(function (k) {
+        return "- " + k + ": " + byName[k];
+      }).join("\n") + "\n";
+    } else {
+      body += "\nNothing in stock.\n";
+    }
+    var link = appLink();
+    if (link) body += "\n" + link;
+    return {
+      subject: "Dee's stock " + niceDate(todayStr()) + " \u2014 " + onHand + " on hand" +
+        (expired.length ? ", " + expired.length + " expired" : lastDay.length ? ", " + lastDay.length + " on last day" : ""),
+      body: body
+    };
+  }
+  function notice(title, n) {
+    if (!n) { toast("Nothing to send.", true); return; }
+    var to = notifyList();
+    var back = document.createElement("div");
+    back.className = "modal";
+    back.innerHTML = '<div class="modalbox wide" role="dialog" aria-modal="true" aria-label="' + esc(title) + '">' +
+      "<h3>" + esc(title) + "</h3>" +
+      '<div class="msg">' +
+      (to.length ? "Addressed to " + esc(to.join(", ")) + "."
+                 : "No addresses saved yet \u2014 an admin adds them in Setup. You can still copy this and send it however you like.") +
+      "</div>" +
+      '<textarea id="n-body" rows="13" spellcheck="false"></textarea>' +
+      '<div class="modalacts">' +
+      '<button class="btn ghost" type="button" data-m="close">CLOSE</button>' +
+      '<button class="btn dark" type="button" data-m="copy">COPY</button>' +
+      '<button class="btn pri" type="button" data-m="mail">OPEN EMAIL</button>' +
+      "</div></div>";
+    document.body.appendChild(back);
+    var ta = back.querySelector("#n-body");
+    ta.value = n.subject + "\n\n" + n.body;
+
+    function shut() { document.removeEventListener("keydown", onKey, true); back.remove(); }
+    function onKey(e) { if (e.key === "Escape") { e.preventDefault(); shut(); } }
+    document.addEventListener("keydown", onKey, true);
+    back.onclick = function (e) { if (e.target === back) shut(); };
+    back.querySelector('[data-m="close"]').onclick = shut;
+    back.querySelector('[data-m="copy"]').onclick = function () {
+      var txt = ta.value;
+      var ok = function () { toast("Copied \u2014 paste it into the chat."); };
+      var no = function () { ta.focus(); ta.select(); toast("Select it and copy by hand.", true); };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(txt).then(ok, function () {
+            ta.focus(); ta.select();
+            try { document.execCommand("copy") ? ok() : no(); } catch (e) { no(); }
+          });
+          return;
+        }
+      } catch (e) {}
+      ta.focus(); ta.select();
+      try { document.execCommand("copy") ? ok() : no(); } catch (e) { no(); }
+    };
+    back.querySelector('[data-m="mail"]').onclick = function () {
+      var url = "mailto:" + to.join(",") +
+        "?subject=" + encodeURIComponent(n.subject) +
+        "&body=" + encodeURIComponent(n.body);
+      var w = null;
+      try { w = window.open(url, "_blank"); } catch (e) {}
+      if (!w) {
+        try {
+          var a2 = document.createElement("a");
+          a2.href = url; a2.target = "_blank"; a2.rel = "noopener";
+          document.body.appendChild(a2); a2.click(); a2.remove();
+        } catch (e) {}
+      }
+      toast(to.length ? "Opening your mail app\u2026" : "No addresses saved \u2014 copy it instead.", !to.length);
+    };
+    ta.focus();
   }
 
   var toastT = null;
@@ -1120,6 +1277,11 @@
         " on its last day.</b> Anything unsold tonight becomes waste tomorrow.</div>";
     }
 
+    if (open.length || expired.length) {
+      h += '<div style="margin:14px 0 4px"><button class="btn ghost sm" type="button" data-act="notifystock">' +
+        "EMAIL THE STOCK NOTE</button></div>";
+    }
+
     var order = { expired: 0, today: 1, soon: 2, fresh: 3 };
     var sorted = open.slice().sort(function (a, b) {
       var d = order[status(a)] - order[status(b)];
@@ -1162,6 +1324,22 @@
       '</div><div class="n">' + esc(n) + "</div></div>";
   }
 
+  /* one partner's earnings card: the headline they make, the two moves that
+     get them there, and where that money actually is right now */
+  function ecard(cls, who, makes, sub, rows, totLabel, note) {
+    var h = '<div class="ecard ' + cls + '"><div class="who3">' + who + "</div>" +
+      '<div class="make num">' + cur() + " " + money(makes) + "</div>" +
+      '<div class="lab">' + sub + "</div>";
+    rows.forEach(function (r) {
+      h += '<div class="erow"><span>' + r[0] + '</span><span class="num">' +
+        (r[1] < 0 ? "\u2212 " : "+ ") + cur() + " " + money(Math.abs(r[1])) + "</span></div>";
+    });
+    h += '<div class="erow top"><span>' + totLabel + '</span><span class="num">' +
+      cur() + " " + money(makes) + "</span></div>";
+    if (note) h += '<div class="enote">' + note + "</div>";
+    return h + "</div>";
+  }
+
   /* ---------- rows ---------- */
   function rows(list, perm, withSell, withVoid) {
     var h = '<div class="rows">';
@@ -1202,6 +1380,9 @@
       }
       if (withVoid && b.voided && perm.canSetup && !readOnly) {
         acts += '<button class="btn ghost sm" type="button" data-unvoid="' + b.id + '">RESTORE</button>';
+      }
+      if (withVoid && !b.voided) {
+        acts += '<button class="btn ghost sm" type="button" data-notify="' + dropOf(b) + '">EMAIL NOTICE</button>';
       }
       if (acts) h += '<div class="acts">' + acts + "</div>";
       h += "</div></div>";
@@ -1356,25 +1537,56 @@
       '<div class="crow tot"><span>' + (out >= 0 ? "Truck pays Dee\'s" : "Dee\'s pays truck") +
         '</span><span class="num">' + cur() + " " + money(Math.abs(out)) + "</span></div>" +
       "</div></div>";
-    h += '<p class="hint" style="margin-bottom:18px">Settling that amount leaves each side holding its ' +
-      Math.round(S1.d * 100) + "/" + Math.round((1 - S1.d) * 100) +
-      " share of the profit — " + cur() + " " + money(S1.profit * S1.d) + " to Dee's, " +
-      cur() + " " + money(S1.profit * (1 - S1.d)) + " to the truck.</p>";
+    if (t.unknownCost) h += '<div class="banner warn"><b>' + t.unknownCost +
+      " units have no cost recorded.</b> Profit and waste below are understated until those batches' items have an ingredient cost.</div>";
+    var E = earnings();
+    h += '<div class="subhead">WHAT EACH PARTNER MAKES</div>';
+    h += '<div class="earn">' +
+      ecard("d", "DEE'S TREATS", E.deesNow,
+        Math.round(S1.d * 100) + "% of the profit made so far",
+        [["Paid out for ingredients &amp; packaging", -S1.cost],
+         ["Comes back from the truck", S1.owed]],
+        "Dee's makes",
+        S1.paid ? cur() + " " + money(S1.paid) + " already received · " + cur() + " " +
+          money(S1.outstanding) + " still due."
+                : "None of it is in hand until the truck settles.") +
+      ecard("t", "SMASH &amp; PASS", E.truckNow,
+        Math.round((1 - S1.d) * 100) + "% of the profit made so far",
+        [["Taken at the window", S1.revenue],
+         ["Goes across to Dee's", -S1.owed]],
+        "The truck makes",
+        S1.paid ? cur() + " " + money(S1.paid) + " already handed over · " + cur() + " " +
+          money(S1.outstanding) + " still to pay."
+                : "Hold back what is owed — the rest is yours.") +
+      "</div>";
+    if (E.up.units > 0) {
+      h += '<div class="proj"><b>' + E.up.units + " unit" + (E.up.units === 1 ? "" : "s") +
+        " still on the truck</b>, worth " + cur() + " " + money(E.up.revenue) +
+        " at the price they went out at. Dee's has already paid for them, so every one sold from here " +
+        "is straight profit. Sell them all and the two sides make " + cur() + " " + money(E.deesProj) +
+        " (Dee's) and " + cur() + " " + money(E.truckProj) + " (the truck).</div>";
+    }
     h += '<div class="stats">' +
       stat("REVENUE", cur() + " " + money(t.revenue), t.unitsSold + " units sold", "good") +
       stat("COST", cur() + " " + money(t.cost), t.unitsOut + " units delivered", "") +
       stat("PROFIT", cur() + " " + money(t.profit), "revenue less cost", t.profit >= 0 ? "good" : "bad") +
       stat("WASTE", cur() + " " + money(t.waste), t.unitsWasted + " units expired unsold", t.waste > 0 ? "bad" : "") +
       "</div>";
-    if (t.unknownCost) h += '<div class="banner warn"><b>' + t.unknownCost +
-      " units have no cost recorded.</b> Profit and waste below are understated until those batches' items have an ingredient cost.</div>";
 
-    h += '<div class="subhead">THE ' + pct + "/" + (100 - pct) + " SPLIT · ON " + (S.split.basis === "revenue" ? "REVENUE" : "PROFIT") + "</div>";
-    h += '<div class="split">' +
-      '<div class="sp d"><div class="k">DEE\'S TREATS</div><div class="v num">' + cur() + " " + money(deesCut) + "</div></div>" +
-      '<div class="sp t"><div class="k">SMASH &amp; PASS</div><div class="v num">' + cur() + " " + money(truckCut) + "</div></div>" +
-      "</div>";
-    h += '<p class="hint" style="margin-top:10px">Split basis and percentage are set in Setup. Confirm with the other side which one your deal actually means — splitting revenue and splitting profit give very different numbers.</p>';
+    if (S.split.basis === "revenue") {
+      h += '<div class="subhead">SETUP SAYS SPLIT THE REVENUE</div>';
+      h += '<div class="split">' +
+        '<div class="sp d"><div class="k">DEE\'S TREATS</div><div class="v num">' + cur() + " " + money(deesCut) + "</div></div>" +
+        '<div class="sp t"><div class="k">SMASH &amp; PASS</div><div class="v num">' + cur() + " " + money(truckCut) + "</div></div>" +
+        "</div>";
+      h += '<div class="banner warn"><b>The split is set on revenue, not profit.</b> Those are the raw ' +
+        pct + "/" + (100 - pct) + " cuts of the takings, before the ingredients are paid for. " +
+        "The settlement and the earnings above are worked on profit, which is what a 50/50 partnership normally means. " +
+        "Change the basis in Setup if revenue really is what you agreed.</div>";
+    } else {
+      h += '<p class="hint" style="margin-top:12px">Split percentage and basis are set in Setup. ' +
+        "These are direct-cost figures \u2014 they take no account of labour, gas, the truck itself or anyone's time.</p>";
+    }
 
     var byWho = {};
     live().forEach(function (b) {
@@ -1524,6 +1736,16 @@
       "</div>" +
       '<button class="btn dark sm" type="button" data-act="savesplit">SAVE</button></div>';
 
+    h += '<div class="subhead">WHO GETS TOLD</div><div class="card">' +
+      '<div class="field"><label for="nt-mails">EMAIL ADDRESSES</label>' +
+      '<input id="nt-mails" value="' + esc(S.notify || "") + '" ' +
+      'placeholder="dina@example.com, marwan@example.com" autocapitalize="none" autocorrect="off" spellcheck="false"></div>' +
+      '<button class="btn dark sm" type="button" data-act="savenotify">SAVE</button>' +
+      "<p class=\"hint\" style=\"margin-top:12px\">Separate them with commas. These addresses are filled in for you " +
+      "whenever someone presses <b>EMAIL NOTICE</b> on a delivery or <b>EMAIL THE STOCK NOTE</b>. " +
+      "The page itself cannot post to a mail server, so it opens the note in your own mail app \u2014 " +
+      "you press send.</p></div>";
+
     var oldOnes = S.batches.filter(function (b) {
       return daysBetween(todayStr(), expiresOn(b)) < -30;
     }).length;
@@ -1596,6 +1818,11 @@
           });
       };
     });
+    app.querySelectorAll("[data-notify]").forEach(function (b) {
+      b.onclick = function () {
+        notice("Delivery notice", deliveryNotice(b.getAttribute("data-notify")));
+      };
+    });
     app.querySelectorAll("[data-unvoid]").forEach(function (b) {
       b.onclick = function () {
         var bid = b.getAttribute("data-unvoid");
@@ -1659,6 +1886,15 @@
       },
       addrow2: addDeliveryRow,
       deliver: addDelivery,
+      notifystock: function () { notice("Stock note", stockNotice()); },
+      savenotify: function () {
+        var raw = document.getElementById("nt-mails").value;
+        var list = raw.split(/[,;\s]+/).filter(Boolean);
+        var bad = list.filter(function (x) { return !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x); });
+        if (bad.length) { toast("Not an email address: " + bad[0], true); return; }
+        save(function (n) { n.notify = list.join(", "); },
+          list.length ? list.length + " address" + (list.length > 1 ? "es" : "") + " saved." : "Address list cleared.");
+      },
       additem: function () {
         save(function (n) {
           n.items.push({ id: id("i"), name: "New item", note: "", price: 0, shelf: n.defaultShelf || 2,
