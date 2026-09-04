@@ -1178,7 +1178,13 @@
       if (f) { sessionStorage.removeItem("deeserts.flash"); setTimeout(function () { toast(f); }, 60); }
       var t = sessionStorage.getItem("deeserts.tab");
       if (t) tab = t;
+      else if (me) tab = homeTab(me);
     } catch (e) {}
+  }
+  /* the truck is here to sell, so it opens on Orders rather than on the count */
+  function homeTab(u) {
+    var pm = ROLES[u.role] || ROLES.truck;
+    return pm.canSell && !pm.canDeliver ? "out" : "stock";
   }
   function setTab(t) {
     tab = t;
@@ -1210,7 +1216,7 @@
       '<button class="out" type="button" data-act="signout">EXIT</button>' +
       "</div></div></header>";
 
-    var tabs = [["stock", "STOCK", alerts], ["out", "ORDERS", 0], ["sell", "SALES", 0], ["money", "MONEY", 0]];
+    var tabs = [["stock", "STOCK", alerts], ["out", "ORDERS", 0], ["money", "MONEY", 0]];
     if (perm.canDeliver) tabs.push(["recipes", "RECIPES", 0]);
     if (perm.canSetup) tabs.push(["setup", "SETUP", 0]);
     tabs.push(["account", "MY PIN", 0]);
@@ -1230,10 +1236,10 @@
 
     var allowed = {};
     tabs.forEach(function (t) { allowed[t[0]] = true; });
+    if (tab === "sell") tab = "out";          /* sales moved into orders */
     if (!allowed[tab]) tab = "stock";
     if (tab === "stock") html += viewStock(perm);
     else if (tab === "out") html += viewOut(perm);
-    else if (tab === "sell") html += viewSell(perm);
     else if (tab === "money") html += viewMoney();
     else if (tab === "recipes") html += viewRecipes(perm);
     else if (tab === "setup") html += viewSetup(perm);
@@ -1303,7 +1309,12 @@
     hash(pin).then(function (hp) {
       if (found && hp === found.pin) {
         me = found; lockErr = ""; clearFail();
-        try { sessionStorage.setItem("deeserts.uid", found.id); } catch (e) {}
+        var seen = "";
+        try {
+          sessionStorage.setItem("deeserts.uid", found.id);
+          seen = sessionStorage.getItem("deeserts.tab") || "";
+        } catch (e) {}
+        if (!seen) tab = homeTab(found);
         render();
       } else {
         noteFail();
@@ -1380,9 +1391,13 @@
     }
 
     h += '<div class="subhead">EVERY BATCH</div>';
-    if (sorted.length) h += channelBar(perm);
-    h += sorted.length ? rows(sorted, perm, true) :
+    h += sorted.length ? rows(sorted, perm, false) :
       '<div class="empty">Nothing in stock. Dee logs an order to start.</div>';
+    if (sorted.length && perm.canSell && !readOnly) {
+      h += '<p class="hint" style="margin-top:12px">This is the count, not the till \u2014 ' +
+        "log what sells on <b>Orders</b>, where you also say whether it went out of the window " +
+        "or through a delivery app.</p>";
+    }
     if (tomorrow.length) h += '<p class="hint" style="margin-top:12px">' + tomorrow.length +
       " batch" + (tomorrow.length > 1 ? "es expire" : " expires") + " tomorrow.</p>";
     return h;
@@ -1460,10 +1475,16 @@
 
   /* ---------- orders out ---------- */
   function viewOut(perm) {
-    var h = '<h2 class="sec">Orders out</h2>' +
-      '<p class="sub">What Dee sends to the truck. An order locks the moment it is saved — to undo a mistake, <b>VOID</b> it with a reason rather than editing it.</p>';
+    var h = '<h2 class="sec">Orders</h2>' +
+      '<p class="sub">Everything about an order in one place \u2014 what Dee sends out, what sells, ' +
+      'and where each sale came from. An order locks the moment it is saved, and sales are never edited ' +
+      'or deleted: if a count is wrong, <b>FIX COUNT</b> logs the difference as a correction and both ' +
+      'stay on the record.</p>';
+
+    /* --- the order form: what Dee sends to the truck --- */
+    var form = "";
     if (perm.canDeliver && !readOnly) {
-      h += '<div class="card">' +
+      form += '<div class="subhead">NEW ORDER OUT</div><div class="card">' +
         '<div class="field" style="max-width:220px"><label for="d-date">MADE ON</label>' +
         '<input id="d-date" type="date" value="' + todayStr() + '"></div>' +
         '<div id="d-rows"></div>' +
@@ -1472,45 +1493,51 @@
         '<button class="btn pri" type="button" data-act="deliver" style="margin-top:14px">SAVE ORDER &amp; LOCK</button>' +
         "</div>";
     } else if (!readOnly) {
-      h += '<div class="banner info">Only Dee\'s side can log orders. You can see every batch below.</div>';
+      form += '<div class="banner info">Only Dee\'s side sends orders out. Your part here is logging what sells, and where it sold.</div>';
     }
-    var all = S.batches.slice().sort(function (a, b) { return a.at < b.at ? 1 : -1; });
-    h += '<div class="subhead">ALL ORDERS (' + all.length + ")</div>";
-    h += all.length ? rows(all, perm, false, true) : '<div class="empty">No orders logged yet.</div>';
-    return h;
-  }
 
-  /* ---------- sales ---------- */
-  function viewSell(perm) {
+    /* --- selling: what is on the truck, and where each sale came from --- */
     var open = live().filter(function (b) { return remaining(b) > 0 && status(b) !== "expired"; });
-    var h = '<h2 class="sec">Sales</h2>' +
-      '<p class="sub">Tap what has sold. Entries are never edited or deleted — if a count is wrong, <b>FIX COUNT</b> logs the difference as a correction and both stay on the record.</p>';
-    if (!perm.canSell) h += '<div class="banner info">Only the truck side can record sales.</div>';
-    h += channelBar(perm);
-    h += open.length ? rows(open, perm, true) :
-      '<div class="empty">Nothing available to sell. Anything expired shows on Today.</div>';
+    var sell = '<div class="subhead">ON THE TRUCK NOW</div>';
+    if (!perm.canSell && !readOnly) {
+      sell += '<div class="banner info">Only the truck side records sales. Everything sold shows below.</div>';
+    }
+    sell += channelBar(perm);
+    sell += open.length ? rows(open, perm, true) :
+      '<div class="empty">Nothing on the truck to sell. Anything past its date shows on Stock.</div>';
 
+    /* --- the sales log --- */
     var log = [];
     live().forEach(function (b) {
       (b.sales || []).forEach(function (s) {
         log.push({ at: s.at, qty: s.qty, by: s.by, fix: s.fix, ch: s.ch || channels()[0],
-                   item: (item(b.itemId) || {}).name || "—" });
+                   item: (item(b.itemId) || {}).name || "\u2014" });
       });
     });
     log.sort(function (a, b) { return a.at < b.at ? 1 : -1; });
     if (log.length) {
-      h += '<div class="subhead">RECENT ENTRIES</div><div class="tw"><table><thead><tr>' +
-        "<th>WHEN</th><th>ITEM</th><th class=\"r\">QTY</th><th>FROM</th><th>BY</th></tr></thead><tbody>";
+      sell += '<div class="subhead">SALES LOGGED (' + log.length + ")</div><div class=\"tw\"><table><thead><tr>" +
+        "<th>WHEN</th><th>ITEM</th><th class=\"r\">QTY</th><th>SOLD FROM</th><th>BY</th></tr></thead><tbody>";
       log.slice(0, 25).forEach(function (r) {
         var dt = new Date(r.at);
-        h += "<tr><td>" + esc(dt.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })) +
+        sell += "<tr><td>" + esc(dt.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })) +
           "</td><td>" + esc(r.item) + (r.fix ? ' <span class="pill p-soon">FIX</span>' : "") +
           '</td><td class="r num">' + (r.qty > 0 ? "+" + r.qty : r.qty) + "</td><td>" +
           esc(r.ch) + "</td><td>" + esc(uname(r.by)) + "</td></tr>";
       });
-      h += "</tbody></table></div>";
+      sell += "</tbody></table></div>";
+      if (log.length > 25) sell += '<p class="hint" style="margin-top:10px">Showing the last 25.</p>';
     }
-    return h;
+
+    /* --- the full history --- */
+    var all = S.batches.slice().sort(function (a, b) { return a.at < b.at ? 1 : -1; });
+    var hist = '<div class="subhead">EVERY ORDER OUT (' + all.length + ")</div>";
+    hist += all.length ? rows(all, perm, false, true) : '<div class="empty">No orders logged yet.</div>';
+
+    /* the truck is here to sell, so it gets the sell buttons first;
+       Dee's side is here to send stock out, so the form comes first */
+    return perm.canSell && !perm.canDeliver ? h + sell + form + hist
+                                            : h + form + sell + hist;
   }
 
   /* ---------- recipes ---------- */
