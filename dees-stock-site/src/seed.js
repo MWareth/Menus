@@ -470,26 +470,6 @@ export const SEED = {
       ]
     },
     {
-      "id": "b6",
-      "drop": "d5",
-      "itemId": "i2",
-      "qty": 16,
-      "unitCost": 7.848255208333334,
-      "unitPrice": 24,
-      "batches": null,
-      "batchWord": "cake",
-      "portionWord": "slice",
-      "shelf": 2,
-      "madeOn": "2026-08-31",
-      "by": "u1",
-      "at": "2026-09-04T13:46:41.539Z",
-      "sales": [],
-      "voided": true,
-      "voidedBy": "u1",
-      "voidReason": "Twice",
-      "voidedAt": "2026-09-04T13:47:21.909Z"
-    },
-    {
       "id": "b8",
       "drop": "d7",
       "itemId": "i2",
@@ -534,12 +514,20 @@ export const SEED = {
       "madeOn": "2026-09-04",
       "by": "u1",
       "at": "2026-09-04T14:53:39.779Z",
-      "sales": []
+      "sales": [
+        {
+          "qty": 3,
+          "by": "u1",
+          "at": "2026-09-05T21:44:31.575Z",
+          "on": "2026-09-06",
+          "ch": "Window"
+        }
+      ]
     }
   ],
   "seq": 9,
   "defaultPins": false,
-  "updatedAt": "2026-09-04T18:37:22.664Z",
+  "updatedAt": "2026-09-05T21:44:31.576Z",
   "payments": [],
   "weeks": [],
   "defaultPinHash": "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117"

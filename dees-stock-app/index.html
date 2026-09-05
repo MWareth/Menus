@@ -736,26 +736,6 @@
       ]
     },
     {
-      "id": "b6",
-      "drop": "d5",
-      "itemId": "i2",
-      "qty": 16,
-      "unitCost": 7.848255208333334,
-      "unitPrice": 24,
-      "batches": null,
-      "batchWord": "cake",
-      "portionWord": "slice",
-      "shelf": 2,
-      "madeOn": "2026-08-31",
-      "by": "u1",
-      "at": "2026-09-04T13:46:41.539Z",
-      "sales": [],
-      "voided": true,
-      "voidedBy": "u1",
-      "voidReason": "Twice",
-      "voidedAt": "2026-09-04T13:47:21.909Z"
-    },
-    {
       "id": "b8",
       "drop": "d7",
       "itemId": "i2",
@@ -800,12 +780,20 @@
       "madeOn": "2026-09-04",
       "by": "u1",
       "at": "2026-09-04T14:53:39.779Z",
-      "sales": []
+      "sales": [
+        {
+          "qty": 3,
+          "by": "u1",
+          "at": "2026-09-05T21:44:31.575Z",
+          "on": "2026-09-06",
+          "ch": "Window"
+        }
+      ]
     }
   ],
   "seq": 9,
   "defaultPins": false,
-  "updatedAt": "2026-09-04T18:37:22.664Z",
+  "updatedAt": "2026-09-05T21:44:31.576Z",
   "payments": [],
   "weeks": []
 }
@@ -1551,68 +1539,93 @@
     var no = "WK-" + start.replace(/-/g, "");
     var y = letterhead(pg, L, R, no, "WEEKLY STATEMENT", weekLabel(start));
 
-    y -= 32;
+    y -= 30;
     pg.text("FROM", L, y, 8, true, GREY);
     pg.text("TO", 320, y, 8, true, GREY);
     y -= 15;
     pg.text("Dee's Treats", L, y, 12, true);
     pg.text("Smash & Pass", 320, y, 12, true);
-    y -= 14;
-    pg.text("Friday to Thursday", L, y, 9.5, false, GREY);
+    y -= 13;
+    pg.text("Friday to Thursday" + (w.days.length ? "  \u00b7  sent out " + w.days.map(niceDate).join(", ") : ""),
+            L, y, 9.5, false, GREY);
     pg.text(weekClosed(start) ? "Closed" : "Open", 320, y, 9.5, false, GREY);
 
-    y -= 34;
+    /* ---- what moved, in pieces ---- */
+    y -= 30;
     pg.rect(L, y - 6, R - L, 20, [0.96, 0.93, 0.87]);
     pg.text("THE WEEK", L + 8, y, 8, true, GREY);
-    pg.right("PIECES", 400, y, 8, true, GREY);
+    pg.right("PIECES", R - 8, y, 8, true, GREY);
+    y -= 22;
+    function prow(label, pieces, bold) {
+      pg.text(label, L + 8, y, 10.5, !!bold);
+      pg.right(pieces == null ? "" : String(pieces), R - 8, y, 10.5, !!bold, bold ? null : GREY);
+      y -= 11; pg.rect(L, y + 2, R - L, 0.6, RULE); y -= 11;
+    }
+    prow("Sent out to the truck", w.out, true);
+    prow("Sold", w.sold);
+    if (w.given) prow("Given away", w.given);
+    if (w.binned) prow("Binned", w.binned);
+    if (w.left) prow("Still in date on the truck", w.left);
+    if (w.toDecide) prow("Past its date, not yet decided", w.toDecide);
+
+    /* ---- ingredients Dee's paid for, dessert by dessert ---- */
+    y -= 12;
+    pg.rect(L, y - 6, R - L, 20, [0.96, 0.93, 0.87]);
+    pg.text("INGREDIENTS DEE'S PAID FOR", L + 8, y, 8, true, GREY);
+    pg.right("USED", 320, y, 8, true, GREY);
+    pg.right("COST EACH", 430, y, 8, true, GREY);
+    pg.right("DEE'S PAID", R - 8, y, 8, true, GREY);
+    y -= 22;
+    w.items.forEach(function (g) {
+      var used = g.sold + g.given + g.binned;
+      if (!used) return;
+      pg.text(g.name, L + 8, y, 10.5, false);
+      pg.right(String(used), 320, y, 10, false, GREY);
+      pg.right(cur() + " " + money(g.each), 430, y, 10, false, GREY);
+      pg.right(cur() + " " + money(g.usedCost), R - 8, y, 10, true);
+      y -= 11; pg.rect(L, y + 2, R - L, 0.6, RULE); y -= 11;
+    });
+    pg.right("Ingredients used up this week", 430, y, 9, true, GREY);
+    pg.right(cur() + " " + money(w.used), R - 8, y, 12.5, true, BROWN);
+    y -= 15;
+    pg.right("Smash & Pass owes half of that", 430, y, 9, false, GREY);
+    pg.right(cur() + " " + money(w.used * (1 - w.d)), R - 8, y, 10, false, GREY);
+
+    /* ---- the 50/50 ---- */
+    y -= 28;
+    pg.rect(L, y - 6, R - L, 20, [0.96, 0.93, 0.87]);
+    pg.text("THE 50 / 50 SPLIT", L + 8, y, 8, true, GREY);
     pg.right("MONEY", R - 8, y, 8, true, GREY);
     y -= 22;
-
-    function line(label, pieces, amount, bold) {
+    function mrow(label, amount, bold) {
       pg.text(label, L + 8, y, 10.5, !!bold);
-      pg.right(pieces == null ? "-" : String(pieces), 400, y, 10, false, GREY);
-      pg.right(amount, R - 8, y, 10, !!bold);
-      y -= 12;
-      pg.rect(L, y + 2, R - L, 0.6, RULE);
-      y -= 12;
+      pg.right((amount < 0 ? "- " : "") + cur() + " " + money(Math.abs(amount)), R - 8, y, 10.5, !!bold);
+      y -= 11; pg.rect(L, y + 2, R - L, 0.6, RULE); y -= 11;
     }
-    line("Stock sent to the truck" + (w.days.length ? " on " + w.days.map(niceDate).join(", ") : ""),
-         w.out, cur() + " " + money(w.outCost) + " cost");
-    line("Sold", w.sold, cur() + " " + money(w.revenue) + " taken", true);
-    line("  ingredients in what sold", null, cur() + " " + money(w.costSold));
-    if (w.given) line("Given away", w.given, cur() + " " + money(w.costGiven));
-    if (w.binned) line("Binned", w.binned, cur() + " " + money(w.costBinned));
-    if (w.left) line("Still in date on the truck", w.left, cur() + " " + money(w.costLeft));
-    if (w.toDecide) line("Past its date, not yet decided", w.toDecide, cur() + " " + money(w.costToDecide));
+    mrow("Takings at the window", w.revenue);
+    mrow("Ingredients used up (Dee's paid)", -w.used);
+    mrow("Profit for the week", w.profit, true);
+    mrow("Dee's Treats " + Math.round(w.d * 100) + "%", w.dees);
+    mrow("Smash & Pass " + Math.round((1 - w.d) * 100) + "%", w.truck);
 
-    y -= 6;
-    pg.right("PROFIT FOR THE WEEK", 400, y, 9, true, GREY);
-    pg.right(cur() + " " + money(w.profit), R - 8, y, 13, true, BROWN);
-    y -= 20;
-    pg.right("Dee's Treats " + Math.round(w.d * 100) + "%", 400, y, 9, false, GREY);
-    pg.right(cur() + " " + money(w.dees), R - 8, y, 10, false);
-    y -= 14;
-    pg.right("Smash & Pass " + Math.round((1 - w.d) * 100) + "%", 400, y, 9, false, GREY);
-    pg.right(cur() + " " + money(w.truck), R - 8, y, 10, false);
-    y -= 26;
+    y -= 8;
     pg.rect(L, y - 6, R - L, 26, [0.29, 0.17, 0.16]);
     pg.text("SMASH & PASS PAYS DEE'S TREATS", L + 8, y + 2, 10, true, [1, 1, 1]);
     pg.right(cur() + " " + money(w.owed), R - 8, y + 1, 14, true, [0.79, 0.58, 0.20]);
     y -= 30;
-    pg.text("Half the ingredients used up (" + cur() + " " + money(w.used * (1 - w.d)) +
-            ") plus half the takings (" + cur() + " " + money(w.revenue * w.d) + ").",
+    pg.text("Smash's half of the ingredients (" + cur() + " " + money(w.used * (1 - w.d)) +
+            ") plus Dee's half of the takings (" + cur() + " " + money(w.revenue * w.d) + ").",
             L, y, 9, false, GREY);
-
     if (w.toDecide) {
-      y -= 16;
+      y -= 15;
       pg.text(w.toDecide + " pieces are still waiting to be marked sold, given away or binned - " +
-              "they are in no figure above.", L, y, 9, false, GREY);
+              "in no figure above.", L, y, 9, false, GREY);
     }
 
-    y = payeeBlock(pg, L, R, y - 30);
+    y = payeeBlock(pg, L, R, y - 26);
 
     pg.rect(L, 74, R - L, 0.6, RULE);
-    pg.text("Ingredients and packaging only. Excludes labour, utilities and the truck itself.",
+    pg.text("Ingredients and packaging Dee's paid for. Excludes labour, utilities and the truck itself.",
             L, 60, 8.5, false, GREY);
     pg.text("Dee's Stock, " + stamp(new Date().toISOString()) + ".", L, 48, 8.5, false, GREY);
     return { filename: no + ".pdf", bytes: pdfDoc(pg.ops.join("\n")) };
@@ -1628,10 +1641,16 @@
     if (w.binned) L.push("Binned: " + count(w.binned, "piece"));
     if (w.left) L.push("Still in date: " + count(w.left, "piece"));
     if (w.toDecide) L.push("Waiting on a decision: " + count(w.toDecide, "piece"));
+    var ing = w.items.filter(function (g) { return (g.sold + g.given + g.binned) > 0; })
+      .map(function (g) { return "  " + g.name + ": " + (g.sold + g.given + g.binned) +
+        " used, " + cur() + " " + money(g.usedCost); });
     var link = appLink();
     return {
       subject: "Dee's week " + weekLabel(start) + " — " + cur() + " " + money(w.owed) + " to settle",
       body: weekLabel(start) + "\n\n" + L.join("\n") + "\n\n" +
+        "INGREDIENTS DEE'S PAID FOR:\n" + ing.join("\n") +
+        "\nIngredients used up: " + cur() + " " + money(w.used) +
+        " (Smash owes half: " + cur() + " " + money(w.used * (1 - w.d)) + ")\n\n" +
         "Profit " + cur() + " " + money(w.profit) + "\n" +
         "Dee's " + Math.round(w.d * 100) + "%: " + cur() + " " + money(w.dees) + "\n" +
         "Truck " + Math.round((1 - w.d) * 100) + "%: " + cur() + " " + money(w.truck) + "\n\n" +
@@ -2365,7 +2384,8 @@
     var d = (S.split.deesPct || 0) / 100;
     var t = { start: start, out: 0, outCost: 0, sold: 0, revenue: 0, costSold: 0,
               given: 0, costGiven: 0, binned: 0, costBinned: 0,
-              toDecide: 0, costToDecide: 0, left: 0, costLeft: 0, days: [], d: d };
+              toDecide: 0, costToDecide: 0, left: 0, costLeft: 0, days: [], items: [], d: d };
+    var byId = {};                 /* the week broken down by dessert */
     /* A lot belongs to the week it went out, and everything that happens to
        it belongs there too \u2014 sold, given away or binned, whenever it was
        typed in. Otherwise clearing out last week's leftovers today lands
@@ -2375,16 +2395,27 @@
       var c = b.unitCost || 0;
       t.out += b.qty; t.outCost += b.qty * c;
       if (t.days.indexOf(b.madeOn) < 0) t.days.push(b.madeOn);
+      var it = item(b.itemId);
+      var g = byId[b.itemId];
+      if (!g) {
+        g = byId[b.itemId] = { name: it ? it.name : "Deleted item", w: bPortion(b),
+                               each: c, out: 0, sold: 0, given: 0, binned: 0, left: 0,
+                               revenue: 0, usedCost: 0 };
+        t.items.push(g);
+      }
+      g.out += b.qty;
       (b.sales || []).forEach(function (s) {
-        var k = kindOf(s);
-        if (k === "gift") { t.given += s.qty; t.costGiven += s.qty * c; }
-        else if (k === "waste") { t.binned += s.qty; t.costBinned += s.qty * c; }
-        else { t.sold += s.qty; t.revenue += s.qty * (b.unitPrice || 0); t.costSold += s.qty * c; }
+        var k = kindOf(s), q = s.qty;
+        if (k === "gift") { t.given += q; t.costGiven += q * c; g.given += q; g.usedCost += q * c; }
+        else if (k === "waste") { t.binned += q; t.costBinned += q * c; g.binned += q; g.usedCost += q * c; }
+        else { t.sold += q; t.revenue += q * (b.unitPrice || 0); t.costSold += q * c;
+               g.sold += q; g.revenue += q * (b.unitPrice || 0); g.usedCost += q * c; }
       });
       var lft = remaining(b);
       if (lft > 0) {
         if (status(b) === "expired") { t.toDecide += lft; t.costToDecide += lft * c; }
         else { t.left += lft; t.costLeft += lft * c; }
+        g.left += lft;
       }
     });
     t.days.sort();                 /* the days stock actually went out */
@@ -2427,6 +2458,12 @@
     h += wrow(shut ? "Closed — truck pays" : "Truck pays Dee's", cur() + " " + money(w.owed), true);
     h += "</div></div>";
 
+    var ingLines = w.items.filter(function (g) { return (g.sold + g.given + g.binned) > 0; })
+      .map(function (g) { return esc(g.name) + " <b>" + cur() + " " + money(g.usedCost) + "</b>"; });
+    if (ingLines.length) {
+      h += '<p class="hint" style="margin:-6px 0 12px">Ingredients Dee\'s paid this week \u2014 ' +
+        ingLines.join(" \u00b7 ") + " \u00b7 total <b>" + cur() + " " + money(w.used) + "</b>.</p>";
+    }
     if (w.toDecide && !shut) {
       h += '<div class="banner warn"><b>' + esc(count(w.toDecide, "piece")) +
         " from this week are past their date with nothing said about them.</b> " +
