@@ -446,22 +446,14 @@
     return S.batches.filter(function (b) { return !b.voided; });
   }
 
-  /* ============ the week ============
-     The week runs Friday to Thursday and is closed by hand. Nothing past its
-     date is written off on its own any more: a piece that did not sell is
-     waiting for somebody to say whether it went, was given away, or went in
-     the bin. The app only ever asks. */
-  function weekOf(ds) {
-    var p = ds.split("-");
-    var d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2]));
-    d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() - 5 + 7) % 7));   /* back to Friday */
-    return d.toISOString().slice(0, 10);
-  }
-  function weekEnd(start) { return addDays(start, 6); }
-  function weekLabel(start) {
-    return niceDate(start) + " \u2013 " + niceDate(weekEnd(start));
-  }
-  function thisWeek() { return weekOf(todayStr()); }
+  /* ============ deliveries ============
+     Money settles per delivery, not per calendar week. A delivery is one
+     drop of stock \u2014 whatever went out to the truck together, under one
+     order. Everything that then happens to that stock (sold, given away or
+     binned, whenever it gets typed in) settles against that same delivery.
+     Deliveries are numbered in the order they went out: Delivery 1, 2, 3\u2026
+     Nothing past its date is written off on its own \u2014 a piece that did
+     not sell waits for somebody to say what happened to it. */
   function toDecideNow() {
     return live().reduce(function (a, b) {
       return a + (status(b) === "expired" ? remaining(b) : 0);
@@ -471,13 +463,45 @@
   function weekClosed(start) {
     return closedWeeks().some(function (w) { return w.start === start; });
   }
-  /* every week the board knows about, newest first */
-  function allWeeks() {
+  /* the first moment a delivery's stock went out \u2014 used to order them */
+  function deliveryFirstAt(key) {
+    var t = null;
+    live().forEach(function (b) {
+      if (dropOf(b) !== key) return;
+      var a = b.at || (b.madeOn ? b.madeOn + "T00:00:00.000Z" : "");
+      if (a && (t === null || a < t)) t = a;
+    });
+    return t;
+  }
+  /* the day a delivery's stock went out */
+  function deliveryDate(key) {
+    var d = null;
+    live().forEach(function (b) {
+      if (dropOf(b) !== key) return;
+      if (d === null || b.madeOn < d) d = b.madeOn;
+    });
+    return d;
+  }
+  /* every delivery the board knows about, oldest first */
+  function deliveryOrder() {
     var seen = {};
-    live().forEach(function (b) { seen[weekOf(b.madeOn)] = true; });
+    live().forEach(function (b) { seen[dropOf(b)] = true; });
     closedWeeks().forEach(function (w) { seen[w.start] = true; });
-    seen[thisWeek()] = true;
-    return Object.keys(seen).sort().reverse();
+    return Object.keys(seen).sort(function (a, b) {
+      var ta = deliveryFirstAt(a), tb = deliveryFirstAt(b);
+      if (ta && tb && ta !== tb) return ta < tb ? -1 : 1;
+      return a < b ? -1 : a > b ? 1 : 0;
+    });
+  }
+  function deliveryNo(key) { return deliveryOrder().indexOf(key) + 1; }
+  /* the label people see: "Delivery 2 \u00b7 4 Sept 2026" */
+  function weekLabel(start) {
+    var n = deliveryNo(start), d = deliveryDate(start);
+    return "Delivery " + (n > 0 ? n : "?") + (d ? " \u00b7 " + niceDate(d) : "");
+  }
+  /* every delivery the board knows about, newest first */
+  function allWeeks() {
+    return deliveryOrder().reverse();
   }
 
   /* ============ where a sale came from ============
@@ -543,8 +567,8 @@
     if (back) {
       h += '<div class="banner warn"><b>Logging sales on ' + esc(niceDate(sd)) +
         ", not today.</b> Every SOLD you tap lands on that date until you change it back. " +
-        "It only sets the day on the record \u2014 the money always settles in the week " +
-        "the lot went out.</div>";
+        "It only sets the day on the record \u2014 the money always settles against the " +
+        "delivery the lot went out with.</div>";
     }
     return h;
   }
@@ -1023,13 +1047,13 @@
     return { filename: no + ".pdf", bytes: pdfDoc(pg.ops.join("\n")) };
   }
 
-  /* One week on one page: what went out, what happened to it, and the one
-     number the truck pays. The same figures the Weeks tab shows. */
+  /* One delivery on one page: what went out, what happened to it, and the one
+     number the truck pays. The same figures the Deliveries tab shows. */
   function weekStatement(start) {
     var w = weekTotals(start);
     var pg = pdfPage(), L = 48, R = 547;
-    var no = "WK-" + start.replace(/-/g, "");
-    var y = letterhead(pg, L, R, no, "WEEKLY STATEMENT", weekLabel(start));
+    var no = "DEL-" + deliveryNo(start);
+    var y = letterhead(pg, L, R, no, "DELIVERY STATEMENT", weekLabel(start));
 
     y -= 30;
     pg.text("FROM", L, y, 8, true, GREY);
@@ -1038,14 +1062,14 @@
     pg.text("Dee's Treats", L, y, 12, true);
     pg.text("Smash & Pass", 320, y, 12, true);
     y -= 13;
-    pg.text("Friday to Thursday" + (w.days.length ? "  \u00b7  sent out " + w.days.map(niceDate).join(", ") : ""),
+    pg.text(w.days.length ? "Sent out " + w.days.map(niceDate).join(", ") : "Sent out",
             L, y, 9.5, false, GREY);
     pg.text(weekClosed(start) ? "Closed" : "Open", 320, y, 9.5, false, GREY);
 
     /* ---- what moved, in pieces ---- */
     y -= 30;
     pg.rect(L, y - 6, R - L, 20, [0.96, 0.93, 0.87]);
-    pg.text("THE WEEK", L + 8, y, 8, true, GREY);
+    pg.text("THIS DELIVERY", L + 8, y, 8, true, GREY);
     pg.right("PIECES", R - 8, y, 8, true, GREY);
     y -= 22;
     function prow(label, pieces, bold) {
@@ -1077,7 +1101,7 @@
       pg.right(cur() + " " + money(g.usedCost), R - 8, y, 10, true);
       y -= 11; pg.rect(L, y + 2, R - L, 0.6, RULE); y -= 11;
     });
-    pg.right("Ingredients used up this week", 430, y, 9, true, GREY);
+    pg.right("Ingredients used up this delivery", 430, y, 9, true, GREY);
     pg.right(cur() + " " + money(w.used), R - 8, y, 12.5, true, BROWN);
     y -= 15;
     pg.right("Smash & Pass owes half of that", 430, y, 9, false, GREY);
@@ -1096,7 +1120,7 @@
     }
     mrow("Takings at the window", w.revenue);
     mrow("Ingredients used up (Dee's paid)", -w.used);
-    mrow("Profit for the week", w.profit, true);
+    mrow("Profit for this delivery", w.profit, true);
     mrow("Dee's Treats " + Math.round(w.d * 100) + "%", w.dees);
     mrow("Smash & Pass " + Math.round((1 - w.d) * 100) + "%", w.truck);
 
@@ -1138,7 +1162,7 @@
         " used, " + cur() + " " + money(g.usedCost); });
     var link = appLink();
     return {
-      subject: "Dee's week " + weekLabel(start) + " — " + cur() + " " + money(w.owed) + " to settle",
+      subject: "Dee's " + weekLabel(start) + " — " + cur() + " " + money(w.owed) + " to settle",
       body: weekLabel(start) + "\n\n" + L.join("\n") + "\n\n" +
         "INGREDIENTS DEE'S PAID FOR:\n" + ing.join("\n") +
         "\nIngredients used up: " + cur() + " " + money(w.used) +
@@ -1298,7 +1322,7 @@
   /* Hand a generated file to whoever is looking at the page. The published
      board asks the viewer's permission through the platform; the hosted site
      hands it straight to the browser. One function, so both the order invoice
-     and the week statement travel the same way. */
+     and the delivery statement travel the same way. */
   function handOver(file) {
     try {
       var url = URL.createObjectURL(new Blob([file.bytes], { type: "application/pdf" }));
@@ -1371,7 +1395,7 @@
       '<button class="out" type="button" data-act="signout">EXIT</button>' +
       "</div></div></header>";
 
-    var tabs = [["stock", "STOCK", alerts], ["out", "ORDERS", 0], ["money", "WEEKS", toDecideNow()]];
+    var tabs = [["stock", "STOCK", alerts], ["out", "ORDERS", 0], ["money", "DELIVERIES", toDecideNow()]];
     if (perm.canDeliver) tabs.push(["recipes", "RECIPES", 0]);
     if (perm.canSetup) tabs.push(["setup", "SETUP", 0]);
     tabs.push(["account", "MY PIN", 0]);
@@ -1597,30 +1621,33 @@
   }
 
   /* ---------- rows ---------- */
-  /* The same lots, but banded under the day they went out. Whoever is about
-     to tap SOLD, GAVE AWAY or BINNED can see which day's stock it is coming
-     off, and which week it will settle in. */
+  /* The same lots, but banded under the delivery they went out with. Whoever
+     is about to tap SOLD, GAVE AWAY or BINNED can see which delivery's stock
+     it is coming off, and that it settles against that delivery. */
   function rowsByDate(list, perm, withSell, withVoid) {
-    var byDay = {}, days = [];
+    var byDrop = {}, keys = [];
     list.forEach(function (b) {
-      if (!byDay[b.madeOn]) { byDay[b.madeOn] = []; days.push(b.madeOn); }
-      byDay[b.madeOn].push(b);
+      var k = dropOf(b);
+      if (!byDrop[k]) { byDrop[k] = []; keys.push(k); }
+      byDrop[k].push(b);
     });
-    days.sort().reverse();
+    var order = deliveryOrder();                    /* oldest first */
+    keys.sort(function (a, b) { return order.indexOf(b) - order.indexOf(a); }); /* newest delivery first */
     var h = "";
-    days.forEach(function (day) {
-      var g = byDay[day];
-      var out = 0, left = 0, dead = 0;
+    keys.forEach(function (k) {
+      var g = byDrop[k];
+      var out = 0, left = 0, dead = 0, day = null;
       g.forEach(function (b) {
+        if (day === null || b.madeOn < day) day = b.madeOn;
         if (b.voided) { dead += 1; return; }     /* a voided lot counts nowhere */
         out += b.qty; left += Math.max(0, remaining(b));
       });
-      var shut = weekClosed(weekOf(day));
+      var shut = weekClosed(k);
       var tail = out ? left + " of " + out + " left" : "";
-      if (dead) tail += (tail ? " \u00b7 " : "") + dead + (dead === 1 ? " voided" : " voided");
+      if (dead) tail += (tail ? " \u00b7 " : "") + dead + " voided";
       h += '<div class="dayband' + (shut ? " shut" : "") + '">' +
-        '<span class="d1">SENT OUT ' + esc(niceDate(day).toUpperCase()) + "</span>" +
-        '<span class="d2">' + esc(weekLabel(weekOf(day)).toUpperCase()) +
+        '<span class="d1">' + esc(weekLabel(k).toUpperCase()) + "</span>" +
+        '<span class="d2">SENT OUT ' + esc(niceDate(day).toUpperCase()) +
         (shut ? " \u00b7 CLOSED" : "") + "</span>" +
         '<span class="d3 num">' + tail + "</span></div>";
       h += rows(g, perm, withSell, withVoid);
@@ -1857,19 +1884,19 @@
   }
 
   /* ---------- money ---------- */
-  /* ---------- the week ---------- */
+  /* ---------- one delivery ---------- */
   function weekTotals(start) {
     var d = (S.split.deesPct || 0) / 100;
     var t = { start: start, out: 0, outCost: 0, sold: 0, revenue: 0, costSold: 0,
               given: 0, costGiven: 0, binned: 0, costBinned: 0,
               toDecide: 0, costToDecide: 0, left: 0, costLeft: 0, days: [], items: [], d: d };
-    var byId = {};                 /* the week broken down by dessert */
-    /* A lot belongs to the week it went out, and everything that happens to
-       it belongs there too \u2014 sold, given away or binned, whenever it was
-       typed in. Otherwise clearing out last week's leftovers today lands
-       last week's cost on this week, and both weeks read wrong. */
+    var byId = {};                 /* the delivery broken down by dessert */
+    /* A lot belongs to the delivery it went out with, and everything that
+       happens to it belongs there too \u2014 sold, given away or binned, whenever
+       it was typed in. Otherwise clearing out an earlier delivery's leftovers
+       today lands that cost on a later delivery, and both read wrong. */
     live().forEach(function (b) {
-      if (weekOf(b.madeOn) !== start) return;
+      if (dropOf(b) !== start) return;
       var c = b.unitCost || 0;
       t.out += b.qty; t.outCost += b.qty * c;
       if (t.days.indexOf(b.madeOn) < 0) t.days.push(b.madeOn);
@@ -1915,12 +1942,11 @@
     var w = weekTotals(start);
     var shut = weekClosed(start);
     var rec = closedWeeks().filter(function (x) { return x.start === start; })[0];
-    var now = start === thisWeek();
     var h = '<div class="settle' + (Math.abs(w.owed) < 0.005 ? " clear" : "") + '">';
     h += '<div class="k">' + esc(weekLabel(start).toUpperCase()) +
-      (shut ? " · CLOSED" : now ? " · THIS WEEK" : " · OPEN") + "</div>";
+      (shut ? " · CLOSED" : " · OPEN") + "</div>";
     h += '<div class="big num">' + cur() + " " + money(w.owed) + "</div>";
-    h += '<div class="who2">' + (w.any ? "SMASH &amp; PASS PAYS DEE'S TREATS" : "Nothing yet this week") + "</div>";
+    h += '<div class="who2">' + (w.any ? "SMASH &amp; PASS PAYS DEE'S TREATS" : "Nothing yet on this delivery") + "</div>";
     h += '<div class="calc">';
     h += wrow("Stock out" + (w.days.length ? " · sent " + w.days.map(niceDate).join(", ") : ""),
               count(w.out, "piece") + " · " + cur() + " " + money(w.outCost));
@@ -1939,12 +1965,12 @@
     var ingLines = w.items.filter(function (g) { return (g.sold + g.given + g.binned) > 0; })
       .map(function (g) { return esc(g.name) + " <b>" + cur() + " " + money(g.usedCost) + "</b>"; });
     if (ingLines.length) {
-      h += '<p class="hint" style="margin:-6px 0 12px">Ingredients Dee\'s paid this week \u2014 ' +
+      h += '<p class="hint" style="margin:-6px 0 12px">Ingredients Dee\'s paid on this delivery \u2014 ' +
         ingLines.join(" \u00b7 ") + " \u00b7 total <b>" + cur() + " " + money(w.used) + "</b>.</p>";
     }
     if (w.toDecide && !shut) {
       h += '<div class="banner warn"><b>' + esc(count(w.toDecide, "piece")) +
-        " from this week are past their date with nothing said about them.</b> " +
+        " from this delivery are past their date with nothing said about them.</b> " +
         "They are not counted either way until you say what happened — " +
         "open <b>Orders</b> and mark each one sold, given away or binned. " +
         "Nothing is ever written off on its own.</div>";
@@ -1957,7 +1983,7 @@
     if (dl) acts += '<button class="btn dark sm" type="button" data-wpdf="' + start + '">PDF STATEMENT</button>';
     acts += '<button class="btn ghost sm" type="button" data-wmail="' + start + '">EMAIL IT</button>';
     if (perm.canDeliver && !readOnly && !shut && w.any) {
-      acts += '<button class="btn pri sm" type="button" data-wclose="' + start + '">CLOSE THIS WEEK</button>';
+      acts += '<button class="btn pri sm" type="button" data-wclose="' + start + '">CLOSE THIS DELIVERY</button>';
     }
     if (perm.canSetup && !readOnly && shut) {
       acts += '<button class="btn ghost sm" type="button" data-wopen="' + start + '">REOPEN</button>';
@@ -1970,12 +1996,14 @@
   function viewMoney(perm) {
     var t = totals(null);
     var S1 = settlement();
-    var h = '<h2 class="sec">Weeks</h2>' +
-      '<p class="sub">A week runs Friday to Thursday, and a lot belongs to the week it was ' +
-      '<b>sent out</b> — so selling it, giving it away or binning it later still settles in that ' +
-      'week, whenever you get round to typing it in. Each week shows what went out, what happened ' +
-      'to it and what the truck owes, then you close it. Nothing is ever written off on its own: ' +
-      'stock past its date waits for you to say whether it sold, was given away, or was binned.</p>';
+    var h = '<h2 class="sec">Deliveries</h2>' +
+      '<p class="sub">The money settles per delivery — one drop of stock that went out to the ' +
+      'truck together. A lot belongs to the delivery it was <b>sent out</b> with, so selling it, ' +
+      'giving it away or binning it later still settles against that delivery, whenever you get ' +
+      'round to typing it in. Deliveries are numbered in the order they went out. Each one shows ' +
+      'what went out, what happened to it and what the truck owes, then you close it. Nothing is ' +
+      'ever written off on its own: stock past its date waits for you to say whether it sold, was ' +
+      'given away, or was binned.</p>';
 
     allWeeks().forEach(function (start) { h += weekCard(start, perm); });
 
@@ -2252,12 +2280,12 @@
           if (!bt) return;
           var m = MOVE[act];
           var mit = item(bt.itemId);
-          /* say out loud which day's stock this is coming off, and where it
-             lands, so nobody has to guess which lot they are tapping */
+          /* say out loud which delivery's stock this is coming off, and where
+             it lands, so nobody has to guess which lot they are tapping */
           var head = (mit ? mit.name : "This lot") + " from the " +
             niceDate(bt.madeOn) + " order \u2014 " + count(remaining(bt), bPortion(bt)) +
-            " left of " + bt.qty + ".\nIt counts in " + weekLabel(weekOf(bt.madeOn)) +
-            ", the week that order went out.";
+            " left of " + bt.qty + ".\nIt counts in " + weekLabel(dropOf(bt)) +
+            ", the delivery that order went out with.";
           ask({ title: m.title, ok: m.ok, danger: m.danger,
                 body: head + (m.body ? "\n\n" + m.body : ""),
                 input: { label: plural(bPortion(bt)).toUpperCase() + " (UP TO " + remaining(bt) + ")",
@@ -2322,21 +2350,21 @@
     });
     app.querySelectorAll("[data-wmail]").forEach(function (b) {
       b.onclick = function () {
-        notice("Week statement", weekNotice(b.getAttribute("data-wmail")));
+        notice("Delivery statement", weekNotice(b.getAttribute("data-wmail")));
       };
     });
     app.querySelectorAll("[data-wclose]").forEach(function (b) {
       b.onclick = function () {
         var start = b.getAttribute("data-wclose"), w = weekTotals(start);
         var warn = w.toDecide
-          ? count(w.toDecide, "piece") + " from this week are past their date and nobody has said " +
+          ? count(w.toDecide, "piece") + " from this delivery are past their date and nobody has said " +
             "what happened to them. Close now and they stay open on the board, counted nowhere.\n\n"
           : "";
         ask({ title: "Close " + weekLabel(start) + "?",
-              body: warn + "The truck owes " + cur() + " " + money(w.owed) + " for this week.\n\n" +
+              body: warn + "The truck owes " + cur() + " " + money(w.owed) + " for this delivery.\n\n" +
                     "Closing locks it: nothing more can be sold, given away or binned off the lots that " +
-                    "went out in this week. An admin can reopen it.",
-              ok: "CLOSE THE WEEK" })
+                    "went out with this delivery. An admin can reopen it.",
+              ok: "CLOSE THE DELIVERY" })
           .then(function (go) {
             if (!go) return;
             save(function (n) {
@@ -2357,7 +2385,7 @@
           if (!go) return;
           save(function (n) {
             n.weeks = (n.weeks || []).filter(function (w) { return w.start !== start; });
-          }, "Week reopened.");
+          }, "Delivery reopened.");
         });
       };
     });
@@ -2583,9 +2611,9 @@
     if (n > remaining(b)) { toast("Only " + count(remaining(b), bPortion(b)) + " left in that lot.", true); return; }
     kind = kind || "sale";
     var on = saleDate();
-    var wk = weekOf(b.madeOn);            /* the lot's own week is where this settles */
+    var wk = dropOf(b);                   /* the lot's own delivery is where this settles */
     if (weekClosed(wk)) {
-      toast("That lot went out in " + weekLabel(wk) + ", and that week is closed. Reopen it first.", true);
+      toast("That lot went out with " + weekLabel(wk) + ", and that delivery is closed. Reopen it first.", true);
       return;
     }
     var ch = curChannel();
