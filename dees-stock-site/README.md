@@ -62,8 +62,11 @@ and PIN, and today's board is already there.
 
 ## Afterwards
 
-- **Changing anything later:** run `npx wrangler deploy` again from the same
-  folder after pulling the latest code (`git pull`).
+- **Changing anything later:** nothing to run. The Worker is connected to this
+  Git repository (Cloudflare → the Worker → *Settings → Builds*), so every push
+  to `main` builds and deploys itself automatically, from the `dees-stock-site`
+  folder. To deploy by hand instead, run `npx wrangler deploy` from that folder
+  after `git pull`.
 - **Your own domain:** add it in the Cloudflare dashboard under the Worker's
   *Settings → Domains & Routes*. One record, no rebuild.
 - **The data:** lives in the D1 database on your account. `npx wrangler d1
