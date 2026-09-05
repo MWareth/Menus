@@ -368,7 +368,7 @@ export const SEED = {
       "user": "marwan",
       "role": "admin",
       "side": "dees",
-      "pin": "ba000d3fa8b9e7758aeacaf7e8882d5df77d83bf1445a174d38b751cb0c0004b"
+      "pin": "4cfa29743e04cbe28c85bfaf9936231902f9429e90ec8e4022f485b9c42bd943"
     },
     {
       "id": "u2",
@@ -510,6 +510,13 @@ export const SEED = {
           "at": "2026-09-04T15:42:58.150Z",
           "on": "2026-09-04",
           "ch": "Window"
+        },
+        {
+          "qty": 12,
+          "by": "u1",
+          "at": "2026-09-05T12:00:00.000Z",
+          "on": "2026-09-05",
+          "ch": "Window"
         }
       ]
     },
@@ -532,7 +539,7 @@ export const SEED = {
   ],
   "seq": 9,
   "defaultPins": false,
-  "updatedAt": "2026-09-04T15:42:58.150Z",
+  "updatedAt": "2026-09-04T18:37:22.664Z",
   "payments": [],
   "weeks": [],
   "defaultPinHash": "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117"
