@@ -265,6 +265,44 @@
   .cc.good .v{color:#7BD69B} .cc.bad .v{color:#FF8D82} .cc.hi .v{color:var(--butter)}
   .recipe-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:14px}
   .recipe-h h3{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:20px;margin:0}
+  /* ---------- WhatsApp + undo chips ---------- */
+  .btn.wa{background:#25D366;color:#0B3D1E}
+  .btn.wa:hover{background:#20c35d}
+  .p-undo{background:#EDE6F7;color:#5B3E9B}
+
+  /* ---------- polish: soft depth ---------- */
+  .card,.stat,.row,.chbar,.proj{box-shadow:0 1px 2px rgba(74,44,42,.05),0 4px 14px rgba(74,44,42,.04)}
+  .settle{box-shadow:0 10px 30px rgba(74,44,42,.20)}
+  .costcard,.dayband{box-shadow:0 6px 18px rgba(28,25,23,.14)}
+  .modalbox{box-shadow:0 20px 60px rgba(28,25,23,.35)}
+
+  /* ---------- polish: micro-interactions ---------- */
+  .btn{transition:transform .09s ease,background .16s ease,border-color .16s ease,box-shadow .16s ease,color .16s ease}
+  .btn:active{transform:translateY(1px) scale(.98)}
+  .btn.pri,.btn.dark{box-shadow:0 2px 8px rgba(28,25,23,.14)}
+  .tab{transition:color .16s ease,border-bottom-color .2s ease}
+  .ch,.out{transition:background .15s ease,border-color .15s ease,color .15s ease}
+  input,select,textarea{transition:border-color .15s ease,box-shadow .15s ease}
+  .bar-fill{transition:width .5s cubic-bezier(.22,.61,.36,1)}
+  @media (hover:hover){
+    .btn.pri:hover,.btn.dark:hover{box-shadow:0 5px 16px rgba(28,25,23,.22);transform:translateY(-1px)}
+    .row{transition:box-shadow .18s ease,transform .18s ease}
+    .row:hover{transform:translateY(-1px);box-shadow:0 3px 6px rgba(74,44,42,.07),0 12px 26px rgba(74,44,42,.07)}
+    .stat:hover,.card:hover{box-shadow:0 3px 8px rgba(74,44,42,.08),0 14px 28px rgba(74,44,42,.06)}
+  }
+
+  /* ---------- polish: entrances (only on tab switch, or freshly-made elements) ---------- */
+  @keyframes viewIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  @keyframes barGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  @keyframes toastIn{from{opacity:0;transform:translate(-50%,14px)}to{opacity:1;transform:translate(-50%,0)}}
+  @keyframes backdropIn{from{opacity:0}to{opacity:1}}
+  @keyframes popIn{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+  .view-in{animation:viewIn .28s cubic-bezier(.2,.7,.3,1) both}
+  .view-in .bar-fill{transform-origin:left;animation:barGrow .6s cubic-bezier(.22,.61,.36,1) both}
+  .toast{animation:toastIn .26s cubic-bezier(.2,.8,.3,1) both}
+  .modal{animation:backdropIn .18s ease both}
+  .modalbox{animation:popIn .24s cubic-bezier(.2,.8,.3,1.05) both}
+
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -811,6 +849,7 @@
   var readOnly = false;
   var busy = false;
   var tab = "stock";
+  var lastPaintedTab = null;   /* so the view only animates when you switch tabs, not on every save */
   var me = null;
   var lockErr = "";
 
@@ -943,6 +982,15 @@
   function binned(b) { return tally(b, "waste"); }
   function movedOut(b) { return tally(b, null); }
   function remaining(b) { return b.qty - movedOut(b); }
+  /* the most recent real movement that has not already been undone — -1 if none.
+     Undo works by adding a reversing movement, never by deleting, so the log keeps
+     the whole story: what was entered, and that it was taken back. */
+  function lastUndoable(b) {
+    var l = b.sales || [], done = {};
+    for (var j = 0; j < l.length; j++) if (l[j].undo && l[j].revIdx != null) done[l[j].revIdx] = true;
+    for (var i = l.length - 1; i >= 0; i--) { if (l[i].undo || done[i]) continue; return i; }
+    return -1;
+  }
   var KIND_LABEL = { sale: "SOLD", gift: "GIVEN", waste: "BINNED" };
   function expiresOn(b) { return addDays(b.madeOn, b.shelf); }
   function status(b) {
@@ -1782,6 +1830,7 @@
       '<div class="modalacts">' +
       '<button class="btn ghost" type="button" data-m="close">CLOSE</button>' +
       '<button class="btn dark" type="button" data-m="copy">COPY</button>' +
+      '<button class="btn wa" type="button" data-m="wa">WHATSAPP</button>' +
       '<button class="btn pri" type="button" data-m="mail">OPEN EMAIL</button>' +
       "</div></div>";
     document.body.appendChild(back);
@@ -1809,10 +1858,7 @@
       ta.focus(); ta.select();
       try { document.execCommand("copy") ? ok() : no(); } catch (e) { no(); }
     };
-    back.querySelector('[data-m="mail"]').onclick = function () {
-      var url = "mailto:" + to.join(",") +
-        "?subject=" + encodeURIComponent(n.subject) +
-        "&body=" + encodeURIComponent(n.body);
+    function openUrl(url) {
       var w = null;
       try { w = window.open(url, "_blank"); } catch (e) {}
       if (!w) {
@@ -1822,6 +1868,16 @@
           document.body.appendChild(a2); a2.click(); a2.remove();
         } catch (e) {}
       }
+    }
+    back.querySelector('[data-m="wa"]').onclick = function () {
+      /* wa.me opens WhatsApp with the message ready; you pick the person or group */
+      openUrl("https://wa.me/?text=" + encodeURIComponent(n.subject + "\n\n" + n.body));
+      toast("Opening WhatsApp \u2014 pick the chat and send.");
+    };
+    back.querySelector('[data-m="mail"]').onclick = function () {
+      openUrl("mailto:" + to.join(",") +
+        "?subject=" + encodeURIComponent(n.subject) +
+        "&body=" + encodeURIComponent(n.body));
       toast(to.length ? "Opening your mail app\u2026" : "No addresses saved \u2014 copy it instead.", !to.length);
     };
     ta.focus();
@@ -1922,7 +1978,8 @@
     });
     html += "</div></nav>";
 
-    html += '<main><div class="wrap">';
+    var switched = tab !== lastPaintedTab; lastPaintedTab = tab;
+    html += '<main' + (switched ? ' class="view-in"' : '') + '><div class="wrap">';
     if (readOnly) html += '<div class="banner info"><b>View only.</b> You can see everything here but not record anything — you need edit access to this board.</div>';
     if (S.defaultPins) html += '<div class="banner warn"><b>Everyone still has PIN 1234.</b> Change them in Setup before you share this link.</div>';
     var noCost = S.items.filter(function (i) { return i.active && !costed(i); }).length;
@@ -2196,11 +2253,13 @@
         (st === "expired" ? " (" + Math.abs(d) + "d ago)" : d >= 0 && !b.voided && left > 0 ? " (" + (d === 0 ? "today" : d + "d") + ")" : "") +
         " · logged <b>" + esc(stamp(b.at)) + "</b> by <b>" + esc(uname(b.by)) + "</b></div>";
       var fixes = (b.sales || []).filter(function (x) { return x.fix; }).length;
+      var undos = (b.sales || []).filter(function (x) { return x.undo; }).length;
       var gv = given(b), bn = binned(b);
       h += '<div class="meta">Sold <b>' + s + "</b>" +
         (gv ? " \u00b7 given away <b>" + gv + "</b>" : "") +
         (bn ? " \u00b7 binned <b>" + bn + "</b>" : "") +
         (fixes ? " <span class=\"pill p-soon\">CORRECTED</span>" : "") +
+        (undos ? " <span class=\"pill p-undo\">UNDONE" + (undos > 1 ? " " + undos : "") + "</span>" : "") +
         " \u00b7 sells at <b>" + cur() + " " + money(b.unitPrice) + "</b> each</div>";
       h += '<div class="meta">' + "The whole lot: cost " +
         (b.unitCost == null ? "<b>not set</b>" : "<b>" + cur() + " " + money(b.qty * b.unitCost) + "</b>") +
@@ -2223,6 +2282,9 @@
           '<button class="btn ghost sm" type="button" data-sellmany="' + b.id + '">OTHER…</button>' +
           '<button class="btn ghost sm" type="button" data-gift="' + b.id + '">GAVE AWAY</button>' +
           '<button class="btn danger sm" type="button" data-waste="' + b.id + '">BINNED</button>';
+      }
+      if (withSell && !b.voided && perm.canSell && !readOnly && lastUndoable(b) >= 0 && !weekClosed(dropOf(b))) {
+        acts += '<button class="btn ghost sm" type="button" data-undo="' + b.id + '">UNDO LAST</button>';
       }
       if (withSell && !b.voided && s > 0 && perm.canSell && !readOnly) {
         acts += '<button class="btn ghost sm" type="button" data-fix="' + b.id + '">FIX COUNT</button>';
@@ -2843,6 +2905,31 @@
               t.sales.push({ qty: target - now, by: me.id, at: new Date().toISOString(),
                              on: saleDate(), fix: true, ch: curChannel() });
             }, "Count corrected to " + target + ".");
+          });
+      };
+    });
+    app.querySelectorAll("[data-undo]").forEach(function (b) {
+      b.onclick = function () {
+        var bt = S.batches.filter(function (x) { return x.id === b.getAttribute("data-undo"); })[0];
+        if (!bt) return;
+        if (weekClosed(dropOf(bt))) { toast("That lot's delivery is closed. Reopen it first.", true); return; }
+        var idx = lastUndoable(bt);
+        if (idx < 0) { toast("Nothing to undo on this lot.", true); return; }
+        var mv = bt.sales[idx], k = kindOf(mv);
+        var word = k === "gift" ? "given away" : k === "waste" ? "binned" : "sold";
+        ask({ title: "Undo the last entry?",
+              body: "This takes back " + count(mv.qty, bPortion(bt)) + " " + word +
+                " on " + niceDate(saleOn(mv)) + ". Nothing is deleted — the undo is written to the log " +
+                "as its own line, so the record always shows what was entered and that it was taken back.",
+              ok: "UNDO IT" })
+          .then(function (go) {
+            if (!go) return;
+            save(function (nx) {
+              var t = nx.batches.filter(function (x) { return x.id === bt.id; })[0];
+              t.sales = t.sales || [];
+              t.sales.push({ qty: -mv.qty, kind: k, on: saleOn(mv), by: me.id,
+                             at: new Date().toISOString(), undo: true, revIdx: idx });
+            }, count(mv.qty, bPortion(bt)) + " " + word + " undone.");
           });
       };
     });
