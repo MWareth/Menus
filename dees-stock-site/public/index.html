@@ -1395,7 +1395,7 @@
       '<button class="out" type="button" data-act="signout">EXIT</button>' +
       "</div></div></header>";
 
-    var tabs = [["stock", "STOCK", alerts], ["out", "ORDERS", 0], ["money", "DELIVERIES", toDecideNow()]];
+    var tabs = [["stock", "STOCK", alerts], ["out", "ORDERS", 0], ["money", "SETTLE", toDecideNow()]];
     if (perm.canDeliver) tabs.push(["recipes", "RECIPES", 0]);
     if (perm.canSetup) tabs.push(["setup", "SETUP", 0]);
     tabs.push(["account", "MY PIN", 0]);
@@ -1996,7 +1996,7 @@
   function viewMoney(perm) {
     var t = totals(null);
     var S1 = settlement();
-    var h = '<h2 class="sec">Deliveries</h2>' +
+    var h = '<h2 class="sec">Settle up</h2>' +
       '<p class="sub">The money settles per delivery — one drop of stock that went out to the ' +
       'truck together. A lot belongs to the delivery it was <b>sent out</b> with, so selling it, ' +
       'giving it away or binning it later still settles against that delivery, whenever you get ' +
