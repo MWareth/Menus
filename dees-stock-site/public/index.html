@@ -1634,7 +1634,7 @@
         var d = daysBetween(t, g.soonest);
         var when = d < 0 ? "expired" : d === 0 ? "today" : d === 1 ? "tomorrow" : niceDate(g.soonest);
         var cls = d <= 0 ? "p-today" : d === 1 ? "p-soon" : "p-fresh";
-        h += "<tr><td>" + esc(it ? it.name : "Deleted item") + '</td><td class="r num">' +
+        h += "<tr><td>" + esc(itemLabel(it)) + '</td><td class="r num">' +
           esc(count(g.n, it ? portionWordOf(it) : "portion")) +
           '</td><td class="r num">' + money(g.cost) + (g.unknown ? "+" : "") +
           '</td><td class="r num">' + money(g.retail) +
@@ -1722,7 +1722,7 @@
       var exp = expiresOn(b);
       var d = daysBetween(todayStr(), exp);
       h += '<div class="row s-' + st + '"><div class="stripe"></div><div class="in">' +
-        '<div class="rt"><span class="nm">' + esc(it ? it.name : "Deleted item") + "</span>" +
+        '<div class="rt"><span class="nm">' + esc(itemLabel(it)) + "</span>" +
         '<span class="qty num">' + left + " / " + b.qty + "</span>" +
         '<span class="unit">' + esc(plural(bPortion(b))) + "</span>" +
         '<span class="pill p-' + st + '">' + STATUS_LABEL[st] + "</span>" +
@@ -1895,7 +1895,7 @@
     S.items.forEach(function (it) {
       var ro = editable ? "" : " disabled";
       h += '<div class="card" data-recipe="' + it.id + '">';
-      h += '<div class="recipe-h"><h3>' + esc(it.name) + "</h3>" +
+      h += '<div class="recipe-h"><h3>' + esc(itemLabel(it)) + "</h3>" +
         '<span class="pill ' + (costed(it) ? "p-fresh" : "p-today") + '">' +
         (costed(it) ? "COSTED" : "NEEDS RECIPE") + "</span></div>";
 
@@ -2717,10 +2717,27 @@
     }, msg);
   }
 
+  /* A little face for each dessert, on screen only — the PDF and email keep the
+     plain name, because the hand-drawn PDF font cannot draw emoji. Matched by
+     name so it works on the live board with no reseed; an item's own `emoji`
+     wins if one is ever set. */
+  var ITEM_EMOJI = { "San Sebastian": "🧀", "Brownie Bag": "🍫", "Lazy Cake": "🎂",
+                     "Crème Brûlée": "🍮", "Mini Pavlova": "🍓" };
+  function itemEmoji(it) { return (it && it.emoji) || (it && ITEM_EMOJI[it.name]) || ""; }
+  function itemLabel(it) { if (!it) return "Deleted item"; var e = itemEmoji(it); return (e ? e + " " : "") + it.name; }
+  /* San Sebastian sits at the top of every item list; the rest keep their order */
+  function itemsSorted(list) {
+    var arr = (list || S.items).map(function (it, i) { return { it: it, i: i }; });
+    arr.sort(function (a, b) {
+      var ap = a.it.name === "San Sebastian" ? 0 : 1, bp = b.it.name === "San Sebastian" ? 0 : 1;
+      return ap - bp || a.i - b.i;
+    });
+    return arr.map(function (x) { return x.it; });
+  }
   function itemOptions(sel) {
-    return S.items.filter(function (i) { return i.active; }).map(function (i) {
+    return itemsSorted(S.items.filter(function (i) { return i.active; })).map(function (i) {
       return '<option value="' + i.id + '"' + (i.id === sel ? " selected" : "") + ">" +
-        esc(i.name + (i.note ? " (" + i.note + ")" : "")) + "</option>";
+        esc(itemLabel(i) + (i.note ? " (" + i.note + ")" : "")) + "</option>";
     }).join("");
   }
 
