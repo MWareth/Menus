@@ -282,6 +282,17 @@
   .btn.wa:hover{background:#20c35d}
   .p-undo{background:#EDE6F7;color:#5B3E9B}
 
+  /* settled deliveries fold away out of the main list */
+  details.settled{margin:2px 0 18px}
+  details.settled>summary{cursor:pointer;list-style:none;font-size:12px;font-weight:900;
+    letter-spacing:.12em;color:var(--ink-3);padding:11px 2px;border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+  details.settled>summary::-webkit-details-marker{display:none}
+  details.settled>summary::after{content:"▾";margin-left:auto;transition:transform .18s ease}
+  details.settled[open]>summary::after{transform:rotate(180deg)}
+  details.settled>summary:hover{color:var(--brown)}
+  details.settled[open]{padding-top:12px}
+
   /* ---------- polish: soft depth ---------- */
   .card,.stat,.row,.chbar,.proj{box-shadow:0 1px 2px rgba(74,44,42,.05),0 4px 14px rgba(74,44,42,.04)}
   .settle{box-shadow:0 10px 30px rgba(74,44,42,.20)}
@@ -2067,7 +2078,15 @@
       'ever written off on its own: stock past its date waits for you to say whether it sold, was ' +
       'given away, or was binned.</p>';
 
-    allWeeks().forEach(function (start) { h += weekCard(start, perm); });
+    var openD = [], closedD = [];
+    allWeeks().forEach(function (start) { (weekClosed(start) ? closedD : openD).push(start); });
+    if (openD.length) openD.forEach(function (start) { h += weekCard(start, perm); });
+    else h += '<div class="empty">Nothing open to settle — every delivery is closed.</div>';
+    if (closedD.length) {
+      h += '<details class="settled"><summary>Settled &amp; closed · ' + closedD.length + "</summary>";
+      closedD.forEach(function (start) { h += weekCard(start, perm); });
+      h += "</details>";
+    }
 
     /* ---- everything, all time ---- */
     var out = S1.outstanding;
