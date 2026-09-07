@@ -158,6 +158,11 @@ function forViewer(state, me) {
         ? [{ n: "Ingredients", q: 1, u: "", pp: Math.round(sumRecipe(it) * 1e6) / 1e6, pq: 1 }]
         : []
     }));
+    /* the truck settles against the monthly ingredient TOTAL, but never sees
+       the shopping list itself — keep the amounts, drop what was bought */
+    view.buys = (view.buys || []).map((b) => ({
+      id: b.id, on: b.on, amount: b.amount, paidBy: b.paidBy, note: ""
+    }));
   }
   return view;
 }
@@ -186,7 +191,9 @@ function mergeSave(stored, incoming, me) {
             on: typeof s.on === "string" ? s.on : undefined,
             ch: typeof s.ch === "string" ? s.ch : undefined,
             kind: s.kind === "gift" || s.kind === "waste" ? s.kind : undefined,
-            fix: s.fix === true ? true : undefined
+            fix: s.fix === true ? true : undefined,
+            undo: s.undo === true ? true : undefined,
+            revIdx: typeof s.revIdx === "number" ? s.revIdx : undefined
           }));
       }
     });
@@ -202,6 +209,9 @@ function mergeSave(stored, incoming, me) {
   if (Array.isArray(incoming.items)) out.items = incoming.items;
   if (Array.isArray(incoming.batches)) out.batches = incoming.batches;
   if (Array.isArray(incoming.payments)) out.payments = incoming.payments;
+  if (Array.isArray(incoming.buys)) out.buys = incoming.buys;
+  if (incoming.monthsPaid && typeof incoming.monthsPaid === "object" && !Array.isArray(incoming.monthsPaid))
+    out.monthsPaid = incoming.monthsPaid;
 
   /* the team list is admin-only, and a PIN hash is only ever accepted when the
      client actually sent a fresh one — otherwise the stored hash stands */

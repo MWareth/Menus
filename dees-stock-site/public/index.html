@@ -302,6 +302,27 @@
   .owedbar.clear .v{color:#7BD69B}
   .owedbar .s2{margin-left:auto;font-size:12.5px;font-weight:700;color:#B8ADA2}
 
+  /* month settle cards + ingredient buys */
+  .settle.month{background:#3E2523}
+  .settle.month.done{opacity:.72}
+  .settle .top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .settle .cname{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:19px}
+  .settle .mbadge{font-size:10.5px;font-weight:900;letter-spacing:.06em;padding:4px 10px;
+    border-radius:999px;background:#7BD69B;color:#0C3B21}
+  .settle .note{margin-top:12px;font-size:12.5px;line-height:1.5;color:#CBB6A6}
+  .settle .note b{color:var(--cream)}
+  .buyform{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .buyform #buy-note{grid-column:1 / -1}
+  .buyform input,.buyform select{border:1.5px solid var(--line);border-radius:10px;padding:11px 12px;
+    min-height:44px;background:#fff;width:100%}
+  .buyform input:focus,.buyform select:focus{outline:2px solid var(--gold);outline-offset:-1px;border-color:var(--gold)}
+  .buyform button{grid-column:1 / -1}
+  @media(min-width:560px){
+    .buyform{grid-template-columns:140px 1fr 96px 118px auto}
+    .buyform #buy-note{grid-column:auto}
+    .buyform button{grid-column:auto}
+  }
+
   /* ---------- polish: soft depth ---------- */
   .card,.stat,.row,.chbar,.proj{box-shadow:0 1px 2px rgba(74,44,42,.05),0 4px 14px rgba(74,44,42,.04)}
   .settle{box-shadow:0 10px 30px rgba(74,44,42,.20)}
@@ -685,6 +706,54 @@
   function payments() { return S.payments || []; }
   function paidSoFar() {
     return payments().reduce(function (a, p) { return a + (+p.amount || 0); }, 0);
+  }
+
+  /* ============ ingredient buys + the monthly split ============
+     Dee's sources and pays for the ingredients; the cost is shared 50/50 and
+     settled at month-end. A month's profit is the takings less what was
+     actually bought that month, split by the same share as a delivery. The
+     truck holds the takings and Dee's laid out the buys, so at month-end the
+     truck hands Dee's its profit share plus back the ingredients it fronted. */
+  function buys() { return S.buys || []; }
+  function monthKey(ds) { return (ds || "").slice(0, 7); }
+  var MONTHNAMES = ["January", "February", "March", "April", "May", "June",
+                    "July", "August", "September", "October", "November", "December"];
+  function monthName(mk) {
+    var p = (mk || "").split("-");
+    return (MONTHNAMES[(+p[1]) - 1] || "?") + " " + (p[0] || "");
+  }
+  function monthsPaidMap() { return S.monthsPaid || {}; }
+  function monthSettled(mk) { return !!monthsPaidMap()[mk]; }
+  /* every month the board has activity in, newest first */
+  function monthsActive() {
+    var seen = {};
+    live().forEach(function (b) {
+      (b.sales || []).forEach(function (s) { if (kindOf(s) === "sale") seen[monthKey(saleOn(s))] = true; });
+    });
+    buys().forEach(function (x) { seen[monthKey(x.on)] = true; });
+    Object.keys(monthsPaidMap()).forEach(function (mk) { seen[mk] = true; });
+    return Object.keys(seen).filter(Boolean).sort().reverse();
+  }
+  function monthTotals(mk) {
+    var d = (S.split.deesPct || 0) / 100;
+    var R = 0, soldN = 0;
+    live().forEach(function (b) {
+      (b.sales || []).forEach(function (s) {
+        if (kindOf(s) !== "sale" || monthKey(saleOn(s)) !== mk) return;
+        R += s.qty * (b.unitPrice || 0); soldN += s.qty;
+      });
+    });
+    var B = 0, Bdees = 0, Btruck = 0, list = [];
+    buys().forEach(function (x) {
+      if (monthKey(x.on) !== mk) return;
+      var amt = +x.amount || 0; B += amt;
+      if (x.paidBy === "truck") Btruck += amt; else Bdees += amt;
+      list.push(x);
+    });
+    var P = R - B;
+    return { mk: mk, R: R, soldN: soldN, B: B, Bdees: Bdees, Btruck: Btruck,
+             P: P, d: d, dees: P * d, truck: P * (1 - d),
+             owed: P * d + Bdees, buys: list, settled: monthSettled(mk) };
   }
   function settlement() {
     var t = totals(null);
@@ -2093,7 +2162,7 @@
       var openOwed = 0;
       openD.forEach(function (start) { openOwed += weekTotals(start).owed; });
       h += '<div class="owedbar' + (Math.abs(openOwed) < 0.005 ? " clear" : "") + '">' +
-        '<span class="k">OPEN TO SETTLE</span>' +
+        '<span class="k">OPEN · ESTIMATE</span>' +
         '<span class="v num">' + cur() + " " + money(openOwed) + "</span>" +
         '<span class="s2">' + openD.length + " open " + (openD.length === 1 ? "delivery" : "deliveries") + "</span></div>";
       openD.forEach(function (start) { h += weekCard(start, perm); });
@@ -2102,6 +2171,76 @@
       h += '<details class="settled"><summary>Settled &amp; closed · ' + closedD.length + "</summary>";
       closedD.forEach(function (start) { h += weekCard(start, perm); });
       h += "</details>";
+    }
+
+    /* ---- the real money: by month, on actual ingredient buys ---- */
+    h += '<div class="subhead">BY MONTH · THE REAL SETTLE</div>';
+    h += '<p class="sub" style="margin-top:-2px">Dee\'s buys the ingredients; the cost is shared 50/50 and ' +
+      'settled at month-end. A month\'s profit is the takings less what was actually bought that month. ' +
+      '<b>The delivery figures above are an estimate from recipe costs — these are the real numbers.</b></p>';
+    var months = monthsActive();
+    if (!months.length) {
+      h += '<div class="empty">No sales or ingredient buys logged yet.</div>';
+    } else {
+      months.forEach(function (mk) {
+        var m = monthTotals(mk);
+        var pos = m.owed >= 0;
+        h += '<div class="settle month' + (m.settled ? " done" : "") + '">';
+        h += '<div class="top"><span class="cname">' + esc(monthName(mk)) + "</span>" +
+          (m.settled ? '<span class="mbadge">SETTLED</span>' : "") + "</div>";
+        h += '<div class="big num">' + cur() + " " + money(Math.abs(m.owed)) + "</div>";
+        h += '<div class="who2">' + (pos ? "SMASH &amp; PASS PAY DEE'S TREATS" : "DEE'S PAYS SMASH &amp; PASS") + "</div>";
+        h += '<div class="calc">';
+        h += '<div class="crow"><span>Takings' + (m.soldN ? " · " + count(m.soldN, "piece") + " sold" : "") +
+          '</span><span class="num">' + cur() + " " + money(m.R) + "</span></div>";
+        h += '<div class="crow"><span>Ingredients bought</span><span class="num">' + cur() + " " + money(m.B) + "</span></div>";
+        h += '<div class="crow"><span>Profit for the month</span><span class="num"><b>' + cur() + " " + money(m.P) + "</b></span></div>";
+        h += '<div class="crow"><span>Dee\'s ' + Math.round(m.d * 100) + '%</span><span class="num">' + cur() + " " + money(m.dees) + "</span></div>";
+        h += '<div class="crow"><span>Smash &amp; Pass ' + Math.round((1 - m.d) * 100) + '%</span><span class="num">' + cur() + " " + money(m.truck) + "</span></div>";
+        h += '<div class="crow tot"><span>' + (pos ? "Smash pays Dee's" : "Dee's pays Smash") + '</span><span class="num">' + cur() + " " + money(Math.abs(m.owed)) + "</span></div>";
+        h += "</div>";
+        if (pos) h += '<div class="note">Dee\'s profit share (' + cur() + " " + money(m.dees) +
+          ") plus the ingredients Dee's paid for (" + cur() + " " + money(m.Bdees) +
+          "), since Smash &amp; Pass hold the takings.</div>";
+        var rec = monthsPaidMap()[mk];
+        if (m.settled && rec) h += '<div class="note">Settled by <b>' + esc(uname(rec.by)) + "</b> on " + esc(stamp(rec.at)) + ".</div>";
+        if (perm.canDeliver && !readOnly) {
+          h += '<div class="acts" style="margin-top:14px">';
+          if (m.settled) h += '<button class="btn ghost sm" type="button" data-munsettle="' + mk + '">MARK NOT SETTLED</button>';
+          else h += '<button class="btn pri sm" type="button" data-msettle="' + mk + '">MARK ' + esc(monthName(mk).toUpperCase()) + " SETTLED</button>";
+          h += "</div>";
+        }
+        h += "</div>";
+      });
+    }
+
+    /* ---- ingredient buys log (Dee's side only — the truck sees totals, not the shopping list) ---- */
+    if (perm.canDeliver) {
+      h += '<div class="subhead">INGREDIENTS BOUGHT · DEE\'S LOGS THESE</div>';
+      if (!readOnly) {
+        h += '<div class="card"><div class="buyform">' +
+          '<input type="date" id="buy-date" value="' + todayStr() + '" aria-label="Date bought">' +
+          '<input type="text" id="buy-note" maxlength="80" placeholder="what you bought, e.g. cream 1.15 kg × 6" aria-label="What was bought">' +
+          '<input type="number" id="buy-amt" min="0" step="0.01" inputmode="decimal" placeholder="AED" aria-label="Amount in AED">' +
+          '<select id="buy-by" aria-label="Paid by"><option value="dees">Dee\'s paid</option><option value="truck">Smash paid</option></select>' +
+          '<button class="btn pri" type="button" data-act="addbuy">ADD BUY</button>' +
+          "</div></div>";
+      }
+      var bl = buys().slice().sort(function (a, b) { return a.on < b.on ? 1 : a.on > b.on ? -1 : 0; });
+      if (bl.length) {
+        h += '<div class="tw"><table><thead><tr><th>WHEN</th><th>WHAT</th><th class="r">AMOUNT</th><th>PAID BY</th>' +
+          (perm.canSetup && !readOnly ? "<th></th>" : "") + "</tr></thead><tbody>";
+        bl.forEach(function (x) {
+          h += "<tr><td>" + esc(niceDate(x.on)) + "</td><td>" + esc(x.note || "—") +
+            '</td><td class="r num">' + cur() + " " + money(+x.amount || 0) + "</td><td>" +
+            (x.paidBy === "truck" ? "Smash" : "Dee's") + "</td>" +
+            (perm.canSetup && !readOnly ? '<td class="r"><button class="btn ghost sm" type="button" data-delbuy="' + x.id + '">✕</button></td>' : "") +
+            "</tr>";
+        });
+        h += "</tbody></table></div>";
+      } else {
+        h += '<p class="sub" style="margin-top:6px">No ingredient buys logged yet. Add each purchase above — the month totals use these.</p>';
+      }
     }
 
     /* ---- everything, all time ---- */
@@ -2580,6 +2719,18 @@
             }, cur() + " " + money(amt) + " recorded.");
           });
       },
+      addbuy: function () {
+        var on = (document.getElementById("buy-date") || {}).value || todayStr();
+        var note = ((document.getElementById("buy-note") || {}).value || "").trim();
+        var amt = parseFloat((document.getElementById("buy-amt") || {}).value);
+        var by = (document.getElementById("buy-by") || {}).value || "dees";
+        if (!(amt > 0)) { toast("Enter how much the buy cost.", true); return; }
+        save(function (n) {
+          n.buys = n.buys || [];
+          n.buys.push({ id: id("buy"), on: on, note: note, amount: Math.round(amt * 100) / 100,
+                        paidBy: by === "truck" ? "truck" : "dees", by: me.id, at: new Date().toISOString() });
+        }, cur() + " " + money(amt) + " buy logged.");
+      },
       addrow2: addDeliveryRow,
       deliver: addDelivery,
       notifystock: function () { notice("Stock note", stockNotice()); },
@@ -2632,6 +2783,41 @@
         });
       }
     };
+    app.querySelectorAll("[data-delbuy]").forEach(function (b) {
+      b.onclick = function () {
+        var bid = b.getAttribute("data-delbuy");
+        var x = buys().filter(function (y) { return y.id === bid; })[0];
+        ask({ title: "Delete this buy?", danger: true, ok: "DELETE",
+              body: (x ? (x.note ? x.note + " — " : "") + cur() + " " + money(+x.amount || 0) + " on " + niceDate(x.on) : "This entry") +
+                    " will be removed, and comes out of that month's totals." })
+          .then(function (go) {
+            if (!go) return;
+            save(function (n) { n.buys = (n.buys || []).filter(function (y) { return y.id !== bid; }); }, "Buy deleted.");
+          });
+      };
+    });
+    app.querySelectorAll("[data-msettle]").forEach(function (b) {
+      b.onclick = function () {
+        var mk = b.getAttribute("data-msettle"), m = monthTotals(mk);
+        ask({ title: "Mark " + monthName(mk) + " settled?",
+              body: "Records that Smash & Pass have transferred " + cur() + " " + money(Math.abs(m.owed)) +
+                    " for " + monthName(mk) + ". You can undo this.",
+              ok: "MARK SETTLED" })
+          .then(function (go) {
+            if (!go) return;
+            save(function (n) {
+              n.monthsPaid = n.monthsPaid || {};
+              n.monthsPaid[mk] = { at: new Date().toISOString(), by: me.id, amount: Math.round(m.owed * 100) / 100 };
+            }, monthName(mk) + " marked settled.");
+          });
+      };
+    });
+    app.querySelectorAll("[data-munsettle]").forEach(function (b) {
+      b.onclick = function () {
+        var mk = b.getAttribute("data-munsettle");
+        save(function (n) { if (n.monthsPaid) delete n.monthsPaid[mk]; }, monthName(mk) + " reopened.");
+      };
+    });
     app.querySelectorAll("[data-act]").forEach(function (b) {
       var fn = acts[b.getAttribute("data-act")];
       if (fn) b.onclick = fn;

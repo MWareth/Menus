@@ -530,5 +530,7 @@ export const SEED = {
   "updatedAt": "2026-09-05T21:44:31.576Z",
   "payments": [],
   "weeks": [],
+  "buys": [],
+  "monthsPaid": {},
   "defaultPinHash": "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117"
 };
