@@ -299,6 +299,15 @@
     border-radius:999px;background:#7BD69B;color:#0C3B21}
   .settle .note{margin-top:12px;font-size:12.5px;line-height:1.5;color:#CBB6A6}
   .settle .note b{color:var(--cream)}
+  .settle .mblock{border-top:1px solid #6B4A42;padding-top:12px;margin-top:8px}
+  .settle .blab{font-size:10.5px;font-weight:900;letter-spacing:.12em;color:#CBB6A6;margin-bottom:6px}
+  .settle .crow.prof{margin:2px 0}
+  .settle .crow.prof .v{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:22px;color:var(--gold)}
+  .settle .crow.ing .v{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:20px;color:#F0B7A9}
+  .settle .paybar{margin-top:16px;background:var(--char);border-radius:12px;padding:14px 16px;
+    display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .settle .paybar .l{font-size:11px;font-weight:900;letter-spacing:.08em;color:#8C8279}
+  .settle .paybar .v{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:22px;color:var(--butter)}
   .buyform{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .buyform #buy-note{grid-column:1 / -1}
   .buyform input,.buyform select{border:1.5px solid var(--line);border-radius:10px;padding:11px 12px;
@@ -2723,26 +2732,35 @@
         h += '<div class="settle month' + (m.settled ? " done" : "") + '">';
         h += '<div class="top"><span class="cname">' + esc(monthName(mk)) + "</span>" +
           (m.settled ? '<span class="mbadge">SETTLED</span>' : "") + "</div>";
-        h += '<div class="big num">' + cur() + " " + money(Math.abs(m.owed)) + "</div>";
-        h += '<div class="who2">' + (pos ? "SMASH &amp; PASS PAY DEE'S TREATS" : "DEE'S PAYS SMASH &amp; PASS") + "</div>";
-        h += '<div class="calc">';
+
+        /* --- profit, on its own --- */
+        h += '<div class="mblock"><div class="blab">PROFIT MADE</div>';
         h += '<div class="crow"><span>Takings' + (m.soldN ? " · " + count(m.soldN, "piece") + " sold" : "") +
           '</span><span class="num">' + cur() + " " + money(m.R) + "</span></div>";
-        h += '<div class="crow"><span>Ingredients bought</span><span class="num">' + cur() + " " + money(m.B) + "</span></div>";
-        h += '<div class="crow"><span>Profit for the month</span><span class="num"><b>' + cur() + " " + money(m.P) + "</b></span></div>";
+        h += '<div class="crow"><span>Less ingredients</span><span class="num">' + (m.B ? "- " : "") + cur() + " " + money(m.B) + "</span></div>";
+        h += '<div class="crow prof"><span><b>Profit made</b></span><span class="num v">' + cur() + " " + money(m.P) + "</span></div>";
         h += '<div class="crow"><span>Dee\'s ' + Math.round(m.d * 100) + '%</span><span class="num">' + cur() + " " + money(m.dees) + "</span></div>";
         h += '<div class="crow"><span>Smash &amp; Pass ' + Math.round((1 - m.d) * 100) + '%</span><span class="num">' + cur() + " " + money(m.truck) + "</span></div>";
-        h += '<div class="crow tot"><span>' + (pos ? "Smash pays Dee's" : "Dee's pays Smash") + '</span><span class="num">' + cur() + " " + money(Math.abs(m.owed)) + "</span></div>";
         h += "</div>";
-        if (pos) h += '<div class="note">Dee\'s profit share (' + cur() + " " + money(m.dees) +
-          ") plus the ingredients Dee's paid for (" + cur() + " " + money(m.Bdees) +
-          "), since Smash &amp; Pass hold the takings.</div>";
+
+        /* --- ingredients, on their own (fed by the buys log) --- */
+        h += '<div class="mblock"><div class="blab">INGREDIENTS COST · SHARED 50/50</div>';
+        h += '<div class="crow ing"><span><b>Bought this month</b></span><span class="num v">' + cur() + " " + money(m.B) + "</span></div>";
+        if (m.B) h += '<div class="crow"><span>Dee\'s paid it — Smash owe half back</span><span class="num"><b>' + cur() + " " + money(m.B * (1 - m.d)) + "</b></span></div>";
+        else h += '<div class="crow"><span>No buys logged for ' + esc(monthName(mk)) + ' yet — add them below</span><span></span></div>';
+        h += "</div>";
+
+        /* --- the one number Smash transfers --- */
+        h += '<div class="paybar"><span class="l">' + (pos ? "SMASH PAYS DEE'S" : "DEE'S PAYS SMASH") +
+          "</span><span class=\"v num\">" + cur() + " " + money(Math.abs(m.owed)) + "</span></div>";
+        if (pos) h += '<div class="note">= Dee\'s ' + Math.round(m.d * 100) + '% of the takings (' + cur() + " " + money(m.R * m.d) +
+          ") + Smash's " + Math.round((1 - m.d) * 100) + "% of the ingredients (" + cur() + " " + money(m.B * (1 - m.d)) + ").</div>";
         var rec = monthsPaidMap()[mk];
         if (m.settled && rec) h += '<div class="note">Settled by <b>' + esc(uname(rec.by)) + "</b> on " + esc(stamp(rec.at)) + ".</div>";
         if (perm.canDeliver && !readOnly) {
           h += '<div class="acts" style="margin-top:14px">';
           if (m.settled) h += '<button class="btn ghost sm" type="button" data-munsettle="' + mk + '">MARK NOT SETTLED</button>';
-          else h += '<button class="btn pri sm" type="button" data-msettle="' + mk + '">MARK ' + esc(monthName(mk).toUpperCase()) + " SETTLED</button>";
+          else h += '<button class="btn pri" type="button" style="width:100%" data-msettle="' + mk + '">RECORD PAYMENT &amp; MARK SETTLED</button>';
           h += "</div>";
         }
         h += "</div>";
@@ -3368,10 +3386,10 @@
     app.querySelectorAll("[data-msettle]").forEach(function (b) {
       b.onclick = function () {
         var mk = b.getAttribute("data-msettle"), m = monthTotals(mk);
-        ask({ title: "Mark " + monthName(mk) + " settled?",
-              body: "Records that Smash & Pass have transferred " + cur() + " " + money(Math.abs(m.owed)) +
-                    " for " + monthName(mk) + ". You can undo this.",
-              ok: "MARK SETTLED" })
+        ask({ title: "Record " + monthName(mk) + " payment?",
+              body: "Records that Smash & Pass paid " + cur() + " " + money(Math.abs(m.owed)) +
+                    " for " + monthName(mk) + ", and marks the month settled. You can undo this.",
+              ok: "RECORD & SETTLE" })
           .then(function (go) {
             if (!go) return;
             save(function (n) {
