@@ -293,6 +293,15 @@
   details.settled>summary:hover{color:var(--brown)}
   details.settled[open]{padding-top:12px}
 
+  /* one number: everything still owed across open deliveries */
+  .owedbar{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;background:var(--char);
+    color:var(--paper);border-radius:14px;padding:15px 18px;margin-bottom:16px;
+    box-shadow:0 6px 18px rgba(28,25,23,.16)}
+  .owedbar .k{font-size:11px;font-weight:900;letter-spacing:.12em;color:#8C8279}
+  .owedbar .v{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:30px;line-height:1;color:var(--butter)}
+  .owedbar.clear .v{color:#7BD69B}
+  .owedbar .s2{margin-left:auto;font-size:12.5px;font-weight:700;color:#B8ADA2}
+
   /* ---------- polish: soft depth ---------- */
   .card,.stat,.row,.chbar,.proj{box-shadow:0 1px 2px rgba(74,44,42,.05),0 4px 14px rgba(74,44,42,.04)}
   .settle{box-shadow:0 10px 30px rgba(74,44,42,.20)}
@@ -2080,8 +2089,15 @@
 
     var openD = [], closedD = [];
     allWeeks().forEach(function (start) { (weekClosed(start) ? closedD : openD).push(start); });
-    if (openD.length) openD.forEach(function (start) { h += weekCard(start, perm); });
-    else h += '<div class="empty">Nothing open to settle — every delivery is closed.</div>';
+    if (openD.length) {
+      var openOwed = 0;
+      openD.forEach(function (start) { openOwed += weekTotals(start).owed; });
+      h += '<div class="owedbar' + (Math.abs(openOwed) < 0.005 ? " clear" : "") + '">' +
+        '<span class="k">OPEN TO SETTLE</span>' +
+        '<span class="v num">' + cur() + " " + money(openOwed) + "</span>" +
+        '<span class="s2">' + openD.length + " open " + (openD.length === 1 ? "delivery" : "deliveries") + "</span></div>";
+      openD.forEach(function (start) { h += weekCard(start, perm); });
+    } else h += '<div class="empty">Nothing open to settle — every delivery is closed.</div>';
     if (closedD.length) {
       h += '<details class="settled"><summary>Settled &amp; closed · ' + closedD.length + "</summary>";
       closedD.forEach(function (start) { h += weekCard(start, perm); });
