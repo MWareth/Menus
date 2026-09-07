@@ -401,133 +401,33 @@ export const SEED = {
   ],
   "batches": [
     {
-      "id": "b3",
-      "drop": "d2",
-      "itemId": "i2",
-      "qty": 21,
-      "unitCost": 7.848255208333334,
-      "unitPrice": 24,
-      "batches": null,
-      "batchWord": "cake",
-      "portionWord": "slice",
-      "shelf": 2,
-      "madeOn": "2026-08-31",
-      "by": "u1",
-      "at": "2026-09-04T13:45:46.886Z",
-      "sales": [
-        {
-          "qty": 14,
-          "by": "u1",
-          "at": "2026-09-04T13:47:32.234Z",
-          "on": "2026-08-31",
-          "ch": "Window"
-        },
-        {
-          "qty": 5,
-          "by": "u1",
-          "at": "2026-09-04T14:03:20.850Z",
-          "on": "2026-08-31",
-          "kind": "gift"
-        },
-        {
-          "qty": 2,
-          "by": "u1",
-          "at": "2026-09-04T14:03:31.082Z",
-          "on": "2026-08-31",
-          "kind": "waste"
-        }
-      ]
-    },
-    {
-      "id": "b4",
-      "drop": "d2",
-      "itemId": "i4",
-      "qty": 10,
-      "unitCost": 6.20384100877193,
-      "unitPrice": 26,
-      "batches": null,
-      "batchWord": "tray",
-      "portionWord": "bag",
-      "shelf": 2,
-      "madeOn": "2026-08-31",
-      "by": "u1",
-      "at": "2026-09-04T13:45:46.886Z",
-      "sales": [
-        {
-          "qty": 4,
-          "by": "u1",
-          "at": "2026-09-04T14:20:29.198Z",
-          "on": "2026-09-03",
-          "ch": "Window"
-        },
-        {
-          "qty": 6,
-          "by": "u1",
-          "at": "2026-09-04T15:42:36.116Z",
-          "on": "2026-09-04",
-          "kind": "gift"
-        }
-      ]
-    },
-    {
-      "id": "b8",
-      "drop": "d7",
+      "id": "b1",
+      "drop": "d1",
       "itemId": "i2",
       "qty": 13,
       "unitCost": 7.848255208333334,
-      "unitPrice": 24,
+      "unitPrice": 26,
       "batches": null,
       "batchWord": "cake",
       "portionWord": "slice",
       "shelf": 2,
-      "madeOn": "2026-09-04",
+      "madeOn": "2026-09-07",
       "by": "u1",
-      "at": "2026-09-04T14:53:39.779Z",
+      "at": "2026-09-07T09:00:00.000Z",
       "sales": [
         {
-          "qty": 1,
+          "qty": 2,
           "by": "u1",
-          "at": "2026-09-04T15:42:58.150Z",
-          "on": "2026-09-04",
-          "ch": "Window"
-        },
-        {
-          "qty": 12,
-          "by": "u1",
-          "at": "2026-09-05T12:00:00.000Z",
-          "on": "2026-09-05",
-          "ch": "Window"
-        }
-      ]
-    },
-    {
-      "id": "b9",
-      "drop": "d7",
-      "itemId": "i4",
-      "qty": 9,
-      "unitCost": 6.20384100877193,
-      "unitPrice": 26,
-      "batches": null,
-      "batchWord": "tray",
-      "portionWord": "bag",
-      "shelf": 2,
-      "madeOn": "2026-09-04",
-      "by": "u1",
-      "at": "2026-09-04T14:53:39.779Z",
-      "sales": [
-        {
-          "qty": 3,
-          "by": "u1",
-          "at": "2026-09-05T21:44:31.575Z",
-          "on": "2026-09-06",
+          "at": "2026-09-07T12:00:00.000Z",
+          "on": "2026-09-07",
           "ch": "Window"
         }
       ]
     }
   ],
-  "seq": 9,
+  "seq": 1,
   "defaultPins": false,
-  "updatedAt": "2026-09-05T21:44:31.576Z",
+  "updatedAt": "2026-09-07T12:00:00.000Z",
   "payments": [],
   "weeks": [],
   "buys": [],
