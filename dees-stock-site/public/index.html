@@ -2174,38 +2174,46 @@
   function viewMoney(perm) {
     var t = totals(null);
     var S1 = settlement();
-    var h = '<h2 class="sec">Settle up</h2>' +
-      '<p class="sub">The money settles per delivery — one drop of stock that went out to the ' +
-      'truck together. A lot belongs to the delivery it was <b>sent out</b> with, so selling it, ' +
-      'giving it away or binning it later still settles against that delivery, whenever you get ' +
-      'round to typing it in. Deliveries are numbered in the order they went out. Each one shows ' +
-      'what went out, what happened to it and what the truck owes, then you close it. Nothing is ' +
-      'ever written off on its own: stock past its date waits for you to say whether it sold, was ' +
-      'given away, or was binned.</p>';
+    var full = perm.canDeliver;   /* Dee's & admins see the whole picture; the truck gets a clean version */
+    var h = '<h2 class="sec">Settle up</h2>';
+    if (full) {
+      h += '<p class="sub">The money settles per delivery — one drop of stock that went out to the ' +
+        'truck together. A lot belongs to the delivery it was <b>sent out</b> with, so selling it, ' +
+        'giving it away or binning it later still settles against that delivery, whenever you get ' +
+        'round to typing it in. Deliveries are numbered in the order they went out. Each one shows ' +
+        'what went out, what happened to it and what the truck owes, then you close it. Nothing is ' +
+        'ever written off on its own: stock past its date waits for you to say whether it sold, was ' +
+        'given away, or was binned.</p>';
+    } else {
+      h += '<p class="sub">What Smash &amp; Pass owe Dee\'s Treats, month by month. Keep logging every ' +
+        'sale on <b>Orders</b> and this adds it up for you — once a month you settle up.</p>';
+    }
 
-    var openD = [], closedD = [];
-    allWeeks().forEach(function (start) { (weekClosed(start) ? closedD : openD).push(start); });
-    if (openD.length) {
-      var openOwed = 0;
-      openD.forEach(function (start) { openOwed += weekTotals(start).owed; });
-      h += '<div class="owedbar' + (Math.abs(openOwed) < 0.005 ? " clear" : "") + '">' +
-        '<span class="k">OPEN · ESTIMATE</span>' +
-        '<span class="v num">' + cur() + " " + money(openOwed) + "</span>" +
-        '<span class="s2">' + openD.length + " open " + (openD.length === 1 ? "delivery" : "deliveries") + "</span></div>";
-      openD.forEach(function (start) { h += weekCard(start, perm); });
-    } else h += '<div class="empty">Nothing open to settle — every delivery is closed.</div>';
-    if (closedD.length) {
-      h += '<details class="settled"><summary>Settled &amp; closed · ' + closedD.length + "</summary>";
-      closedD.forEach(function (start) { h += weekCard(start, perm); });
-      h += "</details>";
+    if (full) {
+      var openD = [], closedD = [];
+      allWeeks().forEach(function (start) { (weekClosed(start) ? closedD : openD).push(start); });
+      if (openD.length) {
+        var openOwed = 0;
+        openD.forEach(function (start) { openOwed += weekTotals(start).owed; });
+        h += '<div class="owedbar' + (Math.abs(openOwed) < 0.005 ? " clear" : "") + '">' +
+          '<span class="k">OPEN · ESTIMATE</span>' +
+          '<span class="v num">' + cur() + " " + money(openOwed) + "</span>" +
+          '<span class="s2">' + openD.length + " open " + (openD.length === 1 ? "delivery" : "deliveries") + "</span></div>";
+        openD.forEach(function (start) { h += weekCard(start, perm); });
+      } else h += '<div class="empty">Nothing open to settle — every delivery is closed.</div>';
+      if (closedD.length) {
+        h += '<details class="settled"><summary>Settled &amp; closed · ' + closedD.length + "</summary>";
+        closedD.forEach(function (start) { h += weekCard(start, perm); });
+        h += "</details>";
+      }
     }
 
     /* ---- the real money: by month, on actual ingredient buys ---- */
-    h += '<div class="subhead">BY MONTH · THE REAL SETTLE</div>';
+    h += '<div class="subhead">BY MONTH' + (full ? " · THE REAL SETTLE" : "") + "</div>";
     h += '<p class="sub" style="margin-top:-2px">Dee\'s buys the ingredients, Smash &amp; Pass hold the sales cash. ' +
       'Once a month Smash pay Dee\'s <b>one amount — half the takings + half the ingredients</b>. That single ' +
       'payment both splits the profit 50/50 and pays Dee\'s back for Smash\'s half of the ingredients — nothing ' +
-      'else changes hands. <b>The delivery figures above are a recipe-cost estimate; these are the real numbers.</b></p>';
+      'else changes hands.' + (full ? ' <b>The delivery figures above are a recipe-cost estimate; these are the real numbers.</b>' : "") + "</p>";
     var months = monthsActive();
     if (!months.length) {
       h += '<div class="empty">No sales or ingredient buys logged yet.</div>';
@@ -2231,7 +2239,7 @@
         h += '<div class="mblock"><div class="blab">INGREDIENTS COST · SHARED 50/50</div>';
         h += '<div class="crow ing"><span><b>Bought this month</b></span><span class="num v">' + cur() + " " + money(m.B) + "</span></div>";
         if (m.B) h += '<div class="crow"><span>Dee\'s paid it — Smash owe half back</span><span class="num"><b>' + cur() + " " + money(m.B * (1 - m.d)) + "</b></span></div>";
-        else h += '<div class="crow"><span>No buys logged for ' + esc(monthName(mk)) + ' yet — add them below</span><span></span></div>';
+        else h += '<div class="crow"><span>No buys logged for ' + esc(monthName(mk)) + " yet" + (full ? " — add them below" : "") + '</span><span></span></div>';
         h += "</div>";
 
         /* --- the one number Smash transfers --- */
@@ -2280,7 +2288,8 @@
       }
     }
 
-    /* ---- everything, all time ---- */
+    if (full) {
+    /* ---- everything, all time (Dee's & admins only — the truck sees the clean view above) ---- */
     var out = S1.outstanding;
     h += '<div class="subhead">ALL TIME · ESTIMATE (RECIPE COST)</div>';
     h += '<div class="banner info" style="margin-bottom:12px">These figures use the <b>recipe-cost estimate</b>, not your real ingredient buys. The <b>real settle is the BY MONTH cards above</b> — that\'s the number Smash actually pays. Marking a month settled up there does <b>not</b> change the Outstanding here.</div>';
@@ -2406,6 +2415,7 @@
           '</td><td class="r num">' + cur() + " " + money(BC.map[k].revenue) + "</td></tr>";
       });
       h += "</tbody></table></div>";
+    }
     }
     return h;
   }
