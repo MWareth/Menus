@@ -118,6 +118,9 @@
   .dayband .d3{margin-left:auto;font-size:12.5px;font-weight:700;color:var(--paper)}
   .dayband.shut .d1{color:var(--ink-3)}
   .rows + .dayband{margin-top:18px}
+  .monthhead{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:18px;color:var(--brown);
+    margin:24px 0 4px;padding-bottom:6px;border-bottom:2px solid var(--gold)}
+  .monthhead:first-child{margin-top:6px}
 
   .bar-track{height:7px;border-radius:4px;background:var(--shade);margin-top:10px;overflow:hidden}
   .bar-fill{height:100%;background:var(--gold);border-radius:4px}
@@ -1787,7 +1790,7 @@
   /* The same lots, but banded under the delivery they went out with. Whoever
      is about to tap SOLD, GAVE AWAY or BINNED can see which delivery's stock
      it is coming off, and that it settles against that delivery. */
-  function rowsByDate(list, perm, withSell, withVoid) {
+  function rowsByDate(list, perm, withSell, withVoid, byMonth) {
     var byDrop = {}, keys = [];
     list.forEach(function (b) {
       var k = dropOf(b);
@@ -1796,7 +1799,7 @@
     });
     var order = deliveryOrder();                    /* oldest first */
     keys.sort(function (a, b) { return order.indexOf(b) - order.indexOf(a); }); /* newest delivery first */
-    var h = "";
+    var h = "", lastMonth = null;
     keys.forEach(function (k) {
       var g = byDrop[k];
       var out = 0, left = 0, dead = 0, day = null;
@@ -1805,6 +1808,10 @@
         if (b.voided) { dead += 1; return; }     /* a voided lot counts nowhere */
         out += b.qty; left += Math.max(0, remaining(b));
       });
+      if (byMonth) {                               /* a month divider above each month's deliveries */
+        var mk = monthKey(day || "");
+        if (mk && mk !== lastMonth) { lastMonth = mk; h += '<div class="monthhead">' + esc(monthName(mk)) + "</div>"; }
+      }
       var shut = weekClosed(k);
       var tail = out ? left + " of " + out + " left" : "";
       if (dead) tail += (tail ? " \u00b7 " : "") + dead + " voided";
@@ -1979,8 +1986,8 @@
 
     /* --- the full history --- */
     var all = S.batches.slice().sort(function (a, b) { return a.at < b.at ? 1 : -1; });
-    var hist = '<div class="subhead">EVERY ORDER OUT (' + all.length + ")</div>";
-    hist += all.length ? rowsByDate(all, perm, false, true) : '<div class="empty">No orders logged yet.</div>';
+    var hist = '<div class="subhead">EVERY ORDER OUT · BY MONTH (' + all.length + ")</div>";
+    hist += all.length ? rowsByDate(all, perm, false, true, true) : '<div class="empty">No orders logged yet.</div>';
 
     /* the truck is here to sell, so it gets the sell buttons first;
        Dee's side is here to send stock out, so the form comes first */
@@ -2195,9 +2202,10 @@
 
     /* ---- the real money: by month, on actual ingredient buys ---- */
     h += '<div class="subhead">BY MONTH · THE REAL SETTLE</div>';
-    h += '<p class="sub" style="margin-top:-2px">Dee\'s buys the ingredients; the cost is shared 50/50 and ' +
-      'settled at month-end. A month\'s profit is the takings less what was actually bought that month. ' +
-      '<b>The delivery figures above are an estimate from recipe costs — these are the real numbers.</b></p>';
+    h += '<p class="sub" style="margin-top:-2px">Dee\'s buys the ingredients, Smash &amp; Pass hold the sales cash. ' +
+      'Once a month Smash pay Dee\'s <b>one amount — half the takings + half the ingredients</b>. That single ' +
+      'payment both splits the profit 50/50 and pays Dee\'s back for Smash\'s half of the ingredients — nothing ' +
+      'else changes hands. <b>The delivery figures above are a recipe-cost estimate; these are the real numbers.</b></p>';
     var months = monthsActive();
     if (!months.length) {
       h += '<div class="empty">No sales or ingredient buys logged yet.</div>';
