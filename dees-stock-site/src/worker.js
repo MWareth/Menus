@@ -163,6 +163,9 @@ function forViewer(state, me) {
     view.buys = (view.buys || []).map((b) => ({
       id: b.id, on: b.on, amount: b.amount, paidBy: b.paidBy, note: ""
     }));
+    /* running costs (petrol, DEWA, gas) are Dee's own books, not part of the
+       50/50 — the truck never sees them */
+    view.overheads = [];
   }
   return view;
 }
@@ -210,6 +213,7 @@ function mergeSave(stored, incoming, me) {
   if (Array.isArray(incoming.batches)) out.batches = incoming.batches;
   if (Array.isArray(incoming.payments)) out.payments = incoming.payments;
   if (Array.isArray(incoming.buys)) out.buys = incoming.buys;
+  if (Array.isArray(incoming.overheads)) out.overheads = incoming.overheads;
   if (incoming.monthsPaid && typeof incoming.monthsPaid === "object" && !Array.isArray(incoming.monthsPaid))
     out.monthsPaid = incoming.monthsPaid;
 

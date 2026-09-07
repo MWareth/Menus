@@ -432,5 +432,6 @@ export const SEED = {
   "weeks": [],
   "buys": [],
   "monthsPaid": {},
+  "overheads": [],
   "defaultPinHash": "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117"
 };

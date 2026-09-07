@@ -788,7 +788,8 @@
   "payments": [],
   "weeks": [],
   "buys": [],
-  "monthsPaid": {}
+  "monthsPaid": {},
+  "overheads": []
 }
 </script>
 
@@ -1146,6 +1147,8 @@
      truck holds the takings and Dee's laid out the buys, so at month-end the
      truck hands Dee's its profit share plus back the ingredients it fronted. */
   function buys() { return S.buys || []; }
+  /* running costs (petrol, DEWA, gas…) — tracked for Dee's only, never in the 50/50 */
+  function overheads() { return S.overheads || []; }
   function monthKey(ds) { return (ds || "").slice(0, 7); }
   var MONTHNAMES = ["January", "February", "March", "April", "May", "June",
                     "July", "August", "September", "October", "November", "December"];
@@ -2712,6 +2715,36 @@
       }
     }
 
+    /* ---- running costs: Dee's own overheads, tracked but NOT in the split ---- */
+    if (perm.canDeliver) {
+      h += '<div class="subhead">RUNNING COSTS · JUST FOR YOU (NOT IN THE SPLIT)</div>';
+      h += '<p class="sub" style="margin-top:-2px">Petrol, DEWA, gas and the like. Logged so you can watch them — <b>not</b> shared with Smash &amp; Pass and they don\'t change the settle above.</p>';
+      if (!readOnly) {
+        h += '<div class="card"><div class="buyform">' +
+          '<input type="date" id="oc-date" value="' + todayStr() + '" aria-label="Date">' +
+          '<select id="oc-cat" aria-label="Kind of cost"><option>Petrol</option><option>DEWA</option><option>Gas</option><option>Other</option></select>' +
+          '<input type="number" id="oc-amt" min="0" step="0.01" inputmode="decimal" placeholder="AED" aria-label="Amount in AED">' +
+          '<button class="btn pri" type="button" data-act="addcost">ADD COST</button>' +
+          "</div></div>";
+      }
+      var ov = overheads();
+      if (ov.length) {
+        var ovTotal = ov.reduce(function (a, x) { return a + (+x.amount || 0); }, 0);
+        h += '<div class="tw"><table><thead><tr><th>WHEN</th><th>WHAT</th><th class="r">AMOUNT</th>' +
+          (perm.canSetup && !readOnly ? "<th></th>" : "") + "</tr></thead><tbody>";
+        ov.slice().sort(function (a, b) { return a.on < b.on ? 1 : a.on > b.on ? -1 : 0; }).forEach(function (x) {
+          h += "<tr><td>" + esc(niceDate(x.on)) + "</td><td>" + esc(x.cat || "Cost") + (x.note ? " · " + esc(x.note) : "") +
+            '</td><td class="r num">' + cur() + " " + money(+x.amount || 0) + "</td>" +
+            (perm.canSetup && !readOnly ? '<td class="r"><button class="btn ghost sm" type="button" data-delcost="' + x.id + '">✕</button></td>' : "") + "</tr>";
+        });
+        h += '<tr><td></td><td><b>Total spent</b></td><td class="r num"><b>' + cur() + " " + money(ovTotal) + "</b></td>" +
+          (perm.canSetup && !readOnly ? "<td></td>" : "") + "</tr>";
+        h += "</tbody></table></div>";
+      } else {
+        h += '<p class="sub" style="margin-top:6px">No running costs logged yet.</p>';
+      }
+    }
+
     if (full) {
     /* ---- everything, all time (Dee's & admins only — the truck sees the clean view above) ---- */
     var out = S1.outstanding;
@@ -3211,6 +3244,17 @@
                         paidBy: by === "truck" ? "truck" : "dees", by: me.id, at: new Date().toISOString() });
         }, cur() + " " + money(amt) + " buy logged.");
       },
+      addcost: function () {
+        var on = (document.getElementById("oc-date") || {}).value || todayStr();
+        var cat = (document.getElementById("oc-cat") || {}).value || "Other";
+        var amt = parseFloat((document.getElementById("oc-amt") || {}).value);
+        if (!(amt > 0)) { toast("Enter how much it cost.", true); return; }
+        save(function (n) {
+          n.overheads = n.overheads || [];
+          n.overheads.push({ id: id("oc"), on: on, cat: cat, amount: Math.round(amt * 100) / 100,
+                             by: me.id, at: new Date().toISOString() });
+        }, cat + " cost logged.");
+      },
       addrow2: addDeliveryRow,
       deliver: addDelivery,
       notifystock: function () { notice("Stock note", stockNotice()); },
@@ -3286,6 +3330,18 @@
                 });
               });
             }, weekLabel(dk) + " moved to " + niceDate(nd) + ".");
+          });
+      };
+    });
+    app.querySelectorAll("[data-delcost]").forEach(function (b) {
+      b.onclick = function () {
+        var cid = b.getAttribute("data-delcost");
+        var x = overheads().filter(function (y) { return y.id === cid; })[0];
+        ask({ title: "Delete this cost?", danger: true, ok: "DELETE",
+              body: (x ? (x.cat || "Cost") + " " + cur() + " " + money(+x.amount || 0) + " on " + niceDate(x.on) : "This entry") + " will be removed." })
+          .then(function (go) {
+            if (!go) return;
+            save(function (n) { n.overheads = (n.overheads || []).filter(function (y) { return y.id !== cid; }); }, "Cost deleted.");
           });
       };
     });
