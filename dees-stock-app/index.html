@@ -2798,13 +2798,14 @@
 
     /* ---- everything, all time ---- */
     var out = S1.outstanding;
-    h += '<div class="subhead">ALL TIME</div>';
+    h += '<div class="subhead">ALL TIME · ESTIMATE (RECIPE COST)</div>';
+    h += '<div class="banner info" style="margin-bottom:12px">These figures use the <b>recipe-cost estimate</b>, not your real ingredient buys. The <b>real settle is the BY MONTH cards above</b> — that\'s the number Smash actually pays. Marking a month settled up there does <b>not</b> change the Outstanding here.</div>';
     h += '<div class="stats">' +
       stat("TAKINGS", cur() + " " + money(t.revenue), count(t.unitsSold, "piece") + " sold", "good") +
       stat("COST OF THOSE", cur() + " " + money(t.costSold), "ingredients in what sold", "") +
       stat("PROFIT", cur() + " " + money(t.profit), "on what has been accounted for", t.profit >= 0 ? "good" : "bad") +
-      stat("OUTSTANDING", cur() + " " + money(Math.abs(out)),
-           out >= 0 ? "the truck owes this" : "you owe the truck", out > 0.005 ? "warn" : "") +
+      stat("OUTSTANDING · EST.", cur() + " " + money(Math.abs(out)),
+           out >= 0 ? "estimate — truck owes this" : "estimate — you owe the truck", out > 0.005 ? "warn" : "") +
       "</div>";
     h += '<div class="earn">' +
       ecard("d", "DEE'S TREATS", S1.profit * S1.d,
