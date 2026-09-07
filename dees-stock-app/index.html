@@ -1379,6 +1379,10 @@
         h += opts.input.type === "text"
           ? '<input id="m-val" type="text" maxlength="80" value="' + esc(opts.input.value || "") +
             '" placeholder="' + esc(opts.input.placeholder || "") + '">'
+          : opts.input.type === "date"
+          ? '<input id="m-val" type="date" value="' + esc(opts.input.value || "") + '"' +
+            (opts.input.min ? ' min="' + esc(opts.input.min) + '"' : "") +
+            (opts.input.max ? ' max="' + esc(opts.input.max) + '"' : "") + ">"
           : '<input id="m-val" type="number" inputmode="numeric" value="' + esc(opts.input.value) +
             '" min="' + esc(opts.input.min) + '" max="' + esc(opts.input.max) + '">';
         h += "</div>";
@@ -1409,6 +1413,10 @@
           var txt = el.value.trim();
           if (!txt) { toast("Type a short reason so the record explains itself.", true); return; }
           finish(txt); return;
+        }
+        if (opts.input.type === "date") {
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(el.value)) { toast("Pick a date.", true); return; }
+          finish(el.value); return;
         }
         var v = parseInt(el.value, 10);
         var lo = opts.input.min != null ? +opts.input.min : 1;
@@ -2390,6 +2398,9 @@
         seenDrop[dropOf(b)] = true;
         acts += '<button class="btn ghost sm" type="button" data-notify="' + dropOf(b) + '">EMAIL NOTICE</button>';
         if (dl) acts += '<button class="btn dark sm" type="button" data-pdf="' + dropOf(b) + '">PDF INVOICE</button>';
+        if (perm.canSetup && !readOnly && !weekClosed(dropOf(b))) {
+          acts += '<button class="btn ghost sm" type="button" data-datedrop="' + dropOf(b) + '">CHANGE DATE</button>';
+        }
       }
       if (acts) h += '<div class="acts">' + acts + "</div>";
       h += "</div></div>";
@@ -3315,6 +3326,32 @@
         });
       }
     };
+    app.querySelectorAll("[data-datedrop]").forEach(function (b) {
+      b.onclick = function () {
+        var dk = b.getAttribute("data-datedrop");
+        if (weekClosed(dk)) { toast("That delivery is closed. Reopen it first.", true); return; }
+        var cur0 = deliveryDate(dk) || todayStr();
+        ask({ title: "Change the send-out date",
+              body: "Move " + weekLabel(dk) + " to a new send-out date. Anything sold, given away or " +
+                    "binned before the new date moves up to it — a lot can't sell before it went out — " +
+                    "and its expiry shifts with it.",
+              ok: "SAVE DATE",
+              input: { type: "date", label: "SENT OUT ON", value: cur0, max: todayStr() } })
+          .then(function (nd) {
+            if (!nd || nd === cur0) return;
+            save(function (nx) {
+              nx.batches.forEach(function (bt) {
+                if (dropOf(bt) !== dk) return;
+                bt.madeOn = nd;
+                (bt.sales || []).forEach(function (s) {
+                  var on = s.on || (s.at || "").slice(0, 10);
+                  if (on && on < nd) s.on = nd;
+                });
+              });
+            }, weekLabel(dk) + " moved to " + niceDate(nd) + ".");
+          });
+      };
+    });
     app.querySelectorAll("[data-delbuy]").forEach(function (b) {
       b.onclick = function () {
         var bid = b.getAttribute("data-delbuy");
