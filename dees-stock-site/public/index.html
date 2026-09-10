@@ -502,6 +502,12 @@
     if (!costed(it)) return null;
     return batchCost(it) / portionsPer(it) + (+it.packaging || 0);
   }
+  /* Dee's own overhead per piece — gas, power and delivery. This is shown on
+     Recipes as the "true cost" only; it is NOT part of the cost of goods, the
+     frozen batch cost, or the 50/50 settle, so it never changes those. */
+  function overheadPerPiece() {
+    return S.overheadPerPiece != null ? (+S.overheadPerPiece || 0) : 1.14;
+  }
 
   /* ============ batch maths ============ */
   /* Every line in b.sales is one movement off the lot. A sale earns money;
@@ -2050,9 +2056,13 @@
 
       h += '<div class="costcard"><div class="grid">' +
         cc("batch", "RECIPE COST") + cc("yield", "YIELD") + cc("ing", "INGREDIENT / UNIT") +
-        cc("pack", "PACKAGING") + cc("price", "SELLS AT") + cc("profit", "GROSS PROFIT") + cc("margin", "MARGIN") +
+        cc("pack", "PACKAGING") + cc("ovh", "+ OVERHEAD") + cc("truecost", "TRUE COST EACH") +
+        cc("price", "SELLS AT") + cc("profit", "PROFIT EACH") + cc("margin", "MARGIN") +
         "</div></div>";
-      h += '<p class="hint" style="margin-top:10px" data-spare></p>';
+      h += '<p class="hint" style="margin-top:10px">Overhead ≈ ' + cur() + " " + money(overheadPerPiece()) +
+        " per " + esc(portionWordOf(it)) + " (gas, power &amp; delivery). <b>True cost each</b> = ingredients + packaging + overhead. " +
+        "Profit and margin here are after everything.</p>";
+      h += '<p class="hint" style="margin-top:6px" data-spare></p>';
       h += '<p class="hint" style="margin-top:6px">Direct cost only — excludes labour, utilities, delivery and wastage.</p>';
       if (editable) h += '<div class="acts"><button class="btn dark sm" type="button" data-saverecipe="' + it.id + '">SAVE RECIPE</button></div>';
       h += "</div>";
@@ -2177,21 +2187,12 @@
     var t = totals(null);
     var S1 = settlement();
     var full = perm.canDeliver;   /* Dee's & admins see the whole picture; the truck gets a clean version */
+    var SHOW_ESTIMATE = false;    /* the old recipe-cost estimate view is hidden — flip to true to bring it back */
     var h = '<h2 class="sec">Settle up</h2>';
-    if (full) {
-      h += '<p class="sub">The money settles per delivery — one drop of stock that went out to the ' +
-        'truck together. A lot belongs to the delivery it was <b>sent out</b> with, so selling it, ' +
-        'giving it away or binning it later still settles against that delivery, whenever you get ' +
-        'round to typing it in. Deliveries are numbered in the order they went out. Each one shows ' +
-        'what went out, what happened to it and what the truck owes, then you close it. Nothing is ' +
-        'ever written off on its own: stock past its date waits for you to say whether it sold, was ' +
-        'given away, or was binned.</p>';
-    } else {
-      h += '<p class="sub">What Smash &amp; Pass owe Dee\'s Treats, month by month. Keep logging every ' +
-        'sale on <b>Orders</b> and this adds it up for you — once a month you settle up.</p>';
-    }
+    h += '<p class="sub">What Smash &amp; Pass owe Dee\'s Treats, month by month. Keep logging every ' +
+      'sale on <b>Orders</b> and this adds it up for you — once a month you settle up.</p>';
 
-    if (full) {
+    if (full && SHOW_ESTIMATE) {
       var openD = [], closedD = [];
       allWeeks().forEach(function (start) { (weekClosed(start) ? closedD : openD).push(start); });
       if (openD.length) {
@@ -2211,11 +2212,11 @@
     }
 
     /* ---- the real money: by month, on actual ingredient buys ---- */
-    h += '<div class="subhead">BY MONTH' + (full ? " · THE REAL SETTLE" : "") + "</div>";
+    h += '<div class="subhead">BY MONTH</div>';
     h += '<p class="sub" style="margin-top:-2px">Dee\'s buys the ingredients, Smash &amp; Pass hold the sales cash. ' +
       'Once a month Smash pay Dee\'s <b>one amount — half the takings + half the ingredients</b>. That single ' +
       'payment both splits the profit 50/50 and pays Dee\'s back for Smash\'s half of the ingredients — nothing ' +
-      'else changes hands.' + (full ? ' <b>The delivery figures above are a recipe-cost estimate; these are the real numbers.</b>' : "") + "</p>";
+      'else changes hands.</p>';
     var months = monthsActive();
     if (!months.length) {
       h += '<div class="empty">No sales or ingredient buys logged yet.</div>';
@@ -2320,7 +2321,7 @@
       }
     }
 
-    if (full) {
+    if (full && SHOW_ESTIMATE) {
     /* ---- everything, all time (Dee's & admins only — the truck sees the clean view above) ---- */
     var out = S1.outstanding;
     h += '<div class="subhead">ALL TIME · ESTIMATE (RECIPE COST)</div>';
@@ -3035,8 +3036,14 @@
             ", so their cost sits on the " + count(portions, pw) + " that are sellable."
           : pieces + " pcs \u00f7 " + per + " divides evenly — nothing wasted.")
       : "";
+    var ovh = overheadPerPiece();
+    var trueCost = unit == null ? null : unit + ovh;
+    profit = trueCost == null ? null : price - trueCost;
+    margin = profit == null || !price ? null : (profit / price) * 100;
     set("ing", ing == null ? "—" : money(ing));
     set("pack", money(pack));
+    set("ovh", money(ovh));
+    set("truecost", trueCost == null ? "—" : money(trueCost), "hi");
     set("price", money(price));
     set("profit", profit == null ? "—" : money(profit), profit == null ? "" : profit >= 0 ? "good" : "bad");
     set("margin", margin == null ? "—" : (Math.round(margin * 10) / 10) + "%", margin == null ? "" : margin >= 0 ? "good" : "bad");
