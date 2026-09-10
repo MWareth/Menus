@@ -107,8 +107,8 @@ export const SEED = {
           "n": "Kiri cream cheese",
           "q": 600,
           "u": "g",
-          "pp": 12.5,
-          "pq": 200
+          "pp": 35,
+          "pq": 1150
         },
         {
           "n": "Sugar",
