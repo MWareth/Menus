@@ -852,6 +852,38 @@
         (link ? "\n\n" + link : "")
     };
   }
+  /* The record in its own window: the same tables, the page's own styling,
+     nothing else on it. A plain document, so it prints cleanly. */
+  function openMonthRecord() {
+    var css = "";
+    Array.prototype.forEach.call(document.querySelectorAll("style"), function (st) { css += st.textContent + "\n"; });
+    var body = "";
+    monthsWithOrders().forEach(function (mk) {
+      var rec = monthRecord(mk);
+      body += '<div class="monthhead">' + esc(monthName(mk)) +
+        ' <span class="hint" style="font-weight:700">\u00b7 ' + esc(count(rec.rows.length, "order line")) + "</span></div>" +
+        monthRecordTable(rec);
+    });
+    var close = "<" + "/script>";
+    var html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+      "<title>Dee's Stock \u2014 Month record</title>" +
+      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Cairo:wght@400;600;700;900&display=swap">' +
+      "<style>" + css + " main{padding:24px 0 60px} .tw{margin-bottom:16px} @media print{.noprint{display:none}}</style></head><body>" +
+      '<header class="bar"><div class="wrap"><div class="logo" role="img" aria-label="Dee\'s Treats"></div>' +
+      '<div class="brandline">Month record</div>' +
+      '<div class="who"><span>Every order, every piece \u00b7 as of ' + esc(niceDate(todayStr())) + "</span></div></div></header>" +
+      '<main><div class="wrap">' +
+      '<p class="sub">An order sits in the month it <b>went out</b>, whenever its pieces were sold, given away or binned. ' +
+      'Cost is what each order was locked in at.</p>' +
+      '<div class="acts noprint" style="margin:0 0 18px"><button class="btn dark sm" type="button" onclick="window.print()">PRINT / SAVE AS PDF</button></div>' +
+      (body || '<div class="empty">No orders logged yet.</div>') +
+      "</div></main></body></html>";
+    var w = null;
+    try { w = window.open("", "_blank"); } catch (e) {}
+    if (!w) { toast("Your browser blocked the window \u2014 allow pop-ups for this site and try again.", true); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+  }
   function settlement() {
     var t = totals(null);
     var d = (S.split.deesPct || 0) / 100;
@@ -2339,23 +2371,24 @@
       });
     }
 
-    /* ---- the month record: every order, every piece, kept for good (Dee's side only) ---- */
-    if (perm.canDeliver) {
-      h += '<div class="subhead">MONTH RECORD \u00b7 EVERY ORDER, EVERY PIECE</div>';
-      h += '<p class="sub" style="margin-top:-2px">One line per order line, kept for good: what went out, what sold, ' +
-        'what was given away, what was binned, what is still there. An order sits in the month it <b>went out</b>, ' +
-        'whenever the pieces were sold or binned. Press <b>SEND</b> at the end of the month to copy it, ' +
-        'WhatsApp it or email it to Smash &amp; Pass.</p>';
+    /* ---- the month record: every order, every piece, kept for good (admin only) ---- */
+    if (perm.canSetup) {
       var recMonths = monthsWithOrders();
-      if (!recMonths.length) h += '<div class="empty">No orders logged yet.</div>';
-      recMonths.forEach(function (mk) {
-        var rec = monthRecord(mk);
-        h += '<div class="monthhead">' + esc(monthName(mk)) +
-          ' <span class="hint" style="font-weight:700">\u00b7 ' + esc(count(rec.rows.length, "order line")) + "</span></div>";
-        h += monthRecordTable(rec);
-        h += '<div class="acts" style="margin:10px 0 18px"><button class="btn dark sm" type="button" data-mrecord="' + mk + '">SEND ' +
-          esc(monthName(mk).toUpperCase()) + " RECORD</button></div>";
-      });
+      h += '<div class="subhead">MONTH RECORD \u00b7 ADMIN ONLY</div>';
+      h += '<div class="card"><p style="margin:0 0 12px;font-size:14.5px;color:var(--ink-2)">Every order, every piece, ' +
+        'month by month: what went out, what sold, what was given away, what was binned, what is still there. ' +
+        'Kept for good. Opens in its own window so you can read it side by side, or print it. ' +
+        'At the end of the month, <b>SEND</b> copies it, WhatsApps it or emails it to Smash &amp; Pass.</p>';
+      if (!recMonths.length) h += '<p class="hint">No orders logged yet.</p>';
+      else {
+        h += '<div class="acts"><button class="btn pri sm" type="button" data-act="mrecordwin">OPEN MONTH RECORD</button>';
+        recMonths.forEach(function (mk) {
+          h += '<button class="btn ghost sm" type="button" data-mrecord="' + mk + '">SEND ' +
+            esc(monthName(mk).toUpperCase()) + "</button>";
+        });
+        h += "</div>";
+      }
+      h += "</div>";
     }
 
     /* ---- ingredient buys log (Dee's side only — the truck sees totals, not the shopping list) ---- */
@@ -2919,6 +2952,7 @@
                              by: me.id, at: new Date().toISOString() });
         }, cat + " cost logged.");
       },
+      mrecordwin: openMonthRecord,
       addrow2: addDeliveryRow,
       deliver: addDelivery,
       notifystock: function () { notice("Stock note", stockNotice()); },
