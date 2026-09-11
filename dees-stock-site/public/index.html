@@ -775,6 +775,115 @@
              P: P, d: d, dees: P * d, truck: P * (1 - d),
              owed: P * d + Bdees, buys: list, settled: monthSettled(mk) };
   }
+  /* ============ the month record ============
+     Every order that went out in a month, and what became of every piece:
+     sold, given away, binned, still there. Grouped by the month the order
+     went out, so a lot that went out on 29 September and was binned on
+     2 October still sits in September's record, where its cost is. Nothing
+     is summarised away: this is the trail, one line per order line. */
+  function monthsWithOrders() {
+    var seen = {};
+    live().forEach(function (b) { seen[monthKey(b.madeOn)] = true; });
+    return Object.keys(seen).filter(Boolean).sort().reverse();
+  }
+  function monthRecord(mk) {
+    var rows = [], t = { out: 0, sold: 0, given: 0, binned: 0, left: 0, takings: 0, cost: 0, unknown: false };
+    live().filter(function (b) { return monthKey(b.madeOn) === mk; })
+      .sort(function (a, b) { return a.madeOn < b.madeOn ? -1 : a.madeOn > b.madeOn ? 1 : (a.at < b.at ? -1 : 1); })
+      .forEach(function (b) {
+        var it = item(b.itemId);
+        var r = { on: b.madeOn, item: it ? it.name : "Deleted item", word: bPortion(b),
+                  out: b.qty, sold: sold(b), given: given(b), binned: binned(b),
+                  left: Math.max(0, remaining(b)), price: b.unitPrice || 0,
+                  takings: sold(b) * (b.unitPrice || 0),
+                  cost: b.unitCost == null ? null : b.qty * b.unitCost,
+                  expired: status(b) === "expired" && remaining(b) > 0 };
+        rows.push(r);
+        t.out += r.out; t.sold += r.sold; t.given += r.given; t.binned += r.binned; t.left += r.left;
+        t.takings += r.takings;
+        if (r.cost == null) t.unknown = true; else t.cost += r.cost;
+      });
+    return { mk: mk, rows: rows, t: t };
+  }
+  function monthRecordTable(rec) {
+    var h = '<div class="tw"><table><thead><tr><th>SENT OUT</th><th>ITEM</th>' +
+      '<th class="r">OUT</th><th class="r">SOLD</th><th class="r">GIVEN</th><th class="r">BINNED</th>' +
+      '<th class="r">LEFT</th><th class="r">TAKINGS</th><th class="r">COST</th></tr></thead><tbody>';
+    rec.rows.forEach(function (r) {
+      h += "<tr><td>" + esc(niceDate(r.on)) + "</td><td>" + esc(r.item) +
+        '</td><td class="r num">' + r.out +
+        '</td><td class="r num">' + (r.sold || "\u2014") +
+        '</td><td class="r num">' + (r.given || "\u2014") +
+        '</td><td class="r num">' + (r.binned ? '<span class="pill p-today">' + r.binned + "</span>" : "\u2014") +
+        '</td><td class="r num">' + (r.left ? (r.expired ? '<span class="pill p-soon">' + r.left + " · EXPIRED</span>" : r.left) : "\u2014") +
+        '</td><td class="r num">' + money(r.takings) +
+        '</td><td class="r num">' + (r.cost == null ? "\u2014" : money(r.cost)) + "</td></tr>";
+    });
+    var t = rec.t;
+    h += '<tr><td></td><td><b>Total</b></td><td class="r num"><b>' + t.out + '</b></td><td class="r num"><b>' + t.sold +
+      '</b></td><td class="r num"><b>' + t.given + '</b></td><td class="r num"><b>' + t.binned +
+      '</b></td><td class="r num"><b>' + t.left + '</b></td><td class="r num"><b>' + cur() + " " + money(t.takings) +
+      '</b></td><td class="r num"><b>' + cur() + " " + money(t.cost) + (t.unknown ? "+" : "") + "</b></td></tr>";
+    return h + "</tbody></table></div>";
+  }
+  /* the same record as plain text, for WhatsApp or email at the end of the month */
+  function monthRecordNotice(mk) {
+    var rec = monthRecord(mk), t = rec.t;
+    if (!rec.rows.length) return null;
+    var L = rec.rows.map(function (r) {
+      var bits = [count(r.out, r.word) + " out"];
+      if (r.sold) bits.push(r.sold + " sold");
+      if (r.given) bits.push(r.given + " given away");
+      if (r.binned) bits.push(r.binned + " binned");
+      if (r.left) bits.push(r.left + (r.expired ? " left, expired" : " still on the truck"));
+      return "- " + niceDate(r.on) + " \u00b7 " + r.item + ": " + bits.join(", ") +
+        " \u00b7 took " + cur() + " " + money(r.takings) +
+        (r.cost == null ? "" : " \u00b7 cost " + cur() + " " + money(r.cost));
+    });
+    var link = appLink();
+    return {
+      subject: "Dee's " + monthName(mk) + " record \u2014 " + count(t.out, "piece") + " out",
+      body: "Every order that went out in " + monthName(mk) + ", and what happened to each piece.\n\n" +
+        L.join("\n") + "\n\n" +
+        "Out: " + t.out + " \u00b7 sold: " + t.sold + " \u00b7 given away: " + t.given +
+        " \u00b7 binned: " + t.binned + " \u00b7 left: " + t.left + "\n" +
+        "Takings: " + cur() + " " + money(t.takings) + "\n" +
+        "Ingredients in what went out: " + cur() + " " + money(t.cost) + (t.unknown ? " (part of it not costed)" : "") +
+        (link ? "\n\n" + link : "")
+    };
+  }
+  /* The record in its own window: the same tables, the page's own styling,
+     nothing else on it. A plain document, so it prints cleanly. */
+  function openMonthRecord() {
+    var css = "";
+    Array.prototype.forEach.call(document.querySelectorAll("style"), function (st) { css += st.textContent + "\n"; });
+    var body = "";
+    monthsWithOrders().forEach(function (mk) {
+      var rec = monthRecord(mk);
+      body += '<div class="monthhead">' + esc(monthName(mk)) +
+        ' <span class="hint" style="font-weight:700">\u00b7 ' + esc(count(rec.rows.length, "order line")) + "</span></div>" +
+        monthRecordTable(rec);
+    });
+    var close = "<" + "/script>";
+    var html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+      "<title>Dee's Stock \u2014 Month record</title>" +
+      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Cairo:wght@400;600;700;900&display=swap">' +
+      "<style>" + css + " main{padding:24px 0 60px} .tw{margin-bottom:16px} @media print{.noprint{display:none}}</style></head><body>" +
+      '<header class="bar"><div class="wrap"><div class="logo" role="img" aria-label="Dee\'s Treats"></div>' +
+      '<div class="brandline">Month record</div>' +
+      '<div class="who"><span>Every order, every piece \u00b7 as of ' + esc(niceDate(todayStr())) + "</span></div></div></header>" +
+      '<main><div class="wrap">' +
+      '<p class="sub">An order sits in the month it <b>went out</b>, whenever its pieces were sold, given away or binned. ' +
+      'Cost is what each order was locked in at.</p>' +
+      '<div class="acts noprint" style="margin:0 0 18px"><button class="btn dark sm" type="button" onclick="window.print()">PRINT / SAVE AS PDF</button></div>' +
+      (body || '<div class="empty">No orders logged yet.</div>') +
+      "</div></main></body></html>";
+    var w = null;
+    try { w = window.open("", "_blank"); } catch (e) {}
+    if (!w) { toast("Your browser blocked the window \u2014 allow pop-ups for this site and try again.", true); return; }
+    w.document.open(); w.document.write(html); w.document.close();
+  }
   function settlement() {
     var t = totals(null);
     var d = (S.split.deesPct || 0) / 100;
@@ -2262,6 +2371,26 @@
       });
     }
 
+    /* ---- the month record: every order, every piece, kept for good (admin only) ---- */
+    if (perm.canSetup) {
+      var recMonths = monthsWithOrders();
+      h += '<div class="subhead">MONTH RECORD \u00b7 ADMIN ONLY</div>';
+      h += '<div class="card"><p style="margin:0 0 12px;font-size:14.5px;color:var(--ink-2)">Every order, every piece, ' +
+        'month by month: what went out, what sold, what was given away, what was binned, what is still there. ' +
+        'Kept for good. Opens in its own window so you can read it side by side, or print it. ' +
+        'At the end of the month, <b>SEND</b> copies it, WhatsApps it or emails it to Smash &amp; Pass.</p>';
+      if (!recMonths.length) h += '<p class="hint">No orders logged yet.</p>';
+      else {
+        h += '<div class="acts"><button class="btn pri sm" type="button" data-act="mrecordwin">OPEN MONTH RECORD</button>';
+        recMonths.forEach(function (mk) {
+          h += '<button class="btn ghost sm" type="button" data-mrecord="' + mk + '">SEND ' +
+            esc(monthName(mk).toUpperCase()) + "</button>";
+        });
+        h += "</div>";
+      }
+      h += "</div>";
+    }
+
     /* ---- ingredient buys log (Dee's side only — the truck sees totals, not the shopping list) ---- */
     if (perm.canDeliver) {
       h += '<div class="subhead">INGREDIENTS BOUGHT · DEE\'S LOGS THESE</div>';
@@ -2823,6 +2952,7 @@
                              by: me.id, at: new Date().toISOString() });
         }, cat + " cost logged.");
       },
+      mrecordwin: openMonthRecord,
       addrow2: addDeliveryRow,
       deliver: addDelivery,
       notifystock: function () { notice("Stock note", stockNotice()); },
@@ -2940,6 +3070,12 @@
               n.monthsPaid[mk] = { at: new Date().toISOString(), by: me.id, amount: Math.round(m.owed * 100) / 100 };
             }, monthName(mk) + " marked settled.");
           });
+      };
+    });
+    app.querySelectorAll("[data-mrecord]").forEach(function (b) {
+      b.onclick = function () {
+        var mk = b.getAttribute("data-mrecord");
+        notice(monthName(mk) + " record", monthRecordNotice(mk));
       };
     });
     app.querySelectorAll("[data-munsettle]").forEach(function (b) {

@@ -104,6 +104,64 @@ async function saveBoard(env, expectedVersion, state) {
   return changed ? next : null;
 }
 
+/* ============ one-off repairs ============
+   The seed is written to the database once and never read again, so a
+   correction made to the seed afterwards never reaches a board that already
+   exists. Each repair here runs exactly once per database, by name, and is
+   recorded in meta so it is never applied twice. A repair only touches what
+   it names: stock already sent out keeps the cost it was locked in at. */
+export const REPAIRS = {
+  /* Kiri cream cheese was costed at the retail 200 g pack (AED 12.50), which
+     put a San Sebastian slice at AED 7.85. Dee's now buys the Greenhouse
+     1.15 kg tub at AED 35 net, which makes the slice AED 5.44. */
+  "kiri-greenhouse-tub": (state) => {
+    let changed = false;
+    (state.items || []).forEach((it) => {
+      if (it.name !== "San Sebastian") return;
+      (it.recipe || []).forEach((r) => {
+        if (/kiri/i.test(r.n || "") && +r.pp === 12.5 && +r.pq === 200) {
+          r.pp = 35;
+          r.pq = 1150;
+          changed = true;
+        }
+      });
+    });
+    return changed;
+  }
+};
+
+/** Apply every repair not yet recorded in `done`; says which ones ran and whether the board moved. */
+export function applyRepairs(state, done) {
+  const applied = [];
+  let changed = false;
+  Object.keys(REPAIRS).forEach((name) => {
+    if (done.has(name)) return;
+    if (REPAIRS[name](state)) changed = true;
+    applied.push(name);
+  });
+  return { applied, changed };
+}
+
+async function repaired(env, board) {
+  const rows = await env.DB.prepare("SELECT k FROM meta WHERE k LIKE 'repair:%'").all();
+  const done = new Set((rows.results || []).map((r) => r.k.slice("repair:".length)));
+  const next = JSON.parse(JSON.stringify(board.state));
+  const { applied, changed } = applyRepairs(next, done);
+  if (!applied.length) return board;
+  let version = board.version;
+  if (changed) {
+    next.updatedAt = new Date().toISOString();
+    version = await saveBoard(env, board.version, next);
+    /* somebody saved first: leave it for the next request, which sees the newer board */
+    if (version == null) return board;
+  }
+  await env.DB.batch(applied.map((name) =>
+    env.DB.prepare("INSERT OR IGNORE INTO meta (k, v) VALUES (?, ?)")
+      .bind("repair:" + name, new Date().toISOString())
+  ));
+  return { version, state: changed ? next : board.state };
+}
+
 /* ============ sessions ============ */
 
 async function issueSession(env, uid) {
@@ -240,7 +298,7 @@ function mergeSave(stored, incoming, me) {
 
 async function api(request, env, path) {
   await ready(env);
-  const board = await loadBoard(env);
+  const board = await repaired(env, await loadBoard(env));
   const me = await whoAmI(request, env, board.state);
 
   if (path === "/api/login" && request.method === "POST") {
