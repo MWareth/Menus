@@ -790,7 +790,7 @@
   "buys": [],
   "monthsPaid": {},
   "overheads": [],
-  "overheadPerPiece": 1.14
+  "overheadPerPiece": 1.21
 }
 </script>
 
@@ -923,11 +923,12 @@
     if (!costed(it)) return null;
     return batchCost(it) / portionsPer(it) + (+it.packaging || 0);
   }
-  /* Dee's own overhead per piece — gas, power and delivery. This is shown on
-     Recipes as the "true cost" only; it is NOT part of the cost of goods, the
-     frozen batch cost, or the 50/50 settle, so it never changes those. */
+  /* Dee's own overhead per piece — gas, power, delivery and the printed label.
+     This is shown on Recipes as the "true cost" only; it is NOT part of the
+     cost of goods, the frozen batch cost, or the 50/50 settle, so it never
+     changes those. */
   function overheadPerPiece() {
-    return S.overheadPerPiece != null ? (+S.overheadPerPiece || 0) : 1.14;
+    return S.overheadPerPiece != null ? (+S.overheadPerPiece || 0) : 1.21;
   }
 
   /* ============ batch maths ============ */
@@ -2595,7 +2596,7 @@
         cc("price", "SELLS AT") + cc("profit", "PROFIT EACH") + cc("margin", "MARGIN") +
         "</div></div>";
       h += '<p class="hint" style="margin-top:10px">Overhead ≈ ' + cur() + " " + money(overheadPerPiece()) +
-        " per " + esc(portionWordOf(it)) + " (gas, power &amp; delivery). <b>True cost each</b> = ingredients + packaging + overhead. " +
+        " per " + esc(portionWordOf(it)) + " (gas, power, delivery &amp; label). <b>True cost each</b> = ingredients + packaging + overhead. " +
         "Profit and margin here are after everything.</p>";
       h += '<p class="hint" style="margin-top:6px" data-spare></p>';
       h += '<p class="hint" style="margin-top:6px">Direct cost only — excludes labour, utilities, delivery and wastage.</p>';
