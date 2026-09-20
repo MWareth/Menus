@@ -881,6 +881,36 @@
         (link ? "\n\n" + link : "")
     };
   }
+  /* The money for one month, as two small tables that print cleanly: the
+     profit and the 50/50 split, then the settlement — cost, Dee's share,
+     what has been paid and what is still owed. Same figures as the Settle
+     page, so the statement Smash gets matches the app. */
+  function monthRecordMoney(mk) {
+    var m = monthTotals(mk);
+    var duec = "#C0271C", okc = "#2F7D4F";
+    var row = function (label, val, o) {
+      o = o || {};
+      return "<tr><td" + (o.strong ? ' style="font-weight:800"' : "") + ">" + label + "</td>" +
+        '<td class="r num"' + (o.color ? ' style="color:' + o.color + '"' : "") + ">" +
+        (o.strong ? "<b>" : "") + val + (o.strong ? "</b>" : "") + "</td></tr>";
+    };
+    var h = '<div class="tw"><table><thead><tr><th>THIS MONTH</th><th class="r">' + cur() + "</th></tr></thead><tbody>";
+    h += row("Takings" + (m.soldN ? " · " + count(m.soldN, "piece") + " sold" : ""), cur() + " " + money(m.R));
+    h += row("Less cost to make", (m.C ? "- " : "") + cur() + " " + money(m.C));
+    h += row("Profit made", cur() + " " + money(m.P), { strong: true });
+    h += row("Dee's " + Math.round(m.d * 100) + "%", cur() + " " + money(m.dees));
+    h += row("Smash &amp; Pass " + Math.round((1 - m.d) * 100) + "%", cur() + " " + money(m.truck));
+    h += "</tbody></table></div>";
+    h += '<div class="tw"><table><thead><tr><th>SETTLEMENT · SMASH OWES DEE\'S</th><th class="r">' + cur() + "</th></tr></thead><tbody>";
+    h += row("Cost to make" + (m.costSettled ? " — paid" : ""), cur() + " " + money(m.C), { color: m.costSettled ? okc : duec });
+    h += row("Dee's profit share" + (m.profitSettled ? " — paid" : ""), cur() + " " + money(m.dees), { color: m.profitSettled ? okc : duec });
+    h += row("Total owed", cur() + " " + money(m.owed), { strong: true });
+    h += row("Paid so far", cur() + " " + money(m.paid));
+    h += row("Outstanding", (m.outstanding > 0.005 ? "- " : "") + cur() + " " + money(Math.max(0, m.outstanding)),
+      { strong: true, color: m.outstanding > 0.005 ? duec : okc });
+    h += "</tbody></table></div>";
+    return h;
+  }
   /* The record in its own window: the same tables, the page's own styling,
      nothing else on it. A plain document, so it prints cleanly. */
   function openMonthRecord() {
@@ -891,7 +921,8 @@
       var rec = monthRecord(mk);
       body += '<div class="monthhead">' + esc(monthName(mk)) +
         ' <span class="hint" style="font-weight:700">\u00b7 ' + esc(count(rec.rows.length, "order line")) + "</span></div>" +
-        monthRecordTable(rec);
+        monthRecordTable(rec) +
+        monthRecordMoney(mk);
     });
     var close = "<" + "/script>";
     var html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
