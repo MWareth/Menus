@@ -152,6 +152,17 @@ export const REPAIRS = {
       if (it.chargeCost == null || it.chargeCost === "") { it.chargeCost = 5; changed = true; }
     });
     return changed;
+  },
+  /* The 2-piece Brownie Bag sells at AED 18.50 (the old 26 was for the 4-piece
+     pack). Only moves the price if it is still the old 26, so a hand-edit is
+     never overwritten. */
+  "brownie-price-185": (state) => {
+    let changed = false;
+    (state.items || []).forEach((it) => {
+      if (it.name !== "Brownie Bag") return;
+      if (+it.price === 26) { it.price = 18.5; changed = true; }
+    });
+    return changed;
   }
 };
 
