@@ -905,7 +905,9 @@
       '<main><div class="wrap">' +
       '<p class="sub">An order sits in the month it <b>went out</b>, whenever its pieces were sold, given away or binned. ' +
       'Cost is what each order was locked in at.</p>' +
-      '<div class="acts noprint" style="margin:0 0 18px"><button class="btn dark sm" type="button" onclick="window.print()">PRINT / SAVE AS PDF</button></div>' +
+      '<div class="acts noprint" style="margin:0 0 18px;display:flex;gap:10px;flex-wrap:wrap">' +
+      '<button class="btn ghost sm" type="button" onclick="var w=window;w.close();setTimeout(function(){if(!w.closed){if(document.referrer){location.href=document.referrer;}else{history.back();}}},250)">&larr; BACK</button>' +
+      '<button class="btn dark sm" type="button" onclick="window.print()">PRINT / SAVE AS PDF</button></div>' +
       (body || '<div class="empty">No orders logged yet.</div>') +
       "</div></main></body></html>";
     var w = null;
