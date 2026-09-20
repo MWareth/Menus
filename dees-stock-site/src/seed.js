@@ -210,6 +210,7 @@ export const SEED = {
       "perPortion": 2,
       "packaging": 0.25,
       "overhead": 0.4,
+      "chargeCost": 5,
       "recipe": [
         {
           "n": "Eggs",

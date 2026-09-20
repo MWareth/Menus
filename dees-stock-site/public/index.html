@@ -502,6 +502,16 @@
     if (!costed(it)) return null;
     return batchCost(it) / portionsPer(it) + (+it.packaging || 0);
   }
+  /* What the truck is billed as the cost of one piece. Dee's can quote Smash a
+     round wholesale number that sits above the real make cost, so the true
+     ingredient cost never leaves the admin Recipes view. With no charge set it
+     falls back to the real cost, so nothing changes until Dee's sets one. This
+     is the number frozen onto a batch at delivery, and everything the truck
+     sees — the settlement and the invoice — reads that frozen figure. */
+  function chargeOf(it) {
+    if (it && it.chargeCost != null && it.chargeCost !== "") return +it.chargeCost || 0;
+    return unitCostOf(it);
+  }
   /* Dee's own overhead per piece — gas, power, delivery and the printed label.
      This is shown on Recipes as the "true cost" only; it is NOT part of the
      cost of goods, the frozen batch cost, or the 50/50 settle, so it never
@@ -769,9 +779,21 @@
     var deesProfit = P * d;
     var owed = C + deesProfit;           /* Smash owes: the cost back + Dee's share of profit */
     var paid = monthPaid(mk);
-    /* a payment covers the cost first, then Dee's profit share */
-    var costPaid = Math.min(paid, C);
-    var profitPaid = Math.max(0, paid - C);
+    /* each payment is tagged when it goes in — for the cost, or for Dee's
+       profit share. Anything logged before tags existed has none, and falls
+       back to the old rule: it covers the cost first, then the profit. */
+    var costPaid = 0, profitPaid = 0, untag = 0;
+    monthPaysList(mk).forEach(function (p) {
+      var a = +p.amount || 0;
+      if (p["for"] === "cost") costPaid += a;
+      else if (p["for"] === "profit") profitPaid += a;
+      else untag += a;
+    });
+    if (untag > 0) {
+      var toCost = Math.min(untag, Math.max(0, C - costPaid));
+      costPaid += toCost;
+      profitPaid += untag - toCost;
+    }
     var costOut = Math.max(0, C - costPaid);
     var profitOut = Math.max(0, deesProfit - profitPaid);
     return { mk: mk, R: R, C: C, cost: C, soldN: soldN,
@@ -2166,6 +2188,8 @@
         '<input data-f="packaging" type="number" min="0" step="0.01" value="' + (it.packaging || 0) + '"' + ro + "></div>" +
         '<div class="field"><label>OVERHEAD PER ' + esc(portionWordOf(it).toUpperCase()) + ' (' + cur() + ')</label>' +
         '<input data-f="overhead" type="number" min="0" step="0.01" value="' + overheadPerPiece(it) + '"' + ro + "></div>" +
+        '<div class="field"><label>COST WE CHARGE SMASH (' + cur() + ')</label>' +
+        '<input data-f="charge" type="number" min="0" step="0.01" value="' + (chargeOf(it) == null ? "" : (Math.round(chargeOf(it) * 100) / 100)) + '" placeholder="e.g. ' + money(Math.ceil((unitCostOf(it) || 0) + 1)) + '"' + ro + "></div>" +
         '<div class="field"><label>SELLING PRICE (' + cur() + ')</label>' +
         '<input data-f="price" type="number" min="0" step="0.01" value="' + it.price + '"' + ro + "></div>" +
         '<div class="field"><label>CALL ONE PIECE A…</label>' +
@@ -2180,6 +2204,8 @@
       h += '<p class="hint" style="margin-top:10px">Overhead is this item\'s own — gas, power, mixer, delivery, label — set it in the box above (' + cur() + " " + money(overheadPerPiece(it)) +
         " per " + esc(portionWordOf(it)) + "). <b>True cost each</b> = ingredients + packaging + overhead. " +
         "Profit and margin here are after everything.</p>";
+      h += '<p class="hint" style="margin-top:6px"><b>Cost we charge Smash</b> is the only cost the truck ever sees — on the settlement and the invoice. ' +
+        'Quote a clean round number above your true cost; the gap stays with Dee\'s. New orders use it from the moment you save; orders already locked keep the cost they went out at. Leave it blank to charge the real cost.</p>';
       h += '<p class="hint" style="margin-top:6px" data-spare></p>';
       h += '<p class="hint" style="margin-top:6px">Direct cost only — excludes labour, utilities, delivery and wastage.</p>';
       if (editable) h += '<div class="acts"><button class="btn dark sm" type="button" data-saverecipe="' + it.id + '">SAVE RECIPE</button></div>';
@@ -2386,15 +2412,25 @@
         if (pays.length) {
           h += '<div class="crow" style="color:#9A8A7C;font-size:10.5px;letter-spacing:.06em;margin-top:8px"><span>PAYMENTS RECEIVED</span><span></span></div>';
           pays.forEach(function (p) {
-            h += '<div class="crow" style="font-size:13px"><span>' + esc(niceDate(p.on)) + " · " + esc(uname(p.by)) +
+            var tag = p["for"] === "cost"
+              ? ' <span style="font-size:9px;font-weight:800;letter-spacing:.05em;padding:1px 6px;border-radius:999px;background:#FCE9D8;color:#8A4B12">COST</span>'
+              : p["for"] === "profit"
+              ? ' <span style="font-size:9px;font-weight:800;letter-spacing:.05em;padding:1px 6px;border-radius:999px;background:#E4EAF6;color:#26407A">PROFIT</span>'
+              : "";
+            h += '<div class="crow" style="font-size:13px"><span>' + esc(niceDate(p.on)) + " · " + esc(uname(p.by)) + tag +
               (perm.canSetup && !readOnly ? ' <button class="btn ghost sm" type="button" data-delpay="' + mk + ":" + p.id + '" style="padding:1px 7px;margin-left:4px">✕</button>' : "") +
               '</span><span class="num">' + cur() + " " + money(+p.amount || 0) + "</span></div>";
           });
         }
         if (perm.canDeliver && !readOnly && m.outstanding > 0.005) {
-          h += '<div class="buyform" style="margin-top:12px;grid-template-columns:1fr auto">' +
-            '<input type="number" id="pay-' + mk + '" min="0" step="0.01" inputmode="decimal" placeholder="Amount Smash sent (' + cur() + ')" aria-label="Amount received">' +
-            '<button class="btn pri" type="button" data-mpay="' + mk + '">RECORD PAYMENT</button></div>';
+          h += '<div style="margin-top:12px">' +
+            '<input type="number" id="pay-' + mk + '" min="0" step="0.01" inputmode="decimal" placeholder="Amount Smash sent (' + cur() + ')" aria-label="Amount received" style="width:100%;box-sizing:border-box">' +
+            '<div style="display:flex;gap:8px;margin-top:8px">' +
+            (m.costOut > 0.005 ? '<button class="btn pri" type="button" data-mpay="' + mk + '" data-payfor="cost" style="flex:1">PAID FOR COST</button>' : "") +
+            (m.profitOut > 0.005 ? '<button class="btn dark" type="button" data-mpay="' + mk + '" data-payfor="profit" style="flex:1">PAID FOR DEE&#39;S PROFIT</button>' : "") +
+            "</div>" +
+            '<p class="hint" style="margin-top:6px">Type what Smash sent, then tap what it\'s for — the cost, or Dee\'s profit share.</p>' +
+            "</div>";
         }
         h += "</div>";
 
@@ -2422,8 +2458,10 @@
       h += "</div>";
     }
 
-    /* ---- ingredient buys log (Dee's side only — the truck sees totals, not the shopping list) ---- */
-    if (perm.canDeliver) {
+    /* ---- ingredient buys log — parked. It fed the old estimate view, which is
+       hidden, so it no longer changes any total on screen. Kept in place behind
+       a false flag so it can be switched back on if Dee's wants it again. ---- */
+    if (false && perm.canDeliver) {
       h += '<div class="subhead">INGREDIENTS BOUGHT · DEE\'S LOGS THESE</div>';
       if (!readOnly) {
         h += '<div class="card"><div class="buyform">' +
@@ -3090,20 +3128,21 @@
     app.querySelectorAll("[data-mpay]").forEach(function (b) {
       b.onclick = function () {
         var mk = b.getAttribute("data-mpay");
+        var forWhat = b.getAttribute("data-payfor") || null;
         var el = document.getElementById("pay-" + mk);
         var amt = parseFloat(el ? el.value : "");
         if (!(amt > 0)) { toast("Enter the amount Smash sent.", true); return; }
         save(function (n) {
           n.monthPays = n.monthPays || {};
           n.monthPays[mk] = n.monthPays[mk] || [];
-          n.monthPays[mk].push({ id: id("pay"), on: todayStr(), amount: Math.round(amt * 100) / 100, by: me.id, at: new Date().toISOString() });
+          n.monthPays[mk].push({ id: id("pay"), on: todayStr(), amount: Math.round(amt * 100) / 100, "for": forWhat, by: me.id, at: new Date().toISOString() });
           var owed = monthTotals(mk).owed;
           var paid = n.monthPays[mk].reduce(function (a, p) { return a + (+p.amount || 0); }, 0);
           if (paid >= owed - 0.005) {
             n.monthsPaid = n.monthsPaid || {};
             n.monthsPaid[mk] = { at: new Date().toISOString(), by: me.id, amount: Math.round(paid * 100) / 100 };
           } else if (n.monthsPaid) { delete n.monthsPaid[mk]; }
-        }, cur() + " " + money(amt) + " payment recorded.");
+        }, cur() + " " + money(amt) + (forWhat === "cost" ? " toward the cost" : forWhat === "profit" ? " toward Dee's profit" : "") + " recorded.");
       };
     });
     app.querySelectorAll("[data-delpay]").forEach(function (b) {
@@ -3356,7 +3395,7 @@
         html += '<div class="dline"><span>' + esc(L.it.name) + " — no recipe costed</span><span>no cost</span></div>";
         return;
       }
-      var u = linePortions(L), c = u * unitCostOf(L.it);
+      var u = linePortions(L), c = u * chargeOf(L.it);
       units += u; total += c;
       words[portionWordOf(L.it)] = 1;
       var val = u * (+L.it.price || 0);
@@ -3403,7 +3442,7 @@
         nx.batches.push({
           id: id("b"), drop: drop, itemId: L.it.id,
           qty: linePortions(L),
-          unitCost: unitCostOf(L.it), unitPrice: L.it.price,
+          unitCost: chargeOf(L.it), unitPrice: L.it.price,
           batches: null,
           batchWord: batchWordOf(L.it), portionWord: portionWordOf(L.it),
           shelf: L.it.shelf, madeOn: madeOn,
@@ -3434,6 +3473,9 @@
     var pack = val(card.querySelector('[data-f="packaging"]'));
     var ovhEl = card.querySelector('[data-f="overhead"]');
     var overhead = ovhEl ? val(ovhEl) : null;
+    var chgEl = card.querySelector('[data-f="charge"]');
+    var chgRaw = chgEl ? (chgEl.value || "").trim() : "";
+    var charge = chgRaw === "" ? null : Math.round((parseFloat(chgRaw) || 0) * 100) / 100;
     var price = val(card.querySelector('[data-f="price"]'));
     var pword = card.querySelector('[data-f="portionWord"]').value.trim() || "portion";
     if (per <= 0) { toast("Pieces in one of them must be above zero.", true); return; }
@@ -3443,6 +3485,7 @@
       t.recipe = rows; t.yieldPieces = pieces; t.perPortion = per;
       t.packaging = pack; t.price = price; t.portionWord = pword;
       if (overhead != null) t.overhead = overhead;
+      if (charge == null) { delete t.chargeCost; } else { t.chargeCost = charge; }
     }, "Recipe saved.");
   }
 

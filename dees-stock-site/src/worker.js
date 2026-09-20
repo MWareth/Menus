@@ -141,6 +141,17 @@ export const REPAIRS = {
       if (it.note === "4 pcs") { it.note = "2 pcs"; changed = true; }
     });
     return changed;
+  },
+  /* Dee's now quotes Smash a round AED 5 a brownie bag as the cost, above the
+     real make cost, so the true ingredient cost stays on the admin Recipes
+     view only. Orders already locked keep the cost they went out at. */
+  "brownie-charge-5": (state) => {
+    let changed = false;
+    (state.items || []).forEach((it) => {
+      if (it.name !== "Brownie Bag") return;
+      if (it.chargeCost == null || it.chargeCost === "") { it.chargeCost = 5; changed = true; }
+    });
+    return changed;
   }
 };
 
