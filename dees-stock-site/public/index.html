@@ -2424,7 +2424,7 @@
         }
         if (perm.canDeliver && !readOnly && m.outstanding > 0.005) {
           h += '<div style="margin-top:12px">' +
-            '<input type="number" id="pay-' + mk + '" min="0" step="0.01" inputmode="decimal" placeholder="Amount Smash sent (' + cur() + ')" aria-label="Amount received" style="width:100%;box-sizing:border-box">' +
+            '<input type="number" id="pay-' + mk + '" min="0" step="0.01" inputmode="decimal" placeholder="Amount Smash sent (' + cur() + ')" aria-label="Amount received" style="width:100%;box-sizing:border-box;background:#fff;color:#101010;-webkit-text-fill-color:#101010;font-weight:700">' +
             '<div style="display:flex;gap:8px;margin-top:8px">' +
             (m.costOut > 0.005 ? '<button class="btn pri" type="button" data-mpay="' + mk + '" data-payfor="cost" style="flex:1">PAID FOR COST</button>' : "") +
             (m.profitOut > 0.005 ? '<button class="btn dark" type="button" data-mpay="' + mk + '" data-payfor="profit" style="flex:1">PAID FOR DEE&#39;S PROFIT</button>' : "") +
