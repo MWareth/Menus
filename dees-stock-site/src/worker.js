@@ -274,6 +274,8 @@ function mergeSave(stored, incoming, me) {
   if (Array.isArray(incoming.overheads)) out.overheads = incoming.overheads;
   if (incoming.monthsPaid && typeof incoming.monthsPaid === "object" && !Array.isArray(incoming.monthsPaid))
     out.monthsPaid = incoming.monthsPaid;
+  if (incoming.monthPays && typeof incoming.monthPays === "object" && !Array.isArray(incoming.monthPays))
+    out.monthPays = incoming.monthPays;
 
   /* the team list is admin-only, and a PIN hash is only ever accepted when the
      client actually sent a fresh one — otherwise the stored hash stands */

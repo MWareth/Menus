@@ -745,36 +745,41 @@
   }
   function monthsPaidMap() { return S.monthsPaid || {}; }
   function monthSettled(mk) { return !!monthsPaidMap()[mk]; }
+  /* part-payments the truck has actually sent for a month, so we can show what is still outstanding */
+  function monthPaysList(mk) { var o = S.monthPays || {}; return o[mk] || []; }
+  function monthPaid(mk) { return monthPaysList(mk).reduce(function (a, p) { return a + (+p.amount || 0); }, 0); }
   /* every month the board has activity in, newest first */
   function monthsActive() {
     var seen = {};
     live().forEach(function (b) {
       (b.sales || []).forEach(function (s) { if (kindOf(s) === "sale") seen[monthKey(saleOn(s))] = true; });
     });
+    live().forEach(function (b) { seen[monthKey(b.madeOn)] = true; });
     buys().forEach(function (x) { seen[monthKey(x.on)] = true; });
     Object.keys(monthsPaidMap()).forEach(function (mk) { seen[mk] = true; });
+    Object.keys(S.monthPays || {}).forEach(function (mk) { seen[mk] = true; });
     return Object.keys(seen).filter(Boolean).sort().reverse();
   }
   function monthTotals(mk) {
     var d = (S.split.deesPct || 0) / 100;
-    var R = 0, soldN = 0;
-    live().forEach(function (b) {
-      (b.sales || []).forEach(function (s) {
-        if (kindOf(s) !== "sale" || monthKey(saleOn(s)) !== mk) return;
-        R += s.qty * (b.unitPrice || 0); soldN += s.qty;
-      });
-    });
-    var B = 0, Bdees = 0, Btruck = 0, list = [];
-    buys().forEach(function (x) {
-      if (monthKey(x.on) !== mk) return;
-      var amt = +x.amount || 0; B += amt;
-      if (x.paidBy === "truck") Btruck += amt; else Bdees += amt;
-      list.push(x);
-    });
-    var P = R - B;
-    return { mk: mk, R: R, soldN: soldN, B: B, Bdees: Bdees, Btruck: Btruck,
-             P: P, d: d, dees: P * d, truck: P * (1 - d),
-             owed: P * d + Bdees, buys: list, settled: monthSettled(mk) };
+    var rec = monthRecord(mk);
+    var R = rec.t.takings, C = rec.t.cost, soldN = rec.t.sold;
+    var P = R - C;                       /* profit = takings less the cost to make */
+    var deesProfit = P * d;
+    var owed = C + deesProfit;           /* Smash owes: the cost back + Dee's share of profit */
+    var paid = monthPaid(mk);
+    /* a payment covers the cost first, then Dee's profit share */
+    var costPaid = Math.min(paid, C);
+    var profitPaid = Math.max(0, paid - C);
+    var costOut = Math.max(0, C - costPaid);
+    var profitOut = Math.max(0, deesProfit - profitPaid);
+    return { mk: mk, R: R, C: C, cost: C, soldN: soldN,
+             P: P, d: d, dees: deesProfit, truck: P * (1 - d),
+             owed: owed, paid: paid, outstanding: owed - paid,
+             costPaid: costPaid, profitPaid: profitPaid, costOut: costOut, profitOut: profitOut,
+             costSettled: costOut <= 0.005, profitSettled: profitOut <= 0.005,
+             rows: rec.rows, unknownCost: rec.t.unknown,
+             settled: (owed - paid) <= 0.005 };
   }
   /* ============ the month record ============
      Every order that went out in a month, and what became of every piece:
@@ -2323,51 +2328,73 @@
 
     /* ---- the real money: by month, on actual ingredient buys ---- */
     h += '<div class="subhead">BY MONTH</div>';
-    h += '<p class="sub" style="margin-top:-2px">Dee\'s buys the ingredients, Smash &amp; Pass hold the sales cash. ' +
-      'Once a month Smash pay Dee\'s <b>one amount — half the takings + half the ingredients</b>. That single ' +
-      'payment both splits the profit 50/50 and pays Dee\'s back for Smash\'s half of the ingredients — nothing ' +
-      'else changes hands.</p>';
+    h += '<p class="sub" style="margin-top:-2px">Each month the truck owes Dee\'s two things: <b>the cost to make the orders</b>, ' +
+      'and <b>Dee\'s 50% share of the profit</b>. Record what the truck sends and the outstanding updates — ' +
+      'each part turns <b>green</b> once it\'s fully paid.</p>';
     var months = monthsActive();
     if (!months.length) {
       h += '<div class="empty">No sales or ingredient buys logged yet.</div>';
     } else {
+      var okc = "#2F7D4F", duec = "#C0271C";
+      var pill = function (ok) {
+        return '<span style="font-weight:900;font-size:10px;letter-spacing:.05em;padding:3px 9px;border-radius:999px;margin-left:8px;background:' +
+          (ok ? "#E4F1E8" : "#FCE4E1") + ";color:" + (ok ? "#1F5D39" : "#93221A") + '">' + (ok ? "SETTLED" : "DUE") + "</span>";
+      };
       months.forEach(function (mk) {
         var m = monthTotals(mk);
-        var pos = m.owed >= 0;
         h += '<div class="settle month' + (m.settled ? " done" : "") + '">';
         h += '<div class="top"><span class="cname">' + esc(monthName(mk)) + "</span>" +
           (m.settled ? '<span class="mbadge">SETTLED</span>' : "") + "</div>";
 
-        /* --- profit, on its own --- */
+        /* --- profit made --- */
         h += '<div class="mblock"><div class="blab">PROFIT MADE</div>';
         h += '<div class="crow"><span>Takings' + (m.soldN ? " · " + count(m.soldN, "piece") + " sold" : "") +
           '</span><span class="num">' + cur() + " " + money(m.R) + "</span></div>";
-        h += '<div class="crow"><span>Less ingredients</span><span class="num">' + (m.B ? "- " : "") + cur() + " " + money(m.B) + "</span></div>";
+        h += '<div class="crow"><span>Less cost to make</span><span class="num">' + (m.C ? "- " : "") + cur() + " " + money(m.C) + "</span></div>";
         h += '<div class="crow prof"><span><b>Profit made</b></span><span class="num v">' + cur() + " " + money(m.P) + "</span></div>";
         h += '<div class="crow"><span>Dee\'s ' + Math.round(m.d * 100) + '%</span><span class="num">' + cur() + " " + money(m.dees) + "</span></div>";
         h += '<div class="crow"><span>Smash &amp; Pass ' + Math.round((1 - m.d) * 100) + '%</span><span class="num">' + cur() + " " + money(m.truck) + "</span></div>";
         h += "</div>";
 
-        /* --- ingredients, on their own (fed by the buys log) --- */
-        h += '<div class="mblock"><div class="blab">INGREDIENTS COST · SHARED 50/50</div>';
-        h += '<div class="crow ing"><span><b>Bought this month</b></span><span class="num v">' + cur() + " " + money(m.B) + "</span></div>";
-        if (m.B) h += '<div class="crow"><span>Dee\'s paid it — Smash owe half back</span><span class="num"><b>' + cur() + " " + money(m.B * (1 - m.d)) + "</b></span></div>";
-        else h += '<div class="crow"><span>No buys logged for ' + esc(monthName(mk)) + " yet" + (full ? " — add them below" : "") + '</span><span></span></div>';
+        /* --- cost, per order --- */
+        h += '<div class="mblock"><div class="blab">COST · PER ORDER</div>';
+        m.rows.forEach(function (r) {
+          h += '<div class="crow"><span>' + esc(niceDate(r.on)) + " · " + esc(r.item) + " · " + count(r.out, r.word) +
+            '</span><span class="num">' + (r.cost == null ? "—" : cur() + " " + money(r.cost)) + "</span></div>";
+        });
+        h += '<div class="crow prof"><span><b>Total cost</b></span><span class="num v">' + cur() + " " + money(m.C) + "</span></div>";
         h += "</div>";
 
-        /* --- the one number Smash transfers --- */
-        h += '<div class="paybar"><span class="l">' + (pos ? "SMASH PAYS DEE'S" : "DEE'S PAYS SMASH") +
-          "</span><span class=\"v num\">" + cur() + " " + money(Math.abs(m.owed)) + "</span></div>";
-        if (pos) h += '<div class="note">= Dee\'s ' + Math.round(m.d * 100) + '% of the takings (' + cur() + " " + money(m.R * m.d) +
-          ") + Smash's " + Math.round((1 - m.d) * 100) + "% of the ingredients (" + cur() + " " + money(m.B * (1 - m.d)) + ").</div>";
-        var rec = monthsPaidMap()[mk];
-        if (m.settled && rec) h += '<div class="note">Settled by <b>' + esc(uname(rec.by)) + "</b> on " + esc(stamp(rec.at)) + ".</div>";
-        if (perm.canDeliver && !readOnly) {
-          h += '<div class="acts" style="margin-top:14px">';
-          if (m.settled) h += '<button class="btn ghost sm" type="button" data-munsettle="' + mk + '">MARK NOT SETTLED</button>';
-          else h += '<button class="btn pri" type="button" style="width:100%" data-msettle="' + mk + '">RECORD PAYMENT &amp; MARK SETTLED</button>';
-          h += "</div>";
+        /* --- settlement: cost and Dee's profit, each red until paid --- */
+        h += '<div class="mblock"><div class="blab">SETTLEMENT · SMASH OWES DEE\'S</div>';
+        h += '<div class="crow" style="align-items:center"><span><b>Cost to make</b>' + pill(m.costSettled) +
+          '</span><span class="num v" style="color:' + (m.costSettled ? okc : duec) + '">' + cur() + " " + money(m.C) + "</span></div>";
+        h += '<div class="crow" style="color:#8A7A6C;font-size:12px;margin-top:-3px"><span>' +
+          (m.costSettled ? "Paid in full" : "Paid " + cur() + " " + money(m.costPaid) + " · " + cur() + " " + money(m.costOut) + " left") + "</span><span></span></div>";
+        h += '<div class="crow" style="align-items:center"><span><b>Dee\'s profit share</b>' + pill(m.profitSettled) +
+          '</span><span class="num v" style="color:' + (m.profitSettled ? okc : duec) + '">' + cur() + " " + money(m.dees) + "</span></div>";
+        h += '<div class="crow" style="color:#8A7A6C;font-size:12px;margin-top:-3px"><span>' +
+          (m.profitSettled ? "Paid in full" : "Paid " + cur() + " " + money(m.profitPaid) + " · " + cur() + " " + money(m.profitOut) + " left") + "</span><span></span></div>";
+        h += '<div class="crow prof"><span><b>Total owed</b></span><span class="num v">' + cur() + " " + money(m.owed) + "</span></div>";
+        h += '<div class="crow"><span>Paid so far</span><span class="num">' + cur() + " " + money(m.paid) + "</span></div>";
+        h += '<div class="crow"><span><b>Outstanding</b></span><span class="num"><b style="color:' + (m.outstanding > 0.005 ? duec : okc) + '">' + cur() + " " + money(Math.max(0, m.outstanding)) + "</b></span></div>";
+
+        var pays = monthPaysList(mk).slice().sort(function (a, b) { return a.at < b.at ? 1 : a.at > b.at ? -1 : 0; });
+        if (pays.length) {
+          h += '<div class="crow" style="color:#9A8A7C;font-size:10.5px;letter-spacing:.06em;margin-top:8px"><span>PAYMENTS RECEIVED</span><span></span></div>';
+          pays.forEach(function (p) {
+            h += '<div class="crow" style="font-size:13px"><span>' + esc(niceDate(p.on)) + " · " + esc(uname(p.by)) +
+              (perm.canSetup && !readOnly ? ' <button class="btn ghost sm" type="button" data-delpay="' + mk + ":" + p.id + '" style="padding:1px 7px;margin-left:4px">✕</button>' : "") +
+              '</span><span class="num">' + cur() + " " + money(+p.amount || 0) + "</span></div>";
+          });
         }
+        if (perm.canDeliver && !readOnly && m.outstanding > 0.005) {
+          h += '<div class="buyform" style="margin-top:12px;grid-template-columns:1fr auto">' +
+            '<input type="number" id="pay-' + mk + '" min="0" step="0.01" inputmode="decimal" placeholder="Amount Smash sent (' + cur() + ')" aria-label="Amount received">' +
+            '<button class="btn pri" type="button" data-mpay="' + mk + '">RECORD PAYMENT</button></div>';
+        }
+        h += "</div>";
+
         h += "</div>";
       });
     }
@@ -3054,6 +3081,42 @@
           .then(function (go) {
             if (!go) return;
             save(function (n) { n.buys = (n.buys || []).filter(function (y) { return y.id !== bid; }); }, "Buy deleted.");
+          });
+      };
+    });
+    app.querySelectorAll("[data-mpay]").forEach(function (b) {
+      b.onclick = function () {
+        var mk = b.getAttribute("data-mpay");
+        var el = document.getElementById("pay-" + mk);
+        var amt = parseFloat(el ? el.value : "");
+        if (!(amt > 0)) { toast("Enter the amount Smash sent.", true); return; }
+        save(function (n) {
+          n.monthPays = n.monthPays || {};
+          n.monthPays[mk] = n.monthPays[mk] || [];
+          n.monthPays[mk].push({ id: id("pay"), on: todayStr(), amount: Math.round(amt * 100) / 100, by: me.id, at: new Date().toISOString() });
+          var owed = monthTotals(mk).owed;
+          var paid = n.monthPays[mk].reduce(function (a, p) { return a + (+p.amount || 0); }, 0);
+          if (paid >= owed - 0.005) {
+            n.monthsPaid = n.monthsPaid || {};
+            n.monthsPaid[mk] = { at: new Date().toISOString(), by: me.id, amount: Math.round(paid * 100) / 100 };
+          } else if (n.monthsPaid) { delete n.monthsPaid[mk]; }
+        }, cur() + " " + money(amt) + " payment recorded.");
+      };
+    });
+    app.querySelectorAll("[data-delpay]").forEach(function (b) {
+      b.onclick = function () {
+        var parts = (b.getAttribute("data-delpay") || "").split(":");
+        var mk = parts[0], pid = parts[1];
+        ask({ title: "Delete this payment?", danger: true, ok: "DELETE",
+              body: "This payment will be removed and the outstanding goes back up." })
+          .then(function (go) {
+            if (!go) return;
+            save(function (n) {
+              if (n.monthPays && n.monthPays[mk]) n.monthPays[mk] = n.monthPays[mk].filter(function (p) { return p.id !== pid; });
+              var owed = monthTotals(mk).owed;
+              var paid = ((n.monthPays && n.monthPays[mk]) || []).reduce(function (a, p) { return a + (+p.amount || 0); }, 0);
+              if (paid < owed - 0.005 && n.monthsPaid) delete n.monthsPaid[mk];
+            }, "Payment deleted.");
           });
       };
     });
