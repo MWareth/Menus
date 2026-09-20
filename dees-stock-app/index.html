@@ -2828,14 +2828,14 @@
         h += '<div class="crow" style="align-items:center"><span><b>Cost to make</b>' + pill(m.costSettled) +
           '</span><span class="num v" style="color:' + (m.costSettled ? okc : duec) + '">' + cur() + " " + money(m.C) + "</span></div>";
         h += '<div class="crow" style="color:#8A7A6C;font-size:12px;margin-top:-3px"><span>' +
-          (m.costSettled ? "Paid in full" : "Paid " + cur() + " " + money(m.costPaid) + " · " + cur() + " " + money(m.costOut) + " left") + "</span><span></span></div>";
+          (m.costSettled ? "Paid in full" : "Paid " + cur() + " " + money(m.costPaid) + ' · <b style="color:' + duec + '">- ' + cur() + " " + money(m.costOut) + " left</b>") + "</span><span></span></div>";
         h += '<div class="crow" style="align-items:center"><span><b>Dee\'s profit share</b>' + pill(m.profitSettled) +
           '</span><span class="num v" style="color:' + (m.profitSettled ? okc : duec) + '">' + cur() + " " + money(m.dees) + "</span></div>";
         h += '<div class="crow" style="color:#8A7A6C;font-size:12px;margin-top:-3px"><span>' +
-          (m.profitSettled ? "Paid in full" : "Paid " + cur() + " " + money(m.profitPaid) + " · " + cur() + " " + money(m.profitOut) + " left") + "</span><span></span></div>";
+          (m.profitSettled ? "Paid in full" : "Paid " + cur() + " " + money(m.profitPaid) + ' · <b style="color:' + duec + '">- ' + cur() + " " + money(m.profitOut) + " left</b>") + "</span><span></span></div>";
         h += '<div class="crow prof"><span><b>Total owed</b></span><span class="num v">' + cur() + " " + money(m.owed) + "</span></div>";
         h += '<div class="crow"><span>Paid so far</span><span class="num">' + cur() + " " + money(m.paid) + "</span></div>";
-        h += '<div class="crow"><span><b>Outstanding</b></span><span class="num"><b style="color:' + (m.outstanding > 0.005 ? duec : okc) + '">' + cur() + " " + money(Math.max(0, m.outstanding)) + "</b></span></div>";
+        h += '<div class="crow"><span><b>Outstanding</b></span><span class="num"><b style="color:' + (m.outstanding > 0.005 ? duec : okc) + '">' + (m.outstanding > 0.005 ? "- " : "") + cur() + " " + money(Math.max(0, m.outstanding)) + "</b></span></div>";
 
         var pays = monthPaysList(mk).slice().sort(function (a, b) { return a.at < b.at ? 1 : a.at > b.at ? -1 : 0; });
         if (pays.length) {
