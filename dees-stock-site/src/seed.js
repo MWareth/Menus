@@ -200,15 +200,16 @@ export const SEED = {
     {
       "id": "i4",
       "name": "Brownie Bag",
-      "note": "4 pcs",
+      "note": "2 pcs",
       "price": 26,
       "shelf": 2,
       "active": true,
       "batchWord": "tray",
       "portionWord": "bag",
       "yieldPieces": 40,
-      "perPortion": 4,
+      "perPortion": 2,
       "packaging": 0.25,
+      "overhead": 0.4,
       "recipe": [
         {
           "n": "Eggs",

@@ -557,15 +557,16 @@
     {
       "id": "i4",
       "name": "Brownie Bag",
-      "note": "4 pcs",
+      "note": "2 pcs",
       "price": 26,
       "shelf": 2,
       "active": true,
       "batchWord": "tray",
       "portionWord": "bag",
       "yieldPieces": 40,
-      "perPortion": 4,
+      "perPortion": 2,
       "packaging": 0.25,
+      "overhead": 0.4,
       "recipe": [
         {
           "n": "Eggs",
@@ -928,7 +929,8 @@
      This is shown on Recipes as the "true cost" only; it is NOT part of the
      cost of goods, the frozen batch cost, or the 50/50 settle, so it never
      changes those. */
-  function overheadPerPiece() {
+  function overheadPerPiece(it) {
+    if (it && it.overhead != null && it.overhead !== "") return +it.overhead || 0;
     return S.overheadPerPiece != null ? (+S.overheadPerPiece || 0) : 1.21;
   }
 
@@ -2590,6 +2592,8 @@
         '<input data-f="perPortion" type="number" min="1" step="any" value="' + (it.perPortion || 1) + '"' + ro + "></div>" +
         '<div class="field"><label>PACKAGING PER ' + esc(portionWordOf(it).toUpperCase()) + ' (' + cur() + ')</label>' +
         '<input data-f="packaging" type="number" min="0" step="0.01" value="' + (it.packaging || 0) + '"' + ro + "></div>" +
+        '<div class="field"><label>OVERHEAD PER ' + esc(portionWordOf(it).toUpperCase()) + ' (' + cur() + ')</label>' +
+        '<input data-f="overhead" type="number" min="0" step="0.01" value="' + overheadPerPiece(it) + '"' + ro + "></div>" +
         '<div class="field"><label>SELLING PRICE (' + cur() + ')</label>' +
         '<input data-f="price" type="number" min="0" step="0.01" value="' + it.price + '"' + ro + "></div>" +
         '<div class="field"><label>CALL ONE PIECE A…</label>' +
@@ -2601,8 +2605,8 @@
         cc("pack", "PACKAGING") + cc("ovh", "+ OVERHEAD") + cc("truecost", "TRUE COST EACH") +
         cc("price", "SELLS AT") + cc("profit", "PROFIT EACH") + cc("margin", "MARGIN") +
         "</div></div>";
-      h += '<p class="hint" style="margin-top:10px">Overhead ≈ ' + cur() + " " + money(overheadPerPiece()) +
-        " per " + esc(portionWordOf(it)) + " (gas, power, delivery &amp; label). <b>True cost each</b> = ingredients + packaging + overhead. " +
+      h += '<p class="hint" style="margin-top:10px">Overhead is this item\'s own — gas, power, mixer, delivery, label — set it in the box above (' + cur() + " " + money(overheadPerPiece(it)) +
+        " per " + esc(portionWordOf(it)) + "). <b>True cost each</b> = ingredients + packaging + overhead. " +
         "Profit and margin here are after everything.</p>";
       h += '<p class="hint" style="margin-top:6px" data-spare></p>';
       h += '<p class="hint" style="margin-top:6px">Direct cost only — excludes labour, utilities, delivery and wastage.</p>';
@@ -3671,7 +3675,8 @@
             ", so their cost sits on the " + count(portions, pw) + " that are sellable."
           : pieces + " pcs \u00f7 " + per + " divides evenly — nothing wasted.")
       : "";
-    var ovh = overheadPerPiece();
+    var ovhEl = card.querySelector('[data-f="overhead"]');
+    var ovh = ovhEl ? g(ovhEl) : overheadPerPiece();
     var trueCost = unit == null ? null : unit + ovh;
     profit = trueCost == null ? null : price - trueCost;
     margin = profit == null || !price ? null : (profit / price) * 100;
@@ -3863,6 +3868,8 @@
     var pieces = val(card.querySelector('[data-f="yieldPieces"]'));
     var per = val(card.querySelector('[data-f="perPortion"]'));
     var pack = val(card.querySelector('[data-f="packaging"]'));
+    var ovhEl = card.querySelector('[data-f="overhead"]');
+    var overhead = ovhEl ? val(ovhEl) : null;
     var price = val(card.querySelector('[data-f="price"]'));
     var pword = card.querySelector('[data-f="portionWord"]').value.trim() || "portion";
     if (per <= 0) { toast("Pieces in one of them must be above zero.", true); return; }
@@ -3871,6 +3878,7 @@
       var t = nx.items.filter(function (i) { return i.id === iid; })[0];
       t.recipe = rows; t.yieldPieces = pieces; t.perPortion = per;
       t.packaging = pack; t.price = price; t.portionWord = pword;
+      if (overhead != null) t.overhead = overhead;
     }, "Recipe saved.");
   }
 

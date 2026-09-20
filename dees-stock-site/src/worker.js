@@ -127,6 +127,20 @@ export const REPAIRS = {
       });
     });
     return changed;
+  },
+  /* The Brownie Bag is now a 2-piece pack (was 4), and it carries its own
+     overhead — gas, the AED 2700 mixer spread over its bakes, and the printed
+     label — of about AED 0.40 a bag, not the San Sebastian slice's 1.21.
+     Stock already sent out keeps the cost it was frozen at. */
+  "brownie-2pack": (state) => {
+    let changed = false;
+    (state.items || []).forEach((it) => {
+      if (it.name !== "Brownie Bag") return;
+      if (+it.perPortion === 4) { it.perPortion = 2; changed = true; }
+      if (it.overhead == null || it.overhead === "") { it.overhead = 0.4; changed = true; }
+      if (it.note === "4 pcs") { it.note = "2 pcs"; changed = true; }
+    });
+    return changed;
   }
 };
 
