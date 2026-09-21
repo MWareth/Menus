@@ -201,7 +201,7 @@ export const SEED = {
       "id": "i4",
       "name": "Brownie Bag",
       "note": "2 pcs",
-      "price": 18.5,
+      "price": 16,
       "shelf": 2,
       "active": true,
       "batchWord": "tray",
@@ -437,5 +437,6 @@ export const SEED = {
   "monthPays": {},
   "overheads": [],
   "overheadPerPiece": 1.21,
+  "deliveryPerOrder": 51,
   "defaultPinHash": "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117"
 };

@@ -520,6 +520,13 @@
     if (it && it.overhead != null && it.overhead !== "") return +it.overhead || 0;
     return S.overheadPerPiece != null ? (+S.overheadPerPiece || 0) : 1.21;
   }
+  /* Standing delivery cost added to every order and spread across its pieces,
+     so it lands in cost-to-make (reimbursed, and split 50/50) with no separate
+     line. Editable per order on the form; this is just the default that fills
+     it. Set to 0 for a pickup. */
+  function deliveryPerOrder() {
+    return S.deliveryPerOrder != null ? (+S.deliveryPerOrder || 0) : 51;
+  }
 
   /* ============ batch maths ============ */
   /* Every line in b.sales is one movement off the lot. A sale earns money;
@@ -2093,8 +2100,12 @@
   function orderForm(perm) {
     if (!perm.canDeliver || readOnly) return "";
     return '<div class="subhead">ADD STOCK</div><div class="card">' +
-      '<div class="field" style="max-width:220px"><label for="d-date">SENT OUT ON</label>' +
+      '<div class="grid2" style="margin-bottom:6px">' +
+      '<div class="field"><label for="d-date">SENT OUT ON</label>' +
       '<input id="d-date" type="date" value="' + todayStr() + '"></div>' +
+      '<div class="field"><label for="d-fee">DELIVERY FOR THIS ORDER (' + cur() + ')</label>' +
+      '<input id="d-fee" type="number" min="0" step="0.01" inputmode="decimal" value="' + deliveryPerOrder() + '"></div>' +
+      "</div>" +
       '<div id="d-rows"></div>' +
       '<button class="btn ghost sm" type="button" data-act="addrow2">+ ADD ANOTHER ITEM</button>' +
       '<div id="d-preview" style="margin-top:14px"></div>' +
@@ -3235,6 +3246,8 @@
       if (!rowsBox.children.length) addDeliveryRow();
       refreshPreview();
     }
+    var feeEl = document.getElementById("d-fee");
+    if (feeEl) { feeEl.oninput = refreshPreview; feeEl.onchange = refreshPreview; }
 
     app.querySelectorAll("[data-saverecipe]").forEach(function (b) {
       b.onclick = function () { saveRecipe(b.getAttribute("data-saverecipe")); };
@@ -3438,6 +3451,12 @@
         "</span><span class=\"num\">costs " + cur() + " " + money(c) +
         " \u00b7 worth " + cur() + " " + money(val) + "</span></div>";
     });
+    var fee = parseFloat((document.getElementById("d-fee") || {}).value);
+    if (isNaN(fee) || fee < 0) fee = 0;
+    if (html && fee > 0 && units > 0) {
+      total += fee;
+      html += '<div class="dline"><span>Delivery, spread into the pieces</span><span class="num">+ ' + cur() + " " + money(fee) + "</span></div>";
+    }
     var wk = Object.keys(words);
     if (html) html += '<div class="dline"><span>' + esc(count(units, wk.length === 1 ? wk[0] : "portion")) +
       " in total</span><span class=\"num\">costs " + cur() + " " + money(total) +
@@ -3448,6 +3467,8 @@
 
   function addDelivery() {
     var madeOn = document.getElementById("d-date").value || todayStr();
+    var fee = parseFloat((document.getElementById("d-fee") || {}).value);
+    if (isNaN(fee) || fee < 0) fee = 0;
     var lines = readDeliveryRows().filter(function (L) { return L.it && L.n > 0; });
     if (!lines.length) { toast("Add at least one item with a quantity.", true); return; }
     var summary = [], uncosted = [];
@@ -3459,20 +3480,23 @@
         uncosted.push(L.it.name);
       }
     });
-    var msg = summary.join("\n") + "\n\nQuantity, cost and date cannot be changed after this.";
+    var msg = summary.join("\n");
+    if (fee > 0) msg += "\n\nDelivery " + cur() + " " + money(fee) + " is spread into this order's cost.";
+    msg += "\n\nQuantity, cost and date cannot be changed after this.";
     if (uncosted.length) msg = "No recipe costed for: " + uncosted.join(", ") + " — they go in with no cost.\n\n" + msg;
     ask({ title: "Lock this order?", body: msg, ok: "SAVE & LOCK" }).then(function (go) {
       if (!go) return;
-      doSaveDelivery(lines, madeOn);
+      doSaveDelivery(lines, madeOn, fee);
     });
   }
 
-  function doSaveDelivery(lines, madeOn) {
+  function doSaveDelivery(lines, madeOn, fee) {
     var at = new Date().toISOString();
+    fee = +fee || 0;
     save(function (nx) {
       var drop = id("d");
-      lines.forEach(function (L) {
-        nx.batches.push({
+      var made = lines.map(function (L) {
+        return {
           id: id("b"), drop: drop, itemId: L.it.id,
           qty: linePortions(L),
           unitCost: chargeOf(L.it), unitPrice: L.it.price,
@@ -3480,8 +3504,20 @@
           batchWord: batchWordOf(L.it), portionWord: portionWordOf(L.it),
           shelf: L.it.shelf, madeOn: madeOn,
           by: me.id, at: at, sales: []
-        });
+        };
       });
+      /* spread the delivery evenly over every costed piece in this order, baked
+         into the frozen unit cost — no separate line, and it splits 50/50 */
+      if (fee > 0) {
+        var pieces = made.reduce(function (a, b) {
+          return a + (b.unitCost != null ? (+b.qty || 0) : 0);
+        }, 0);
+        if (pieces > 0) {
+          var per = fee / pieces;
+          made.forEach(function (b) { if (b.unitCost != null) b.unitCost = +b.unitCost + per; });
+        }
+      }
+      made.forEach(function (b) { nx.batches.push(b); });
     }, lines.length > 1 ? lines.length + " items locked in." : "Order locked in.");
   }
 

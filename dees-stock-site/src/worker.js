@@ -164,40 +164,26 @@ export const REPAIRS = {
     });
     return changed;
   },
-  /* Today's 21 Sep San Sebastian + Brownie order went out by Careem for AED 51.
-     That is a shared delivery cost, so it is spread evenly over every piece in
-     that day's batches — it lands in "cost to make", which the truck reimburses
-     and which comes out of the 50/50 profit, so the two sides carry AED 25.50
-     each. No separate line: it is baked into those batches' unit cost. It stays
-     pending (returns false) until the 21 Sep order is logged, then applies once
-     and is recorded — so it never gets lost if it runs before the order exists,
-     and never doubles. Other days keep the cost they were frozen at. */
-  "careem-delivery-21sep-fold": (state) => {
-    const DAY = "2026-09-21", ADD = 51;
-    const shared = new Set((state.items || [])
-      .filter((it) => it.name === "San Sebastian" || it.name === "Brownie Bag")
-      .map((it) => it.id));
-    const targets = (state.batches || []).filter((b) =>
-      b && b.madeOn === DAY && shared.has(b.itemId) && b.unitCost != null && +b.qty > 0 && !b.voided);
-    const pieces = targets.reduce((a, b) => a + (+b.qty || 0), 0);
-    if (!pieces) return false;
-    const per = ADD / pieces;
-    targets.forEach((b) => { b.unitCost = +b.unitCost + per; });
-    return true;
+  /* Brownie Bag drops to AED 16. Only moves it from the 18.50 it was, so a
+     later hand-edit is never overwritten. */
+  "brownie-price-16": (state) => {
+    let changed = false;
+    (state.items || []).forEach((it) => {
+      if (it.name !== "Brownie Bag") return;
+      if (+it.price === 18.5) { it.price = 16; changed = true; }
+    });
+    return changed;
   }
 };
 
-/** Apply every repair not yet recorded in `done`. A repair is recorded (and so
-    never runs again) only once it actually changes the board; one that finds
-    nothing to do yet — e.g. it is waiting on an order that has not been logged —
-    returns false and stays pending, so it retries on the next load instead of
-    being spent on a no-op. */
+/** Apply every repair not yet recorded in `done`; says which ones ran and whether the board moved. */
 export function applyRepairs(state, done) {
   const applied = [];
   let changed = false;
   Object.keys(REPAIRS).forEach((name) => {
     if (done.has(name)) return;
-    if (REPAIRS[name](state)) { changed = true; applied.push(name); }
+    if (REPAIRS[name](state)) changed = true;
+    applied.push(name);
   });
   return { applied, changed };
 }
