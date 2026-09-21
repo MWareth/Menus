@@ -168,9 +168,11 @@ export const REPAIRS = {
      That is a shared delivery cost, so it is spread evenly over every piece in
      that day's batches — it lands in "cost to make", which the truck reimburses
      and which comes out of the 50/50 profit, so the two sides carry AED 25.50
-     each. No separate line: it is baked into those batches' unit cost. Runs
-     once; other days keep the cost they were frozen at. */
-  "careem-delivery-21sep": (state) => {
+     each. No separate line: it is baked into those batches' unit cost. It stays
+     pending (returns false) until the 21 Sep order is logged, then applies once
+     and is recorded — so it never gets lost if it runs before the order exists,
+     and never doubles. Other days keep the cost they were frozen at. */
+  "careem-delivery-21sep-fold": (state) => {
     const DAY = "2026-09-21", ADD = 51;
     const shared = new Set((state.items || [])
       .filter((it) => it.name === "San Sebastian" || it.name === "Brownie Bag")
@@ -185,14 +187,17 @@ export const REPAIRS = {
   }
 };
 
-/** Apply every repair not yet recorded in `done`; says which ones ran and whether the board moved. */
+/** Apply every repair not yet recorded in `done`. A repair is recorded (and so
+    never runs again) only once it actually changes the board; one that finds
+    nothing to do yet — e.g. it is waiting on an order that has not been logged —
+    returns false and stays pending, so it retries on the next load instead of
+    being spent on a no-op. */
 export function applyRepairs(state, done) {
   const applied = [];
   let changed = false;
   Object.keys(REPAIRS).forEach((name) => {
     if (done.has(name)) return;
-    if (REPAIRS[name](state)) changed = true;
-    applied.push(name);
+    if (REPAIRS[name](state)) { changed = true; applied.push(name); }
   });
   return { applied, changed };
 }
