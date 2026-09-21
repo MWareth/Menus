@@ -386,6 +386,7 @@
   var busy = false;
   var tab = "stock";
   var lastPaintedTab = null;   /* so the view only animates when you switch tabs, not on every save */
+  var selMonth = null;         /* which month's settle card is open; null = newest */
   var me = null;
   var lockErr = "";
 
@@ -760,6 +761,11 @@
   function monthName(mk) {
     var p = (mk || "").split("-");
     return (MONTHNAMES[(+p[1]) - 1] || "?") + " " + (p[0] || "");
+  }
+  /* short label for the month tabs, e.g. "Sep 26" */
+  function monthShort(mk) {
+    var p = (mk || "").split("-");
+    return (MONTHNAMES[(+p[1]) - 1] || "?").slice(0, 3) + " " + (p[0] || "").slice(2);
   }
   function monthsPaidMap() { return S.monthsPaid || {}; }
   function monthSettled(mk) { return !!monthsPaidMap()[mk]; }
@@ -2425,12 +2431,22 @@
     if (!months.length) {
       h += '<div class="empty">No sales or ingredient buys logged yet.</div>';
     } else {
+      /* one clickable tab per month, newest first — October and beyond appear on
+         their own as soon as there's activity in them. Only the open month shows. */
+      var curM = (selMonth && months.indexOf(selMonth) >= 0) ? selMonth : months[0];
+      h += '<div style="display:flex;flex-wrap:wrap;gap:7px;margin:6px 0 14px">';
+      months.forEach(function (mk) {
+        var on = mk === curM;
+        h += '<button class="btn ' + (on ? "pri" : "ghost") + ' sm" type="button" data-mtab="' + mk + '" style="padding:6px 14px' + (on ? "" : ";opacity:.8") + '">' +
+          esc(monthShort(mk)) + (monthTotals(mk).outstanding > 0.005 ? '' : ' ✓') + "</button>";
+      });
+      h += "</div>";
       var okc = "#2F7D4F", duec = "#C0271C";
       var pill = function (ok) {
         return '<span style="font-weight:900;font-size:10px;letter-spacing:.05em;padding:3px 9px;border-radius:999px;margin-left:8px;background:' +
           (ok ? "#E4F1E8" : "#FCE4E1") + ";color:" + (ok ? "#1F5D39" : "#93221A") + '">' + (ok ? "SETTLED" : "DUE") + "</span>";
       };
-      months.forEach(function (mk) {
+      [curM].forEach(function (mk) {
         var m = monthTotals(mk);
         h += '<div class="settle month' + (m.settled ? " done" : "") + '">';
         h += '<div class="top"><span class="cname">' + esc(monthName(mk)) + "</span>" +
@@ -2829,6 +2845,9 @@
   function wire() {
     app.querySelectorAll("[data-tab]").forEach(function (b) {
       b.onclick = function () { setTab(b.getAttribute("data-tab")); };
+    });
+    app.querySelectorAll("[data-mtab]").forEach(function (b) {
+      b.onclick = function () { selMonth = b.getAttribute("data-mtab"); render(); };
     });
     app.querySelectorAll("[data-ch]").forEach(function (b) {
       b.onclick = function () { setChannel(b.getAttribute("data-ch")); };
