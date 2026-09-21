@@ -164,13 +164,14 @@ export const REPAIRS = {
     });
     return changed;
   },
-  /* Brownie Bag drops to AED 16. Only moves it from the 18.50 it was, so a
-     later hand-edit is never overwritten. */
-  "brownie-price-16": (state) => {
+  /* Brownie Bag is priced at AED 13. Moves it from either earlier price it may
+     be sitting at on the live board (18.50 or 16), and nothing else, so a later
+     hand-edit is never overwritten. */
+  "brownie-price-13": (state) => {
     let changed = false;
     (state.items || []).forEach((it) => {
       if (it.name !== "Brownie Bag") return;
-      if (+it.price === 18.5) { it.price = 16; changed = true; }
+      if (+it.price === 18.5 || +it.price === 16) { it.price = 13; changed = true; }
     });
     return changed;
   }

@@ -201,7 +201,7 @@ export const SEED = {
       "id": "i4",
       "name": "Brownie Bag",
       "note": "2 pcs",
-      "price": 16,
+      "price": 13,
       "shelf": 2,
       "active": true,
       "batchWord": "tray",
