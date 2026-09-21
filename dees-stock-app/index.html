@@ -2866,6 +2866,9 @@
             '</span><span class="num">' + (r.cost == null ? "—" : cur() + " " + money(r.cost)) + "</span></div>";
         });
         h += '<div class="crow prof"><span><b>Total cost</b></span><span class="num v">' + cur() + " " + money(m.C) + "</span></div>";
+        h += '<div class="crow"><span>Dee\'s ' + Math.round(m.d * 100) + '% share</span><span class="num">' + cur() + " " + money(m.C * m.d) + "</span></div>";
+        h += '<div class="crow"><span>Smash &amp; Pass ' + Math.round((1 - m.d) * 100) + '% share</span><span class="num">' + cur() + " " + money(m.C * (1 - m.d)) + "</span></div>";
+        h += '<div class="crow" style="color:#8A7A6C;font-size:11.5px;margin-top:2px"><span>The cost is shared 50/50. The truck sends the full cost below, and its half comes back in the profit split.</span><span></span></div>';
         h += "</div>";
 
         /* --- settlement: cost and Dee's profit, each red until paid --- */
