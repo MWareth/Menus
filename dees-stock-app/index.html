@@ -1326,7 +1326,24 @@
         '<td class="r num"' + (o.color ? ' style="color:' + o.color + '"' : "") + ">" +
         (o.strong ? "<b>" : "") + val + (o.strong ? "</b>" : "") + "</td></tr>";
     };
-    var h = '<div class="tw"><table><thead><tr><th>THIS MONTH</th><th class="r">' + cur() + "</th></tr></thead><tbody>";
+    var bg = "font-family:'Baloo 2',sans-serif;font-weight:800";
+    var card = '<div style="max-width:520px;margin:4px 0 18px;border-radius:18px;overflow:hidden;border:1px solid #EADFCD">' +
+      '<div style="background:#4A2C2A;color:#fff;padding:14px 18px">' +
+        '<div style="' + bg + ';font-size:17px">Dee\'s Treats <span style="color:#FFD21C">×</span> <span style="color:#F02820">Smash &amp; Pass</span></div>' +
+        '<div style="font-size:12px;color:#E7D9C9;font-weight:600;margin-top:2px">' + esc(monthName(mk)) + ' · settlement</div>' +
+      '</div>' +
+      '<div style="padding:14px 18px;background:#fff">' +
+        '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:15px;color:#3A2A24"><span style="font-weight:700">Sales' + (m.soldN ? " · " + count(m.soldN, "piece") + " sold" : "") + '</span><span style="' + bg + '">' + cur() + " " + money(m.R) + '</span></div>' +
+        '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:15px;color:#3A2A24"><span style="font-weight:700">Cost</span><span style="' + bg + '">' + cur() + " " + money(m.C) + '</span></div>' +
+        '<div style="background:#FFF6D6;border-radius:10px;padding:9px 13px;margin:8px 0;display:flex;justify-content:space-between"><span style="font-weight:900;color:#8A5A06">Profit</span><span style="' + bg + ';color:#8A5A06;font-size:18px">' + cur() + " " + money(m.P) + '</span></div>' +
+        '<div style="display:flex;gap:10px;margin-top:8px">' +
+          '<div style="flex:1;background:#4A2C2A;color:#fff;border-radius:12px;padding:10px;text-align:center"><div style="font-size:11px;font-weight:700;opacity:.85">DEE\'S ' + Math.round(m.d * 100) + '%</div><div style="' + bg + ';font-size:19px;margin-top:1px">' + cur() + " " + money(m.dees) + '</div></div>' +
+          '<div style="flex:1;background:#F02820;color:#fff;border-radius:12px;padding:10px;text-align:center"><div style="font-size:11px;font-weight:700;opacity:.9">SMASH ' + Math.round((1 - m.d) * 100) + '%</div><div style="' + bg + ';font-size:19px;margin-top:1px">' + cur() + " " + money(m.truck) + '</div></div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;padding:11px 2px 2px;font-size:14px;border-top:1px solid #EADFCD;margin-top:11px"><span style="font-weight:800;color:#3A2A24">Smash still owes</span><span style="font-weight:900;color:' + (m.outstanding > 0.005 ? "#C0271C" : "#2F7D4F") + '">' + cur() + " " + money(Math.max(0, m.outstanding)) + '</span></div>' +
+      '</div></div>';
+    var h = card;
+    h += '<div class="tw"><table><thead><tr><th>THIS MONTH</th><th class="r">' + cur() + "</th></tr></thead><tbody>";
     h += row("Takings" + (m.soldN ? " · " + count(m.soldN, "piece") + " sold" : ""), cur() + " " + money(m.R));
     h += row("Less cost to make", (m.C ? "- " : "") + cur() + " " + money(m.C));
     h += row("Profit made", cur() + " " + money(m.P), { strong: true });
@@ -1337,7 +1354,7 @@
     h += row("Cost to make" + (m.costSettled ? " — paid" : ""), cur() + " " + money(m.C), { color: m.costSettled ? okc : duec });
     h += row("Dee's profit share" + (m.profitSettled ? " — paid" : ""), cur() + " " + money(m.dees), { color: m.profitSettled ? okc : duec });
     h += row("Total owed", cur() + " " + money(m.owed), { strong: true });
-    h += row("Paid so far", cur() + " " + money(m.paid));
+    h += row("Paid so far", (m.paid > 0.005 ? "- " : "") + cur() + " " + money(m.paid));
     h += row("Outstanding", (m.outstanding > 0.005 ? "- " : "") + cur() + " " + money(Math.max(0, m.outstanding)),
       { strong: true, color: m.outstanding > 0.005 ? duec : okc });
     h += "</tbody></table></div>";
@@ -2881,7 +2898,7 @@
         h += '<div class="crow" style="color:#8A7A6C;font-size:12px;margin-top:-3px"><span>' +
           (m.profitSettled ? "Paid in full" : "Paid " + cur() + " " + money(m.profitPaid) + ' · <b style="color:' + duec + '">- ' + cur() + " " + money(m.profitOut) + " left</b>") + "</span><span></span></div>";
         h += '<div class="crow prof"><span><b>Total owed</b></span><span class="num v">' + cur() + " " + money(m.owed) + "</span></div>";
-        h += '<div class="crow"><span>Paid so far</span><span class="num">' + cur() + " " + money(m.paid) + "</span></div>";
+        h += '<div class="crow"><span>Paid so far</span><span class="num">' + (m.paid > 0.005 ? "- " : "") + cur() + " " + money(m.paid) + "</span></div>";
         h += '<div class="crow"><span><b>Outstanding</b></span><span class="num"><b style="color:' + (m.outstanding > 0.005 ? duec : okc) + '">' + (m.outstanding > 0.005 ? "- " : "") + cur() + " " + money(Math.max(0, m.outstanding)) + "</b></span></div>";
 
         var pays = monthPaysList(mk).slice().sort(function (a, b) { return a.at < b.at ? 1 : a.at > b.at ? -1 : 0; });
