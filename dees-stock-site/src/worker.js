@@ -174,6 +174,29 @@ export const REPAIRS = {
       if (+it.price === 18.5 || +it.price === 16) { it.price = 13; changed = true; }
     });
     return changed;
+  },
+  /* Every item now keeps 3 days, not 2 — a batch baked today is good for three
+     days, expiring on the third. Sets every item and the default to 3, and
+     extends any lot still in date so the stock already on the truck gets the
+     extra day too. Expired lots and history are left exactly as they were. */
+  "shelf-3-days": (state) => {
+    let changed = false;
+    const addDays = (ds, n) => {
+      const d = new Date(String(ds) + "T00:00:00Z");
+      d.setUTCDate(d.getUTCDate() + n);
+      return d.toISOString().slice(0, 10);
+    };
+    const today = new Date().toISOString().slice(0, 10);
+    (state.items || []).forEach((it) => {
+      if (+it.shelf !== 3) { it.shelf = 3; changed = true; }
+    });
+    if (+state.defaultShelf !== 3) { state.defaultShelf = 3; changed = true; }
+    (state.batches || []).forEach((b) => {
+      if (b.voided || b.madeOn == null || b.shelf == null) return;
+      /* only touch a lot that has not expired yet under its current shelf */
+      if (+b.shelf < 3 && addDays(b.madeOn, +b.shelf) >= today) { b.shelf = 3; changed = true; }
+    });
+    return changed;
   }
 };
 
