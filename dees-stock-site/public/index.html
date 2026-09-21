@@ -1873,6 +1873,27 @@
   }
 
   /* ---------- stock ---------- */
+  /* How each item has actually sold, across the batches whose life is over
+     (sold out or past expiry) — so Dee's can bake closer to what sells and bin
+     less. Sold-through is sold ÷ made; the suggestion is the average sold. */
+  function itemSellStats(itemId) {
+    var made = 0, soldN = 0, waste = 0, n = 0;
+    live().forEach(function (b) {
+      if (b.itemId !== itemId) return;
+      if (!(status(b) === "expired" || remaining(b) <= 0)) return;
+      n++;
+      made += (+b.qty || 0);
+      soldN += sold(b);
+      waste += binned(b) + (status(b) === "expired" ? remaining(b) : 0);
+    });
+    return {
+      n: n, made: made, sold: soldN, waste: waste,
+      through: made > 0 ? soldN / made : 0,
+      avgSold: n > 0 ? soldN / n : 0,
+      avgMade: n > 0 ? made / n : 0,
+      suggest: n > 0 ? Math.max(1, Math.round(soldN / n)) : 0
+    };
+  }
   function viewStock(perm) {
     var t = todayStr();
     var open = live().filter(function (b) { return remaining(b) > 0; });
@@ -1908,6 +1929,16 @@
       stat("EXPIRED", expiredLeft, "to write off, past their date", expiredLeft ? "bad" : "") +
       "</div>";
 
+    /* money at a glance \u2014 Dee's side only */
+    if (perm.canDeliver) {
+      var mk0 = monthKey(t), mt = monthTotals(mk0);
+      h += '<div class="settle" style="margin:2px 0 14px">' +
+        '<div class="blab">THIS MONTH \u00b7 ' + esc(monthShort(mk0)) + '</div>' +
+        '<div class="crow"><span>Truck still owes</span><span class="num"><b style="color:' + (mt.outstanding > 0.005 ? "#C0271C" : "#2F7D4F") + '">' + cur() + " " + money(Math.max(0, mt.outstanding)) + '</b></span></div>' +
+        '<div class="crow"><span>Profit so far</span><span class="num">' + cur() + " " + money(mt.P) + '</span></div>' +
+        "</div>";
+    }
+
     if (expired.length) {
       h += '<div class="banner bad"><b>' + count(expiredLeft, "piece") +
         " past the date.</b> Pull them off the counter and write them off \u2014 they still count as cost.</div>";
@@ -1916,10 +1947,36 @@
       h += '<div class="banner warn"><b>' + count(leftIn(lastDay), "piece") +
         " on the last day.</b> Anything unsold tonight becomes waste tomorrow.</div>";
     }
+    if (tomorrow.length) {
+      h += '<div class="banner warn"><b>' + count(leftIn(tomorrow), "piece") +
+        " expire tomorrow.</b> Push these next so they don't hit the bin.</div>";
+    }
 
     if (open.length || expired.length) {
       h += '<div style="margin:14px 0 4px"><button class="btn ghost sm" type="button" data-act="notifystock">' +
         "EMAIL THE STOCK NOTE</button></div>";
+    }
+
+    /* bake smart — cut the waste, Dee's side only */
+    if (perm.canDeliver) {
+      var bakeRows = "";
+      (S.items || []).forEach(function (it) {
+        if (!it.active || !costed(it)) return;
+        var st = itemSellStats(it.id);
+        if (st.n < 1) return;
+        var pct = Math.round(st.through * 100);
+        var warn = pct < 70;
+        bakeRows += "<tr><td>" + esc(it.name) + '</td>' +
+          '<td class="r num">' + Math.round(st.avgMade) + "</td>" +
+          '<td class="r num">' + Math.round(st.avgSold) + "</td>" +
+          '<td class="r num" style="color:' + (warn ? "#C0271C" : "#2F7D4F") + ';font-weight:800">' + pct + "%</td>" +
+          '<td class="r num"><b>' + st.suggest + "</b></td></tr>";
+      });
+      if (bakeRows) {
+        h += '<div class="subhead">BAKE SMART · CUT THE WASTE</div>';
+        h += '<p class="sub" style="margin-top:-2px">From how each item has actually sold. <b>Sold %</b> is how much of a batch sells before it expires — the rest is binned. <b>Bake</b> is a suggested amount to make next time so less goes to waste.</p>';
+        h += '<div class="tw"><table><thead><tr><th>ITEM</th><th class="r">YOU BAKE</th><th class="r">YOU SELL</th><th class="r">SOLD %</th><th class="r">BAKE</th></tr></thead><tbody>' + bakeRows + "</tbody></table></div>";
+      }
     }
 
     h += orderForm(perm);
