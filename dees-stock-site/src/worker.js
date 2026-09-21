@@ -163,6 +163,25 @@ export const REPAIRS = {
       if (+it.price === 26) { it.price = 18.5; changed = true; }
     });
     return changed;
+  },
+  /* Today's 21 Sep San Sebastian + Brownie order went out by Careem for AED 51.
+     That is a shared delivery cost, so it is spread evenly over every piece in
+     that day's batches — it lands in "cost to make", which the truck reimburses
+     and which comes out of the 50/50 profit, so the two sides carry AED 25.50
+     each. No separate line: it is baked into those batches' unit cost. Runs
+     once; other days keep the cost they were frozen at. */
+  "careem-delivery-21sep": (state) => {
+    const DAY = "2026-09-21", ADD = 51;
+    const shared = new Set((state.items || [])
+      .filter((it) => it.name === "San Sebastian" || it.name === "Brownie Bag")
+      .map((it) => it.id));
+    const targets = (state.batches || []).filter((b) =>
+      b && b.madeOn === DAY && shared.has(b.itemId) && b.unitCost != null && +b.qty > 0 && !b.voided);
+    const pieces = targets.reduce((a, b) => a + (+b.qty || 0), 0);
+    if (!pieces) return false;
+    const per = ADD / pieces;
+    targets.forEach((b) => { b.unitCost = +b.unitCost + per; });
+    return true;
   }
 };
 
