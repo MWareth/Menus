@@ -134,7 +134,7 @@
   .field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
   .field label{font-size:12px;font-weight:900;letter-spacing:.1em;color:var(--ink-3)}
   .field input,.field select{border:1.5px solid var(--line);border-radius:10px;padding:11px 13px;
-    background:#fff;min-height:44px;width:100%}
+    background:#fff;min-height:44px;width:100%;min-width:0}
   .field input:focus,.field select:focus{outline:2px solid var(--gold);outline-offset:-1px;border-color:var(--gold)}
   .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0 12px}
   .hint{font-size:12.5px;color:var(--ink-3)}
@@ -2610,7 +2610,7 @@
   function orderForm(perm) {
     if (!perm.canDeliver || readOnly) return "";
     return '<div class="subhead">ADD STOCK</div><div class="card">' +
-      '<div class="grid2" style="margin-bottom:6px">' +
+      '<div class="grid2" style="margin-bottom:6px;align-items:end">' +
       '<div class="field"><label for="d-date">SENT OUT ON</label>' +
       '<input id="d-date" type="date" value="' + todayStr() + '"></div>' +
       '<div class="field"><label for="d-fee">DELIVERY FOR THIS ORDER (' + cur() + ')</label>' +
