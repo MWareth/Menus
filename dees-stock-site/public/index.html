@@ -149,6 +149,7 @@
     background:#fff;min-height:44px;width:100%;min-width:0}
   .field input:focus,.field select:focus{outline:2px solid var(--gold);outline-offset:-1px;border-color:var(--gold)}
   .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0 12px}
+  .grid2 > .field > input,.grid2 > .field > select{margin-top:auto}
   .hint{font-size:12.5px;color:var(--ink-3)}
 
   /* ---------- table ---------- */
@@ -260,8 +261,13 @@
   .dline:last-child{border-bottom:0;font-weight:900;color:var(--ink);padding-top:9px}
 
   /* ---------- recipe editor ---------- */
-  .ing{display:grid;grid-template-columns:1fr 78px 58px 86px 78px 92px 40px;gap:8px;align-items:end;margin-bottom:8px}
-  .ing input{border:1.5px solid var(--line);border-radius:9px;padding:9px 10px;min-height:42px;width:100%;background:#fff}
+  .ing{display:grid;grid-template-columns:1fr 78px 64px 86px 78px 92px 40px;gap:8px;align-items:end;margin-bottom:8px}
+  .ing input{border:1.5px solid var(--line);border-radius:9px;padding:9px 10px;min-height:42px;width:100%;min-width:0;background:#fff}
+  .ing .c{display:flex;flex-direction:column;justify-content:flex-end;min-width:0}
+  .ing .ml{display:none}
+  .ing input,.ing .out,.ing .x{height:44px;min-height:44px}
+  .ing input[type="number"]{-moz-appearance:textfield;appearance:textfield}
+  .ing input[type="number"]::-webkit-inner-spin-button,.ing input[type="number"]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
   .ing input:focus{outline:2px solid var(--gold);outline-offset:-1px;border-color:var(--gold)}
   .ing .lbl{font-size:10px;font-weight:900;letter-spacing:.09em;color:var(--ink-3);display:block;margin-bottom:4px}
   .ing .out{background:var(--shade);border:1.5px solid var(--line);border-radius:9px;padding:9px 10px;
@@ -269,8 +275,18 @@
   .ing .x{background:none;border:1.5px solid var(--line);border-radius:9px;min-height:42px;color:var(--ink-3);font-weight:900}
   .ing .x:hover{border-color:#F0B6B0;color:var(--bad)}
   @media(max-width:760px){
-    .ing{grid-template-columns:1fr 1fr;gap:8px}
-    .ing .out{justify-content:flex-start}
+    .ing-head{display:none}
+    .ing[data-row]{grid-template-columns:repeat(8,minmax(0,1fr));grid-template-areas:"n n n n n o o x" "q q u u pp pp pq pq";
+      gap:10px 6px;padding-bottom:12px;margin-bottom:12px;border-bottom:1px dashed var(--line)}
+    .ing .c-n{grid-area:n}.ing .c-q{grid-area:q}.ing .c-u{grid-area:u}
+    .ing .c-pp{grid-area:pp}.ing .c-pq{grid-area:pq}.ing .c-o{grid-area:o}.ing .c-x{grid-area:x}
+    .ing .ml{display:block;font-size:9px;font-weight:900;letter-spacing:.06em;line-height:1.2;color:var(--ink-3);margin:auto 0 4px}
+    .ing .c input{padding:9px 7px}
+    .ing .out{justify-content:flex-start;padding:9px 8px;font-size:14px}
+    .ing .x{padding:0}
+  }
+  @media(max-width:380px){
+    .ing .c input{padding:9px 5px}
   }
   .costcard{background:var(--char);color:var(--paper);border-radius:12px;padding:16px;margin-top:14px}
   .costcard .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:12px}
@@ -2285,19 +2301,19 @@
         '<span class="pill ' + (costed(it) ? "p-fresh" : "p-today") + '">' +
         (costed(it) ? "COSTED" : "NEEDS RECIPE") + "</span></div>";
 
-      h += '<div class="ing"><span><span class="lbl">INGREDIENT</span></span>' +
+      h += '<div class="ing ing-head"><span><span class="lbl">INGREDIENT</span></span>' +
         '<span><span class="lbl">RECIPE QTY</span></span><span><span class="lbl">UNIT</span></span>' +
         '<span><span class="lbl">PACK PRICE</span></span><span><span class="lbl">PACK QTY</span></span>' +
         '<span><span class="lbl">COST USED</span></span><span></span></div>';
       (it.recipe || []).forEach(function (r, ix) {
         h += '<div class="ing" data-row="' + ix + '">' +
-          '<input data-f="n" value="' + esc(r.n) + '" placeholder="ingredient"' + ro + ">" +
-          '<input data-f="q" type="number" min="0" step="any" value="' + r.q + '"' + ro + ">" +
-          '<input data-f="u" value="' + esc(r.u || "") + '" placeholder="g"' + ro + ">" +
-          '<input data-f="pp" type="number" min="0" step="0.01" value="' + r.pp + '"' + ro + ">" +
-          '<input data-f="pq" type="number" min="0" step="any" value="' + r.pq + '"' + ro + ">" +
-          '<span class="out">0</span>' +
-          (editable ? '<button class="x" type="button" data-delrow="' + it.id + ":" + ix + '" aria-label="Remove">×</button>' : "<span></span>") +
+          '<span class="c c-n"><span class="ml">INGREDIENT</span><input data-f="n" value="' + esc(r.n) + '" placeholder="ingredient" aria-label="Ingredient"' + ro + "></span>" +
+          '<span class="c c-q"><span class="ml">QTY</span><input data-f="q" type="number" min="0" step="any" value="' + r.q + '" aria-label="Recipe qty"' + ro + "></span>" +
+          '<span class="c c-u"><span class="ml">UNIT</span><input data-f="u" value="' + esc(r.u || "") + '" placeholder="g" aria-label="Unit"' + ro + "></span>" +
+          '<span class="c c-pp"><span class="ml">PACK PRICE</span><input data-f="pp" type="number" min="0" step="0.01" value="' + r.pp + '" aria-label="Pack price"' + ro + "></span>" +
+          '<span class="c c-pq"><span class="ml">PACK QTY</span><input data-f="pq" type="number" min="0" step="any" value="' + r.pq + '" aria-label="Pack qty"' + ro + "></span>" +
+          '<span class="c c-o"><span class="ml">COST USED</span><span class="out">0</span></span>' +
+          (editable ? '<button class="x c-x" type="button" data-delrow="' + it.id + ":" + ix + '" aria-label="Remove">×</button>' : '<span class="c-x"></span>') +
           "</div>";
       });
       if (!(it.recipe || []).length) h += '<p class="hint" style="margin:4px 0 10px">No ingredients yet.</p>';
