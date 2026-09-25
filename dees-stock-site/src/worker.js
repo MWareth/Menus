@@ -197,6 +197,47 @@ export const REPAIRS = {
       if (+b.shelf < 3 && addDays(b.madeOn, +b.shelf) >= today) { b.shelf = 3; changed = true; }
     });
     return changed;
+  },
+  /* The 25 Sep drop (7 San Sebastian + 11 Brownie Bags) was locked with the
+     delivery typed above AED 51 to recover the cutting loss. Dee's chose to
+     absorb it instead, so put that drop's delivery back to 51. The delivery
+     is baked into each lot's frozen cost, so work out what was spread from the
+     brownie lot (its cost minus the AED 5 charge) and take the excess back off
+     every lot in the drop. Sales on the lots are left untouched. Does nothing
+     unless exactly one drop matches and the numbers look like that order. */
+  "drop-25sep-delivery-51": (state) => {
+    const items = new Map((state.items || []).map((it) => [it.id, it]));
+    const nameOf = (b) => ((items.get(b.itemId) || {}).name || "");
+    const drops = new Map();
+    (state.batches || []).forEach((b) => {
+      if (b.voided || !b.drop) return;
+      if (!["2026-09-24", "2026-09-25", "2026-09-26"].includes(b.madeOn)) return;
+      if (!drops.has(b.drop)) drops.set(b.drop, []);
+      drops.get(b.drop).push(b);
+    });
+    const matches = [...drops.values()].filter((lots) => {
+      const costed = lots.filter((b) => b.unitCost != null);
+      if (costed.length !== 2) return false;
+      const ss = costed.find((b) => nameOf(b) === "San Sebastian");
+      const br = costed.find((b) => nameOf(b) === "Brownie Bag");
+      return ss && br && +ss.qty === 7 && +br.qty === 11;
+    });
+    if (matches.length !== 1) return false;
+    const lots = matches[0].filter((b) => b.unitCost != null);
+    const br = lots.find((b) => nameOf(b) === "Brownie Bag");
+    const ss = lots.find((b) => nameOf(b) === "San Sebastian");
+    const brItem = items.get(br.itemId) || {};
+    if (brItem.chargeCost == null || brItem.chargeCost === "") return false;
+    const pieces = lots.reduce((a, b) => a + (+b.qty || 0), 0);   // 18
+    const perNow = +br.unitCost - (+brItem.chargeCost);             // delivery per piece as locked
+    const perWant = 51 / pieces;
+    /* only act if the delivery really was above 51, and by a believable amount */
+    if (!(perNow > perWant + 0.005) || perNow * pieces > 150) return false;
+    const ssBase = +ss.unitCost - perNow;                           // should be ~5.44
+    if (!(ssBase > 4 && ssBase < 7)) return false;
+    const delta = perNow - perWant;
+    lots.forEach((b) => { b.unitCost = +b.unitCost - delta; });
+    return true;
   }
 };
 
