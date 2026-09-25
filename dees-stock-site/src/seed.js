@@ -31,6 +31,7 @@ export const SEED = {
       "yieldPieces": 26,
       "perPortion": 4,
       "packaging": 0.45,
+      "chargeCost": 23,
       "recipe": [
         {
           "n": "Leibniz biscuits",
@@ -102,6 +103,7 @@ export const SEED = {
       "yieldPieces": 8,
       "perPortion": 1,
       "packaging": 0.45,
+      "chargeCost": 7,
       "recipe": [
         {
           "n": "Kiri cream cheese",
@@ -166,6 +168,7 @@ export const SEED = {
       "yieldPieces": 5,
       "perPortion": 1,
       "packaging": 1.09,
+      "chargeCost": 8,
       "recipe": [
         {
           "n": "Cream",
@@ -289,6 +292,7 @@ export const SEED = {
       "yieldPieces": 7,
       "perPortion": 1,
       "packaging": 1.68,
+      "chargeCost": 24,
       "recipe": [
         {
           "n": "Egg whites",

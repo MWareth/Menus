@@ -238,6 +238,33 @@ export const REPAIRS = {
     const delta = perNow - perWant;
     lots.forEach((b) => { b.unitCost = +b.unitCost - delta; });
     return true;
+  },
+  /* Every item carries a "cost we charge Smash" that covers its true cost —
+     ingredients, packaging and Dee's own overhead — rounded up to the next
+     whole dirham, the way the Brownie Bag's AED 5 does. Worked out from the
+     recipe as it stands on the board. Only fills items that have no charge
+     yet, so a number Dee's typed in is never replaced, and orders already
+     locked keep the cost they went out at. */
+  "charge-covers-true-cost": (state) => {
+    let changed = false;
+    const shop = state.overheadPerPiece != null ? (+state.overheadPerPiece || 0) : 1.21;
+    (state.items || []).forEach((it) => {
+      if (it.chargeCost != null && it.chargeCost !== "") return;
+      const recipe = it.recipe || [];
+      const y = +it.yieldPieces || 0, p = +it.perPortion || 1;
+      const portions = y > 0 && p > 0 ? Math.floor(y / p) : 0;
+      if (!recipe.length || !portions) return;
+      const batch = recipe.reduce((a, r) => {
+        const q = +r.q, pq = +r.pq, pp = +r.pp;
+        return a + (pq > 0 && !isNaN(q) && !isNaN(pp) ? (q / pq) * pp : 0);
+      }, 0);
+      const overhead = it.overhead != null && it.overhead !== "" ? (+it.overhead || 0) : shop;
+      const trueCost = batch / portions + (+it.packaging || 0) + overhead;
+      if (!(trueCost > 0)) return;
+      it.chargeCost = Math.ceil(trueCost - 1e-9);
+      changed = true;
+    });
+    return changed;
   }
 };
 
