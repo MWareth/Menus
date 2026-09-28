@@ -914,6 +914,10 @@
      profit and the 50/50 split, then the settlement — cost, Dee's share,
      what has been paid and what is still owed. Same figures as the Settle
      page, so the statement Smash gets matches the app. */
+  /* profit as a share of what was sold, e.g. 605.91 on 1,164 is "52%" */
+  function profitRate(m) {
+    return m && m.R > 0.005 ? Math.round((m.P / m.R) * 100) + "%" : "";
+  }
   function monthRecordMoney(mk) {
     var m = monthTotals(mk);
     var duec = "#C0271C", okc = "#2F7D4F";
@@ -932,7 +936,8 @@
       '<div style="padding:14px 18px;background:#fff">' +
         '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:15px;color:#3A2A24"><span style="font-weight:700">Sales' + (m.soldN ? " · " + count(m.soldN, "piece") + " sold" : "") + '</span><span style="' + bg + '">' + cur() + " " + money(m.R) + '</span></div>' +
         '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:15px;color:#3A2A24"><span style="font-weight:700">Cost</span><span style="' + bg + '">' + cur() + " " + money(m.C) + '</span></div>' +
-        '<div style="background:#FFF6D6;border-radius:10px;padding:9px 13px;margin:8px 0;display:flex;justify-content:space-between"><span style="font-weight:900;color:#8A5A06">Profit</span><span style="' + bg + ';color:#8A5A06;font-size:18px">' + cur() + " " + money(m.P) + '</span></div>' +
+        '<div style="background:#FFF6D6;border-radius:10px;padding:9px 13px;margin:8px 0;display:flex;justify-content:space-between;align-items:center"><span style="font-weight:900;color:#8A5A06">Profit' +
+          (profitRate(m) ? '<span style="display:block;font-size:11.5px;font-weight:700;opacity:.8;margin-top:1px">' + profitRate(m) + ' of sales</span>' : "") + '</span><span style="' + bg + ';color:#8A5A06;font-size:18px">' + cur() + " " + money(m.P) + '</span></div>' +
         '<div style="display:flex;gap:10px;margin-top:8px">' +
           '<div style="flex:1;background:#4A2C2A;color:#fff;border-radius:12px;padding:10px;text-align:center"><div style="font-size:11px;font-weight:700;opacity:.85">DEE\'S ' + Math.round(m.d * 100) + '%</div><div style="' + bg + ';font-size:19px;margin-top:1px">' + cur() + " " + money(m.dees) + '</div></div>' +
           '<div style="flex:1;background:#F02820;color:#fff;border-radius:12px;padding:10px;text-align:center"><div style="font-size:11px;font-weight:700;opacity:.9">SMASH ' + Math.round((1 - m.d) * 100) + '%</div><div style="' + bg + ';font-size:19px;margin-top:1px">' + cur() + " " + money(m.truck) + '</div></div>' +
@@ -944,6 +949,7 @@
     h += row("Takings" + (m.soldN ? " · " + count(m.soldN, "piece") + " sold" : ""), cur() + " " + money(m.R));
     h += row("Less cost to make", (m.C ? "- " : "") + cur() + " " + money(m.C));
     h += row("Profit made", cur() + " " + money(m.P), { strong: true });
+    if (profitRate(m)) h += row("Profit rate", profitRate(m) + " of sales");
     h += row("Dee's " + Math.round(m.d * 100) + "%", cur() + " " + money(m.dees));
     h += row("Smash &amp; Pass " + Math.round((1 - m.d) * 100) + "%", cur() + " " + money(m.truck));
     h += "</tbody></table></div>";
@@ -2531,6 +2537,7 @@
           '</span><span class="num">' + cur() + " " + money(m.R) + "</span></div>";
         h += '<div class="crow"><span>Less cost to make</span><span class="num">' + (m.C ? "- " : "") + cur() + " " + money(m.C) + "</span></div>";
         h += '<div class="crow prof"><span><b>Profit made</b></span><span class="num v">' + cur() + " " + money(m.P) + "</span></div>";
+        if (profitRate(m)) h += '<div class="crow"><span>Profit rate</span><span class="num">' + profitRate(m) + " of sales</span></div>";
         h += '<div class="crow"><span>Dee\'s ' + Math.round(m.d * 100) + '%</span><span class="num">' + cur() + " " + money(m.dees) + "</span></div>";
         h += '<div class="crow"><span>Smash &amp; Pass ' + Math.round((1 - m.d) * 100) + '%</span><span class="num">' + cur() + " " + money(m.truck) + "</span></div>";
         h += "</div>";
