@@ -265,6 +265,38 @@ export const REPAIRS = {
       changed = true;
     });
     return changed;
+  },
+  /* The 1 Oct drop (8 San Sebastian + 17 Brownie Bags) goes out on 2 Oct,
+     matching its stickers (made 2 Oct, expires 5 Oct). Moves only that
+     drop's send-out date, the way CHANGE DATE does: anything logged before
+     2 Oct moves up to it. Costs and prices are untouched. Does nothing
+     unless exactly one open drop matches. */
+  "drop-1oct-to-2oct": (state) => {
+    const items = new Map((state.items || []).map((it) => [it.id, it]));
+    const nameOf = (b) => ((items.get(b.itemId) || {}).name || "");
+    const closed = new Set((state.weeks || []).map((w) => w.start));
+    const drops = new Map();
+    (state.batches || []).forEach((b) => {
+      if (b.voided || !b.drop || b.madeOn !== "2026-10-01") return;
+      if (!drops.has(b.drop)) drops.set(b.drop, []);
+      drops.get(b.drop).push(b);
+    });
+    const matches = [...drops.entries()].filter(([key, lots]) => {
+      if (closed.has(key)) return false;
+      const ss = lots.find((b) => nameOf(b) === "San Sebastian");
+      const br = lots.find((b) => nameOf(b) === "Brownie Bag");
+      return lots.length === 2 && ss && br && +ss.qty === 8 && +br.qty === 17;
+    });
+    if (matches.length !== 1) return false;
+    const nd = "2026-10-02";
+    matches[0][1].forEach((b) => {
+      b.madeOn = nd;
+      (b.sales || []).forEach((s) => {
+        const on = s.on || (s.at || "").slice(0, 10);
+        if (on && on < nd) s.on = nd;
+      });
+    });
+    return true;
   }
 };
 
