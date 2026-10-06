@@ -56,10 +56,10 @@ export const SEED = {
         },
         {
           "n": "Vanilla",
-          "q": 20,
-          "u": "g",
-          "pp": 3.78,
-          "pq": 20
+          "q": 1,
+          "u": "pack",
+          "pp": 5,
+          "pq": 1
         },
         {
           "n": "Cocoa powder",
@@ -142,10 +142,10 @@ export const SEED = {
         },
         {
           "n": "Vanilla",
-          "q": 20,
-          "u": "g",
-          "pp": 3.78,
-          "pq": 20
+          "q": 1,
+          "u": "pack",
+          "pp": 5,
+          "pq": 1
         },
         {
           "n": "Baking sheet",
@@ -193,10 +193,10 @@ export const SEED = {
         },
         {
           "n": "Vanilla",
-          "q": 20,
-          "u": "g",
-          "pp": 3.78,
-          "pq": 20
+          "q": 1,
+          "u": "pack",
+          "pp": 5,
+          "pq": 1
         }
       ]
     },
@@ -259,10 +259,10 @@ export const SEED = {
         },
         {
           "n": "Vanilla",
-          "q": 20,
-          "u": "g",
-          "pp": 3.78,
-          "pq": 20
+          "q": 1,
+          "u": "pack",
+          "pp": 5,
+          "pq": 1
         },
         {
           "n": "Hershey's choc. chips",
@@ -317,10 +317,10 @@ export const SEED = {
         },
         {
           "n": "Vanilla",
-          "q": 20,
-          "u": "g",
-          "pp": 3.78,
-          "pq": 20
+          "q": 1,
+          "u": "pack",
+          "pp": 5,
+          "pq": 1
         },
         {
           "n": "Cream",

@@ -297,6 +297,23 @@ export const REPAIRS = {
       });
     });
     return true;
+  },
+  /* Vanilla is bought as a pack at AED 5, and every recipe uses one pack a
+     batch. The San Sebastian card had been changed to a 1-piece pack while
+     still using "20", which costed AED 100 of vanilla per cake and showed a
+     26% margin. Every vanilla line now reads 1 pack at AED 5. Only recipe
+     cards change: orders already sent keep the cost they went out at. */
+  "vanilla-one-pack-5": (state) => {
+    let changed = false;
+    (state.items || []).forEach((it) => {
+      (it.recipe || []).forEach((r) => {
+        if (!/vanil/i.test(r.n || "")) return;
+        if (+r.q === 1 && r.u === "pack" && +r.pp === 5 && +r.pq === 1) return;
+        r.q = 1; r.u = "pack"; r.pp = 5; r.pq = 1;
+        changed = true;
+      });
+    });
+    return changed;
   }
 };
 
