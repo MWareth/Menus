@@ -314,6 +314,95 @@ export const REPAIRS = {
       });
     });
     return changed;
+  },
+  /* One price for each ingredient, whichever recipe it is in. Cream is the
+     Greenhouse carton (12 x 1 L for AED 264.60, so AED 22.05 a litre), Kiri is
+     AED 40 for 1,100 g, and everything else the San Sebastian card shares with
+     another card (eggs, sugar, flour, vanilla) takes the San Sebastian price.
+     Egg yolks and whites are priced per egg. Baking sheets are left alone:
+     each recipe uses a different size. Only pack price and pack size change,
+     never how much a recipe uses, and only where the units match. */
+  "match-prices-to-san-sebastian": (state) => {
+    let changed = false;
+    const set = (r, pp, pq) => {
+      if (+r.pp === pp && +r.pq === pq) return;
+      r.pp = pp; r.pq = pq; changed = true;
+    };
+    const unit = (r) => String(r.u || "").trim().toLowerCase();
+    const key = (n) => {
+      const s = String(n || "").trim().toLowerCase();
+      return /\begg/.test(s) ? "egg" : s.replace(/s$/, "");
+    };
+    const items = state.items || [];
+    items.forEach((it) => (it.recipe || []).forEach((r) => {
+      if (!/cream/i.test(r.n || "") || /cheese|kiri/i.test(r.n || "")) return;
+      const u = unit(r);
+      if (u === "ml") set(r, 22.05, 1000);
+      else if (["l", "ltr", "litre", "liter"].includes(u)) set(r, 22.05, 1);
+    }));
+    const ss = items.find((it) => it.name === "San Sebastian");
+    if (!ss) return changed;
+    (ss.recipe || []).forEach((r) => {
+      if (/kiri/i.test(r.n || "") && unit(r) === "g") set(r, 40, 1100);
+    });
+    const ref = new Map();
+    (ss.recipe || []).forEach((r) => {
+      const k = key(r.n);
+      if (!k || /cream|kiri|baking sheet/.test(k) || !(+r.pq > 0)) return;
+      ref.set(k, r);
+    });
+    items.forEach((it) => {
+      if (it === ss) return;
+      (it.recipe || []).forEach((r) => {
+        const src = ref.get(key(r.n));
+        if (src && unit(src) === unit(r)) set(r, +src.pp, +src.pq);
+      });
+    });
+    return changed;
+  },
+  /* Crème Brûlée sells at AED 23. A normal batch is 500 ml cream, 6 egg yolks,
+     100 g sugar and 2 vanilla packs, and makes 6 ramekins (the 7 Oct double
+     batch used twice that for 12). */
+  "creme-brulee-23": (state) => {
+    let changed = false;
+    (state.items || []).forEach((it) => {
+      if (!/^cr[eè]me br[uû]l[eé]e$/i.test(String(it.name || "").trim())) return;
+      if (+it.price !== 23) { it.price = 23; changed = true; }
+      if (+it.yieldPieces !== 6) { it.yieldPieces = 6; changed = true; }
+      (it.recipe || []).forEach((r) => {
+        if (/yolk/i.test(r.n || "") && +r.q !== 6) { r.q = 6; changed = true; }
+        if (/vanil/i.test(r.n || "") && +r.q !== 2) { r.q = 2; changed = true; }
+        const u = String(r.u || "").trim().toLowerCase();
+        if (/cream/i.test(r.n || "") && u === "ml" && +r.q !== 500) { r.q = 500; changed = true; }
+        if (/sugar/i.test(r.n || "") && u === "g" && +r.q !== 100) { r.q = 100; changed = true; }
+      });
+    });
+    return changed;
+  },
+  /* The 12 Crème Brûlées sent out on 7 Oct are samples: they sell at AED 23,
+     Dee's covers their cost, and only the profit from what sells is split.
+     Their share of the order's delivery fee stays charged. Does nothing
+     unless exactly one open lot of 12 went out between 6 and 8 Oct; the
+     SAMPLES button on the lot does the same by hand. */
+  "creme-brulee-7oct-samples": (state) => {
+    const isCB = (it) => /^cr[eè]me br[uû]l[eé]e$/i.test(String((it || {}).name || "").trim());
+    const items = new Map((state.items || []).map((it) => [it.id, it]));
+    const closed = new Set((state.weeks || []).map((w) => w.start));
+    const lots = (state.batches || []).filter((b) =>
+      !b.voided && !b.samples && isCB(items.get(b.itemId)) && +b.qty === 12 &&
+      ["2026-10-06", "2026-10-07", "2026-10-08"].includes(b.madeOn) &&
+      !closed.has(b.drop || b.id) && b.unitCost != null);
+    if (lots.length !== 1) return false;
+    const b = lots[0], it = items.get(b.itemId);
+    const charge = it.chargeCost != null && it.chargeCost !== "" ? +it.chargeCost : null;
+    const deliv = b.deliveryEach != null ? +b.deliveryEach
+      : charge != null ? Math.max(0, +b.unitCost - charge) : null;
+    if (deliv == null || !(deliv <= +b.unitCost)) return false;
+    b.unitPrice = 23;
+    b.costBeforeSamples = b.unitCost;
+    b.unitCost = deliv;
+    b.samples = true;
+    return true;
   }
 };
 

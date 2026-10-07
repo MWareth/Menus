@@ -96,6 +96,7 @@
   .p-done{background:var(--shade);color:var(--ink-2)}
   .p-void{background:var(--shade);color:var(--ink-3)}
   .p-lock{background:var(--char);color:var(--butter)}
+  .p-sample{background:#E4EAF6;color:#26407A}
 
   /* ---------- the day a lot went out ---------- */
   .dayband{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
@@ -482,8 +483,8 @@
           "n": "Kiri cream cheese",
           "q": 600,
           "u": "g",
-          "pp": 35,
-          "pq": 1150
+          "pp": 40,
+          "pq": 1100
         },
         {
           "n": "Sugar",
@@ -510,7 +511,7 @@
           "n": "Cream",
           "q": 312.5,
           "u": "ml",
-          "pp": 37.95,
+          "pp": 22.05,
           "pq": 1000
         },
         {
@@ -533,12 +534,12 @@
       "id": "i3",
       "name": "Cr\u00e8me Br\u00fbl\u00e9e",
       "note": "125 ml ramekin",
-      "price": 20,
+      "price": 23,
       "shelf": 3,
       "active": true,
       "batchWord": "batch",
       "portionWord": "ramekin",
-      "yieldPieces": 5,
+      "yieldPieces": 6,
       "perPortion": 1,
       "packaging": 1.09,
       "chargeCost": 8,
@@ -547,12 +548,12 @@
           "n": "Cream",
           "q": 500,
           "u": "ml",
-          "pp": 37.95,
+          "pp": 22.05,
           "pq": 1000
         },
         {
           "n": "Egg yolks",
-          "q": 5,
+          "q": 6,
           "u": "pcs",
           "pp": 23.75,
           "pq": 30
@@ -566,7 +567,7 @@
         },
         {
           "n": "Vanilla",
-          "q": 1,
+          "q": 2,
           "u": "pack",
           "pp": 5,
           "pq": 1
@@ -699,7 +700,7 @@
           "n": "Cream",
           "q": 500,
           "u": "ml",
-          "pp": 37.95,
+          "pp": 22.05,
           "pq": 1000
         },
         {
@@ -957,6 +958,22 @@
   function chargeOf(it) {
     if (it && it.chargeCost != null && it.chargeCost !== "") return +it.chargeCost || 0;
     return unitCostOf(it);
+  }
+  /* Samples: Dee's covers the cost of a lot, so Smash isn't charged for it and
+     only the profit from what sells is split. The lot's share of the order's
+     delivery fee stays charged. Undoing puts back the cost it was locked at. */
+  function markSamples(b) {
+    if (b.samples || b.unitCost == null) return;
+    var deliv = b.deliveryEach != null ? +b.deliveryEach
+      : Math.max(0, +b.unitCost - chargeOf(item(b.itemId)));
+    b.costBeforeSamples = b.unitCost;
+    b.unitCost = Math.min(+b.unitCost, Math.max(0, deliv));
+    b.samples = true;
+  }
+  function unmarkSamples(b) {
+    if (!b.samples) return;
+    if (b.costBeforeSamples != null) b.unitCost = b.costBeforeSamples;
+    delete b.samples; delete b.costBeforeSamples;
   }
   /* Dee's own overhead per piece — gas, power, delivery and the printed label.
      This is shown on Recipes as the "true cost" only; it is NOT part of the
@@ -1298,6 +1315,7 @@
       .forEach(function (b) {
         var it = item(b.itemId);
         var r = { on: b.madeOn, drop: dropOf(b), item: it ? it.name : "Deleted item", word: bPortion(b),
+                  samples: !!b.samples,
                   out: b.qty, sold: sold(b), given: given(b), binned: binned(b),
                   left: Math.max(0, remaining(b)), price: b.unitPrice || 0,
                   takings: sold(b) * (b.unitPrice || 0),
@@ -1315,7 +1333,7 @@
       '<th class="r">OUT</th><th class="r">SOLD</th><th class="r">GIVEN</th><th class="r">BINNED</th>' +
       '<th class="r">LEFT</th><th class="r">TAKINGS</th><th class="r">COST</th></tr></thead><tbody>';
     rec.rows.forEach(function (r) {
-      h += "<tr><td>" + esc(niceDate(r.on)) + "</td><td>" + esc(r.item) +
+      h += "<tr><td>" + esc(niceDate(r.on)) + "</td><td>" + esc(r.item) + (r.samples ? " (samples)" : "") +
         '</td><td class="r num">' + r.out +
         '</td><td class="r num">' + (r.sold || "\u2014") +
         '</td><td class="r num">' + (r.given || "\u2014") +
@@ -2579,7 +2597,8 @@
         '<span class="qty num">' + left + " / " + b.qty + "</span>" +
         '<span class="unit">' + esc(plural(bPortion(b))) + "</span>" +
         '<span class="pill p-' + st + '">' + STATUS_LABEL[st] + "</span>" +
-        (b.voided ? "" : '<span class="pill p-lock">LOCKED</span>') + "</div>";
+        (b.voided ? "" : '<span class="pill p-lock">LOCKED</span>') +
+        (b.samples ? ' <span class="pill p-sample">SAMPLES</span>' : "") + "</div>";
       h += '<div class="meta">' + "Sent out <b>" + niceDate(b.madeOn) + "</b> · expires <b>" + niceDate(exp) + "</b>" +
         (st === "expired" ? " (" + Math.abs(d) + "d ago)" : d >= 0 && !b.voided && left > 0 ? " (" + (d === 0 ? "today" : d + "d") + ")" : "") +
         " · logged <b>" + esc(stamp(b.at)) + "</b> by <b>" + esc(uname(b.by)) + "</b></div>";
@@ -2602,6 +2621,8 @@
           "</b> \u00b7 cost <b>" + cur() + " " + money(left * b.unitCost) +
           "</b> \u00b7 worth <b>" + cur() + " " + money(left * (b.unitPrice || 0)) + "</b> at menu price</div>";
       }
+      if (b.samples) h += '<div class="meta">Samples: Dee\'s covers the cost, so Smash only pays its share of the delivery. ' +
+        "The profit from what sells is split 50/50.</div>";
       if (b.voided) h += '<div class="meta">Voided by <b>' + esc(uname(b.voidedBy)) + "</b>" +
         (b.voidReason ? ": " + esc(b.voidReason) : "") + "</div>";
       var pct = b.qty ? Math.round((movedOut(b) / b.qty) * 100) : 0;
@@ -2622,6 +2643,10 @@
       }
       if (withVoid && !b.voided && perm.canDeliver && !readOnly) {
         acts += '<button class="btn danger sm" type="button" data-void="' + b.id + '">VOID</button>';
+      }
+      if (withVoid && !b.voided && perm.canSetup && !readOnly && b.unitCost != null && !weekClosed(dropOf(b))) {
+        acts += '<button class="btn ghost sm" type="button" data-samples="' + b.id + '">' +
+          (b.samples ? "CHARGE COST AGAIN" : "SAMPLES") + "</button>";
       }
       if (withVoid && b.voided && perm.canSetup && !readOnly) {
         acts += '<button class="btn ghost sm" type="button" data-unvoid="' + b.id + '">RESTORE</button>';
@@ -3008,6 +3033,7 @@
             '</span><span class="num"><b style="color:' + (dv.settled ? okc : duec) + '">' + cur() + " " + money(dv.cost) + "</b></span></div>";
           dv.lots.forEach(function (r) {
             h += '<div class="crow" style="font-size:12.5px;padding:2px 0 2px 12px"><span>' + esc(r.item) + " · " + count(r.out, r.word) +
+              (r.samples ? ' <span style="font-size:9px;font-weight:800;letter-spacing:.05em;padding:1px 6px;border-radius:999px;background:#E4EAF6;color:#26407A">SAMPLES</span>' : "") +
               '</span><span class="num">' + (r.cost == null ? "—" : cur() + " " + money(r.cost)) + "</span></div>";
           });
           if (!dv.settled && dv.paid > 0.005) h += '<div class="crow" style="color:#8A7A6C;font-size:12px;padding-left:12px"><span>Paid ' + cur() + " " + money(dv.paid) +
@@ -3572,6 +3598,27 @@
         notice("Order notice", deliveryNotice(b.getAttribute("data-notify")));
       };
     });
+    app.querySelectorAll("[data-samples]").forEach(function (b) {
+      b.onclick = function () {
+        var bid = b.getAttribute("data-samples");
+        var t0 = S.batches.filter(function (x) { return x.id === bid; })[0];
+        if (!t0) return;
+        if (weekClosed(dropOf(t0))) { toast("That delivery is closed. Reopen it first.", true); return; }
+        var on = !t0.samples;
+        ask({ title: on ? "Give these as samples?" : "Charge the cost again?",
+              body: on
+                ? "Smash won't be charged the cost of these " + count(t0.qty, bPortion(t0)) + ". Dee's covers it, " +
+                  "and only the profit from what sells is split 50/50. Their share of the delivery stays charged."
+                : "These go back to the cost they were locked in at.",
+              ok: on ? "MARK AS SAMPLES" : "CHARGE COST AGAIN" }).then(function (go) {
+          if (!go) return;
+          save(function (nx) {
+            var t = nx.batches.filter(function (x) { return x.id === bid; })[0];
+            if (on) markSamples(t); else unmarkSamples(t);
+          }, on ? "Marked as samples. No cost to Smash." : "Charged at its locked cost again.");
+        });
+      };
+    });
     app.querySelectorAll("[data-unvoid]").forEach(function (b) {
       b.onclick = function () {
         var bid = b.getAttribute("data-unvoid");
@@ -4105,7 +4152,9 @@
         }, 0);
         if (pieces > 0) {
           var per = fee / pieces;
-          made.forEach(function (b) { if (b.unitCost != null) b.unitCost = +b.unitCost + per; });
+          made.forEach(function (b) {
+            if (b.unitCost != null) { b.unitCost = +b.unitCost + per; b.deliveryEach = per; }
+          });
         }
       }
       made.forEach(function (b) { nx.batches.push(b); });

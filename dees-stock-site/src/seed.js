@@ -109,8 +109,8 @@ export const SEED = {
           "n": "Kiri cream cheese",
           "q": 600,
           "u": "g",
-          "pp": 35,
-          "pq": 1150
+          "pp": 40,
+          "pq": 1100
         },
         {
           "n": "Sugar",
@@ -137,7 +137,7 @@ export const SEED = {
           "n": "Cream",
           "q": 312.5,
           "u": "ml",
-          "pp": 37.95,
+          "pp": 22.05,
           "pq": 1000
         },
         {
@@ -160,12 +160,12 @@ export const SEED = {
       "id": "i3",
       "name": "Crème Brûlée",
       "note": "125 ml ramekin",
-      "price": 20,
+      "price": 23,
       "shelf": 3,
       "active": true,
       "batchWord": "batch",
       "portionWord": "ramekin",
-      "yieldPieces": 5,
+      "yieldPieces": 6,
       "perPortion": 1,
       "packaging": 1.09,
       "chargeCost": 8,
@@ -174,12 +174,12 @@ export const SEED = {
           "n": "Cream",
           "q": 500,
           "u": "ml",
-          "pp": 37.95,
+          "pp": 22.05,
           "pq": 1000
         },
         {
           "n": "Egg yolks",
-          "q": 5,
+          "q": 6,
           "u": "pcs",
           "pp": 23.75,
           "pq": 30
@@ -193,7 +193,7 @@ export const SEED = {
         },
         {
           "n": "Vanilla",
-          "q": 1,
+          "q": 2,
           "u": "pack",
           "pp": 5,
           "pq": 1
@@ -326,7 +326,7 @@ export const SEED = {
           "n": "Cream",
           "q": 500,
           "u": "ml",
-          "pp": 37.95,
+          "pp": 22.05,
           "pq": 1000
         },
         {
