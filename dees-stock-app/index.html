@@ -541,7 +541,7 @@
       "portionWord": "ramekin",
       "yieldPieces": 6,
       "perPortion": 1,
-      "packaging": 1.09,
+      "packaging": 1.63,
       "chargeCost": 8,
       "recipe": [
         {
@@ -572,7 +572,8 @@
           "pp": 5,
           "pq": 1
         }
-      ]
+      ],
+      "realPackaging": 0.6
     },
     {
       "id": "i4",
@@ -987,6 +988,32 @@
      so it lands in cost-to-make (Smash pays it back in full) with no separate
      line. Editable per order on the form; this is just the default that fills
      it. Set to 0 for a pickup. */
+  /* ===== Dee's own books: Marwan and Dina only, never sent to the truck =====
+     Smash pays the fixed price per piece plus the delivery. The real cost is
+     what a piece actually costs Dee's: ingredients at the recipe prices, the
+     real packaging, the kitchen overhead, and the real petrol for the trip.
+     Both are frozen onto a lot when it goes out. */
+  function tripCostDefault() {
+    return S.tripCost != null && S.tripCost !== "" ? (+S.tripCost || 0) : 14;
+  }
+  function realPackOf(it) {
+    if (it && it.realPackaging != null && it.realPackaging !== "") return +it.realPackaging || 0;
+    return +((it || {}).packaging) || 0;
+  }
+  function realEachOf(it) {
+    if (!it || !costed(it)) return null;
+    return batchCost(it) / portionsPer(it) + realPackOf(it) + overheadPerPiece(it);
+  }
+  function lotRealEach(b) { return b.realEach != null ? +b.realEach : realEachOf(item(b.itemId)); }
+  function dropPieces(key) {
+    return live().filter(function (b) { return dropOf(b) === key; })
+      .reduce(function (a, b) { return a + (+b.qty || 0); }, 0);
+  }
+  function lotTripEach(b) {
+    if (b.tripEach != null) return +b.tripEach;
+    var n = dropPieces(dropOf(b));
+    return n > 0 ? tripCostDefault() / n : 0;
+  }
   function deliveryPerOrder() {
     return S.deliveryPerOrder != null ? (+S.deliveryPerOrder || 0) : 51;
   }
@@ -1572,7 +1599,7 @@
           ? '<input id="m-val" type="date" value="' + esc(opts.input.value || "") + '"' +
             (opts.input.min ? ' min="' + esc(opts.input.min) + '"' : "") +
             (opts.input.max ? ' max="' + esc(opts.input.max) + '"' : "") + ">"
-          : '<input id="m-val" type="number" inputmode="numeric" value="' + esc(opts.input.value) +
+          : '<input id="m-val" type="number" inputmode="' + (opts.input.decimal ? "decimal\" step=\"0.01" : "numeric") + '" value="' + esc(opts.input.value) +
             '" min="' + esc(opts.input.min) + '" max="' + esc(opts.input.max) + '">';
         h += "</div>";
       }
@@ -1607,9 +1634,9 @@
           if (!/^\d{4}-\d{2}-\d{2}$/.test(el.value)) { toast("Pick a date.", true); return; }
           finish(el.value); return;
         }
-        var v = parseInt(el.value, 10);
+        var v = opts.input.decimal ? Math.round(parseFloat(el.value) * 100) / 100 : parseInt(el.value, 10);
         var lo = opts.input.min != null ? +opts.input.min : 1;
-        if (isNaN(v) || v < lo) { toast("Enter a whole number, " + lo + " or more.", true); return; }
+        if (isNaN(v) || v < lo) { toast(opts.input.decimal ? "Enter an amount, " + lo + " or more." : "Enter a whole number, " + lo + " or more.", true); return; }
         if (opts.input.max != null && v > +opts.input.max) {
           toast("That is more than the " + opts.input.max + " available.", true); return;
         }
@@ -2256,6 +2283,7 @@
       "</div></div></header>";
 
     var tabs = [["stock", "STOCK", alerts], ["out", "ORDERS", 0], ["money", "SETTLE", toDecideNow()]];
+    if (perm.canDeliver) tabs.push(["pnl", "MY P&amp;L", 0]);
     if (perm.canDeliver) tabs.push(["recipes", "RECIPES", 0]);
     if (perm.canSetup) tabs.push(["setup", "SETUP", 0]);
     tabs.push(["account", "MY PIN", 0]);
@@ -2282,6 +2310,7 @@
     else if (tab === "out") html += viewOut(perm);
     else if (tab === "money") html += viewMoney(perm);
     else if (tab === "recipes") html += viewRecipes(perm);
+    else if (tab === "pnl") html += viewPnl(perm);
     else if (tab === "setup") html += viewSetup(perm);
     else if (tab === "account") html += viewAccount();
     else html += viewStock(perm);
@@ -2684,6 +2713,8 @@
       '<input id="d-date" type="date" value="' + todayStr() + '"></div>' +
       '<div class="field"><label for="d-fee">DELIVERY FOR THIS ORDER (' + cur() + ')</label>' +
       '<input id="d-fee" type="number" min="0" step="0.01" inputmode="decimal" value="' + deliveryPerOrder() + '"></div>' +
+      '<div class="field"><label for="d-trip">REAL PETROL FOR THIS TRIP (' + cur() + ') \u00b7 DEE\'S ONLY</label>' +
+      '<input id="d-trip" type="number" min="0" step="0.01" inputmode="decimal" value="' + tripCostDefault() + '"></div>' +
       "</div>" +
       '<div id="d-rows"></div>' +
       '<button class="btn ghost sm" type="button" data-act="addrow2">+ ADD ANOTHER ITEM</button>' +
@@ -2809,6 +2840,8 @@
         '<input data-f="perPortion" type="number" min="1" step="any" value="' + (it.perPortion || 1) + '"' + ro + "></div>" +
         '<div class="field"><label>PACKAGING PER ' + esc(portionWordOf(it).toUpperCase()) + ' (' + cur() + ')</label>' +
         '<input data-f="packaging" type="number" min="0" step="0.01" value="' + (it.packaging || 0) + '"' + ro + "></div>" +
+        '<div class="field"><label>REAL PACKAGING PER ' + esc(portionWordOf(it).toUpperCase()) + ' (' + cur() + ') \u00b7 DEE\'S ONLY</label>' +
+        '<input data-f="realPackaging" type="number" min="0" step="0.01" value="' + (it.realPackaging != null && it.realPackaging !== "" ? it.realPackaging : "") + '" placeholder="same: ' + money(+it.packaging || 0) + '"' + ro + "></div>" +
         '<div class="field"><label>OVERHEAD PER ' + esc(portionWordOf(it).toUpperCase()) + ' (' + cur() + ')</label>' +
         '<input data-f="overhead" type="number" min="0" step="0.01" value="' + overheadPerPiece(it) + '"' + ro + "></div>" +
         '<div class="field"><label>COST WE CHARGE SMASH (' + cur() + ')</label>' +
@@ -2821,10 +2854,11 @@
 
       h += '<div class="costcard"><div class="grid">' +
         cc("batch", "RECIPE COST") + cc("yield", "YIELD") + cc("ing", "INGREDIENT / UNIT") +
-        cc("pack", "PACKAGING") + cc("ovh", "+ OVERHEAD") + cc("truecost", "TRUE COST EACH") +
-        cc("price", "SELLS AT") + cc("profit", "PROFIT EACH") + cc("margin", "MARGIN") +
+        cc("pack", "PACKAGING") + cc("ovh", "+ OVERHEAD") + cc("truecost", "COST EACH (CARD PACKAGING)") +
+        cc("real", "REAL COST EACH \ud83d\udd12") +
+        cc("price", "SELLS AT") + cc("profit", "REAL PROFIT EACH") + cc("margin", "REAL MARGIN") +
         "</div></div>";
-      h += '<p class="hint" style="margin-top:10px">Overhead is this item\'s own — gas, power, mixer, delivery, label — set it in the box above (' + cur() + " " + money(overheadPerPiece(it)) +
+      h += '<p class="hint" style="margin-top:10px">Overhead is this item\'s own — gas, power, mixer, label; petrol is counted per trip on MY P&amp;L — set it in the box above (' + cur() + " " + money(overheadPerPiece(it)) +
         " per " + esc(portionWordOf(it)) + "). <b>True cost each</b> = ingredients + packaging + overhead. " +
         "Profit and margin here are after everything.</p>";
       h += '<p class="hint" style="margin-top:6px"><b>Cost we charge Smash</b> is the only cost the truck ever sees — on the settlement and the invoice. ' +
@@ -2950,6 +2984,80 @@
   }
 
   /* ---------- money ---------- */
+  /* ============ MY P&L — Dee's own books (Marwan and Dina only) ============ */
+  function viewPnl(perm) {
+    var h = '<h2 class="sec">My P&amp;L</h2>';
+    h += '<p class="sub">Dee\'s own books. Only Marwan and Dina see this page — the truck never receives these numbers. ' +
+      '<b>Smash pays</b> is the price per piece plus the delivery, exactly as on Settle. ' +
+      '<b>Real cost</b> is what it actually cost you: ingredients at your recipe prices, the real packaging, kitchen overhead and the real petrol for each trip.</p>';
+    var months = monthsWithOrders();
+    if (!months.length) return h + '<div class="empty">No orders yet.</div>';
+    var curM = (selMonth && months.indexOf(selMonth) >= 0) ? selMonth : months[0];
+    h += '<div style="display:flex;flex-wrap:wrap;gap:7px;margin:6px 0 14px">';
+    months.forEach(function (mk) {
+      var on = mk === curM;
+      h += '<button class="btn ' + (on ? "pri" : "ghost") + ' sm" type="button" data-mtab="' + mk + '" style="padding:6px 14px' + (on ? "" : ";opacity:.8") + '">' + esc(monthShort(mk)) + "</button>";
+    });
+    h += "</div>";
+    var m = monthTotals(curM);
+    var lots = live().filter(function (b) { return monthKey(b.madeOn) === curM; });
+    var drops = [], byDrop = {}, est = false, realGoods = 0, petrol = 0, upside = 0;
+    lots.slice().sort(function (a, b) { return a.madeOn < b.madeOn ? -1 : a.madeOn > b.madeOn ? 1 : (a.at < b.at ? -1 : 1); })
+      .forEach(function (b) {
+        var k = dropOf(b), dv = byDrop[k];
+        if (!dv) { dv = byDrop[k] = { key: k, on: b.madeOn, smash: 0, real: 0, trip: 0, lines: [], est: false }; drops.push(dv); }
+        var it = item(b.itemId), re = lotRealEach(b), te = lotTripEach(b);
+        if (b.realEach == null || b.tripEach == null) { dv.est = true; est = true; }
+        dv.smash += b.unitCost == null ? 0 : b.qty * b.unitCost;
+        dv.real += re == null ? 0 : b.qty * re;
+        dv.trip += b.qty * te;
+        dv.lines.push(count(b.qty, bPortion(b)) + " " + (it ? it.name : "Deleted item") + (b.samples ? " (samples)" : ""));
+        if (status(b) !== "expired") upside += Math.max(0, remaining(b)) * (b.unitPrice || 0);
+      });
+    drops.forEach(function (dv) { realGoods += dv.real; petrol += dv.trip; });
+    var moneyIn = m.C + m.dees, realAll = realGoods + petrol, profit = moneyIn - realAll;
+    var pAll = m.P + upside, deesAll = Math.max(0, pAll) * m.d, profitAll = m.C + deesAll - realAll;
+    var okc = "#7BD69B", badc = "#FF8A80";
+    var crow = function (l, v, o) {
+      o = o || {};
+      return '<div class="crow' + (o.prof ? " prof" : "") + '"' + (o.small ? ' style="color:#8A7A6C;font-size:12px;margin-top:-3px"' : "") + "><span>" +
+        (o.b ? "<b>" + l + "</b>" : l) + '</span><span class="num' + (o.prof ? " v" : "") + '"' +
+        (o.color ? ' style="color:' + o.color + '"' : "") + ">" + v + "</span></div>";
+    };
+    var A = function (n) { return cur() + " " + money(n); };
+    h += '<div class="settle month"><div class="top"><span class="cname">' + esc(monthName(curM)) + ' · Dee\'s real P&amp;L</span></div>';
+    h += '<div class="mblock"><div class="blab">MONEY IN FROM SMASH</div>';
+    h += crow("Cost &amp; delivery Smash pays", A(m.C));
+    h += crow("Your 50% of the profit so far", A(m.dees));
+    h += crow("Total in", A(moneyIn), { b: true, prof: true });
+    h += "</div>";
+    h += '<div class="mblock"><div class="blab">YOUR REAL COSTS</div>';
+    h += crow("Ingredients, packaging &amp; kitchen", "- " + A(realGoods));
+    h += crow("Petrol for the trips", "- " + A(petrol));
+    h += crow("Total real cost", "- " + A(realAll), { b: true, prof: true });
+    h += "</div>";
+    h += '<div class="mblock"><div class="blab">YOUR REAL PROFIT</div>';
+    h += crow("Profit so far", A(profit), { b: true, prof: true, color: profit >= 0 ? okc : badc });
+    h += crow("If everything still in date sells", A(profitAll), { color: profitAll >= 0 ? okc : badc });
+    if (est) h += crow("Orders sent before this page existed use today\'s recipe prices and AED " + money(tripCostDefault()) + " petrol a trip.", "", { small: true });
+    h += "</div></div>";
+
+    h += '<div class="subhead">PER DELIVERY</div>';
+    drops.slice().reverse().forEach(function (dv) {
+      var gap = dv.smash - dv.real - dv.trip;
+      h += '<div class="card" style="margin-bottom:10px">' +
+        '<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><b>' + esc(niceDate(dv.on)) + " delivery</b>" +
+        (dv.est ? '<span class="pill p-done">ESTIMATED</span>' : "") + "</div>" +
+        '<div class="meta">' + esc(dv.lines.join(" · ")) + "</div>" +
+        '<div class="meta">Smash pays <b>' + A(dv.smash) + "</b> · real cost <b>" + A(dv.real + dv.trip) + "</b>" +
+        " (petrol " + A(dv.trip) + ") · " + (gap >= 0 ? "you keep " : "you cover ") + '<b style="color:' + (gap >= 0 ? "#2F7D4F" : "#C0271C") + '">' + A(Math.abs(gap)) + "</b> before the profit split</div>" +
+        (!readOnly && !weekClosed(dv.key) ? '<div class="acts"><button class="btn ghost sm" type="button" data-trip="' + dv.key + '">CHANGE PETROL</button></div>' : "") +
+        "</div>";
+    });
+    h += '<p class="hint">The profit split is worked out for the whole month, so it shows on the summary, not on each delivery.</p>';
+    return h;
+  }
+
   function viewMoney(perm) {
     var t = totals(null);
     var S1 = settlement();
@@ -3598,6 +3706,27 @@
         notice("Order notice", deliveryNotice(b.getAttribute("data-notify")));
       };
     });
+    app.querySelectorAll("[data-trip]").forEach(function (b) {
+      b.onclick = function () {
+        var dk = b.getAttribute("data-trip");
+        if (weekClosed(dk)) { toast("That delivery is closed. Reopen it first.", true); return; }
+        var lotsD = live().filter(function (x) { return dropOf(x) === dk; });
+        var now = lotsD.reduce(function (a, x) { return a + x.qty * lotTripEach(x); }, 0);
+        ask({ title: "Real petrol for this trip",
+              body: "What the trip actually cost in petrol \u2014 Jetour, Rio, or a Careem delivery. Dee's books only; Smash never sees it.",
+              ok: "SAVE",
+              input: { label: "PETROL (" + cur() + ")", value: Math.round(now * 100) / 100, min: 0, decimal: true } })
+          .then(function (v) {
+            if (v == null || v === "") return;
+            var amt = +v; if (isNaN(amt) || amt < 0) return;
+            save(function (nx) {
+              var mine = nx.batches.filter(function (x) { return !x.voided && dropOf(x) === dk; });
+              var n = mine.reduce(function (a, x) { return a + (+x.qty || 0); }, 0);
+              mine.forEach(function (x) { x.tripEach = n > 0 ? amt / n : 0; });
+            }, "Petrol saved.");
+          });
+      };
+    });
     app.querySelectorAll("[data-samples]").forEach(function (b) {
       b.onclick = function () {
         var bid = b.getAttribute("data-samples");
@@ -3965,12 +4094,16 @@
     var ovhEl = card.querySelector('[data-f="overhead"]');
     var ovh = ovhEl ? g(ovhEl) : overheadPerPiece();
     var trueCost = unit == null ? null : unit + ovh;
-    profit = trueCost == null ? null : price - trueCost;
+    var rpEl = card.querySelector('[data-f="realPackaging"]');
+    var rp = rpEl && rpEl.value.trim() !== "" ? g(rpEl) : pack;
+    var realCost = ing == null ? null : ing + rp + ovh;
+    profit = realCost == null ? null : price - realCost;
     margin = profit == null || !price ? null : (profit / price) * 100;
     set("ing", ing == null ? "—" : money(ing));
     set("pack", money(pack));
     set("ovh", money(ovh));
-    set("truecost", trueCost == null ? "—" : money(trueCost), "hi");
+    set("truecost", trueCost == null ? "—" : money(trueCost));
+    set("real", realCost == null ? "—" : money(realCost), "hi");
     set("price", money(price));
     set("profit", profit == null ? "—" : money(profit), profit == null ? "" : profit >= 0 ? "good" : "bad");
     set("margin", margin == null ? "—" : (Math.round(margin * 10) / 10) + "%", margin == null ? "" : margin >= 0 ? "good" : "bad");
@@ -4107,6 +4240,8 @@
     var madeOn = document.getElementById("d-date").value || todayStr();
     var fee = parseFloat((document.getElementById("d-fee") || {}).value);
     if (isNaN(fee) || fee < 0) fee = 0;
+    var trip = parseFloat((document.getElementById("d-trip") || {}).value);
+    if (isNaN(trip) || trip < 0) trip = tripCostDefault();
     var lines = readDeliveryRows().filter(function (L) { return L.it && L.n > 0; });
     if (!lines.length) { toast("Add at least one item with a quantity.", true); return; }
     var summary = [], uncosted = [];
@@ -4124,20 +4259,21 @@
     if (uncosted.length) msg = "No recipe costed for: " + uncosted.join(", ") + " — they go in with no cost.\n\n" + msg;
     ask({ title: "Lock this order?", body: msg, ok: "SAVE & LOCK" }).then(function (go) {
       if (!go) return;
-      doSaveDelivery(lines, madeOn, fee);
+      doSaveDelivery(lines, madeOn, fee, trip);
     });
   }
 
-  function doSaveDelivery(lines, madeOn, fee) {
+  function doSaveDelivery(lines, madeOn, fee, trip) {
     var at = new Date().toISOString();
     fee = +fee || 0;
+    trip = trip == null ? tripCostDefault() : (+trip || 0);
     save(function (nx) {
       var drop = id("d");
       var made = lines.map(function (L) {
         return {
           id: id("b"), drop: drop, itemId: L.it.id,
           qty: linePortions(L),
-          unitCost: chargeOf(L.it), unitPrice: L.it.price,
+          unitCost: chargeOf(L.it), unitPrice: L.it.price, realEach: realEachOf(L.it),
           batches: null,
           batchWord: batchWordOf(L.it), portionWord: portionWordOf(L.it),
           shelf: L.it.shelf, madeOn: madeOn,
@@ -4157,6 +4293,9 @@
           });
         }
       }
+      /* the real petrol for the trip, spread over every piece — Dee's books only */
+      var all = made.reduce(function (a, b) { return a + (+b.qty || 0); }, 0);
+      made.forEach(function (b) { b.tripEach = all > 0 ? trip / all : 0; });
       made.forEach(function (b) { nx.batches.push(b); });
     }, lines.length > 1 ? lines.length + " items locked in." : "Order locked in.");
   }
@@ -4180,6 +4319,8 @@
     var pieces = val(card.querySelector('[data-f="yieldPieces"]'));
     var per = val(card.querySelector('[data-f="perPortion"]'));
     var pack = val(card.querySelector('[data-f="packaging"]'));
+    var rpIn = card.querySelector('[data-f="realPackaging"]');
+    var realPack = rpIn && rpIn.value.trim() !== "" ? Math.round(val(rpIn) * 100) / 100 : null;
     var ovhEl = card.querySelector('[data-f="overhead"]');
     var overhead = ovhEl ? val(ovhEl) : null;
     var chgEl = card.querySelector('[data-f="charge"]');
@@ -4193,6 +4334,7 @@
       var t = nx.items.filter(function (i) { return i.id === iid; })[0];
       t.recipe = rows; t.yieldPieces = pieces; t.perPortion = per;
       t.packaging = pack; t.price = price; t.portionWord = pword;
+      if (realPack == null) { delete t.realPackaging; } else { t.realPackaging = realPack; }
       if (overhead != null) t.overhead = overhead;
       if (charge == null) { delete t.chargeCost; } else { t.chargeCost = charge; }
     }, "Recipe saved.");

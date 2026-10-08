@@ -167,7 +167,7 @@ export const SEED = {
       "portionWord": "ramekin",
       "yieldPieces": 6,
       "perPortion": 1,
-      "packaging": 1.09,
+      "packaging": 1.63,
       "chargeCost": 8,
       "recipe": [
         {
@@ -198,7 +198,8 @@ export const SEED = {
           "pp": 5,
           "pq": 1
         }
-      ]
+      ],
+      "realPackaging": 0.6
     },
     {
       "id": "i4",

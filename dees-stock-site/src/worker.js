@@ -403,6 +403,19 @@ export const REPAIRS = {
     b.unitCost = deliv;
     b.samples = true;
     return true;
+  },
+  /* Crème Brûlée ramekins: the pastel ones (AED 49 for 30, so 1.63 each) are
+     the packaging behind what Smash is charged; the black-and-gold ones Dee's
+     buys (AED 59.99 for 100, so 0.60 each) are the real cost on MY P&L. The
+     price Smash pays per ramekin does not change. */
+  "creme-brulee-ramekins": (state) => {
+    let changed = false;
+    (state.items || []).forEach((it) => {
+      if (!/^cr[eè]me br[uû]l[eé]e$/i.test(String(it.name || "").trim())) return;
+      if (+it.packaging !== 1.63) { it.packaging = 1.63; changed = true; }
+      if (+it.realPackaging !== 0.6) { it.realPackaging = 0.6; changed = true; }
+    });
+    return changed;
   }
 };
 
@@ -470,12 +483,6 @@ const permsOf = (u) => ROLES[u && u.role] || ROLES.truck;
 
 /* ============ what each side is allowed to see ============ */
 
-const sumRecipe = (it) =>
-  (it.recipe || []).reduce((a, r) => {
-    const q = +r.q, pq = +r.pq, pp = +r.pp;
-    return a + (pq > 0 && !isNaN(q) && !isNaN(pp) ? (q / pq) * pp : 0);
-  }, 0);
-
 /**
  * The board as this person may see it. PIN hashes never leave the server. The
  * truck gets one synthetic ingredient line carrying the same total, so every
@@ -486,17 +493,21 @@ function forViewer(state, me) {
   const view = JSON.parse(JSON.stringify(state));
   view.team = (view.team || []).map((u) => ({ id: u.id, name: u.name, user: u.user, role: u.role }));
   if (!permsOf(me).canDeliver) {
-    view.items = (view.items || []).map((it) => ({
-      ...it,
-      recipe: (it.recipe || []).length
-        ? [{ n: "Ingredients", q: 1, u: "", pp: Math.round(sumRecipe(it) * 1e6) / 1e6, pq: 1 }]
-        : []
-    }));
-    /* the truck settles against the monthly ingredient TOTAL, but never sees
-       the shopping list itself — keep the amounts, drop what was bought */
-    view.buys = (view.buys || []).map((b) => ({
-      id: b.id, on: b.on, amount: b.amount, paidBy: b.paidBy, note: ""
-    }));
+    /* the truck sees what it pays (the price per piece frozen on each lot, and
+       the delivery) and nothing that would let it work out Dee's real cost:
+       no recipes, packaging, overhead, petrol or ingredient buys */
+    view.items = (view.items || []).map((it) => {
+      const out = { ...it, recipe: [] };
+      delete out.packaging; delete out.realPackaging; delete out.overhead;
+      return out;
+    });
+    view.batches = (view.batches || []).map((b) => {
+      const out = { ...b };
+      delete out.realEach; delete out.tripEach;
+      return out;
+    });
+    delete view.overheadPerPiece; delete view.tripCost;
+    view.buys = [];
     /* running costs (petrol, DEWA, gas) are Dee's own books, not part of the
        50/50 — the truck never sees them */
     view.overheads = [];
@@ -538,7 +549,7 @@ function mergeSave(stored, incoming, me) {
   }
 
   /* Dee's side and admins may change the board itself */
-  ["currency", "defaultShelf", "notify", "seq", "defaultPins"].forEach((k) => {
+  ["currency", "defaultShelf", "notify", "seq", "defaultPins", "tripCost"].forEach((k) => {
     if (incoming[k] !== undefined) out[k] = incoming[k];
   });
   if (incoming.split && typeof incoming.split === "object") out.split = incoming.split;
