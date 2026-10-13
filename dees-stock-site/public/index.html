@@ -527,6 +527,16 @@
      falls back to the real cost, so nothing changes until Dee's sets one. This
      is the number frozen onto a batch at delivery, and everything the truck
      sees — the settlement and the invoice — reads that frozen figure. */
+  /* Some items are charged by the whole tray: Smash pays the tray whether they
+     take all of it or a few bags, and the tray price is split over the bags sent. */
+  function trayChargeOf(it) {
+    return it && it.chargeTray != null && it.chargeTray !== "" && +it.chargeTray > 0 ? +it.chargeTray : null;
+  }
+  /* what Smash pays for one delivery line, before delivery */
+  function lineCharge(L) {
+    var tc = trayChargeOf(L.it);
+    return tc != null ? tc * (L.trays || 1) : linePortions(L) * chargeOf(L.it);
+  }
   function chargeOf(it) {
     if (it && it.chargeCost != null && it.chargeCost !== "") return +it.chargeCost || 0;
     return unitCostOf(it);
@@ -2412,6 +2422,8 @@
         '<input data-f="overhead" type="number" min="0" step="0.01" value="' + overheadPerPiece(it) + '"' + ro + "></div>" +
         '<div class="field"><label>COST WE CHARGE SMASH (' + cur() + ')</label>' +
         '<input data-f="charge" type="number" min="0" step="0.01" value="' + (chargeOf(it) == null ? "" : (Math.round(chargeOf(it) * 100) / 100)) + '" placeholder="e.g. ' + money(Math.ceil((unitCostOf(it) || 0) + 1)) + '"' + ro + "></div>" +
+        '<div class="field"><label>OR CHARGE SMASH PER ' + esc(batchWordOf(it).toUpperCase()) + ' (' + cur() + ')</label>' +
+        '<input data-f="chargeTray" type="number" min="0" step="0.01" value="' + (trayChargeOf(it) == null ? "" : trayChargeOf(it)) + '" placeholder="blank = per ' + esc(portionWordOf(it)) + '"' + ro + "></div>" +
         '<div class="field"><label>SELLING PRICE (' + cur() + ')</label>' +
         '<input data-f="price" type="number" min="0" step="0.01" value="' + it.price + '"' + ro + "></div>" +
         '<div class="field"><label>CALL ONE PIECE A…</label>' +
@@ -3723,7 +3735,8 @@
     row.className = "drow";
     row.innerHTML = '<select data-d="item">' + itemOptions(null) + "</select>" +
       '<input data-d="n" type="number" min="1" step="1" value="1" aria-label="How many pieces">' +
-      '<span class="w" data-d="word"></span>' +
+      '<span class="w"><span data-d="word"></span>' +
+      '<label data-d="traybox" hidden style="display:block;margin-top:4px">FROM <input data-d="trays" type="number" min="1" step="1" value="1" style="width:52px;padding:6px 8px" aria-label="Trays"> <span data-d="trayword">tray</span></label></span>' +
       '<button class="x" type="button" data-d="rm" aria-label="Remove this line">&times;</button>';
     box.appendChild(row);
     row.querySelector('[data-d="rm"]').onclick = function () {
@@ -3745,7 +3758,8 @@
     Array.prototype.forEach.call(box.children, function (row) {
       var it = item(row.querySelector('[data-d="item"]').value);
       var n = parseInt(row.querySelector('[data-d="n"]').value, 10);
-      out.push({ it: it, n: n > 0 ? n : 0, row: row });
+      var tr = parseInt((row.querySelector('[data-d="trays"]') || {}).value, 10);
+      out.push({ it: it, n: n > 0 ? n : 0, trays: tr > 0 ? tr : 1, row: row });
     });
     return out;
   }
@@ -3764,19 +3778,25 @@
         w.textContent = L.n === 1 ? pw2 : plural(pw2);
       }
       L.row.querySelector('[data-d="rm"]').disabled = only;
+      var tb = L.row.querySelector('[data-d="traybox"]');
+      if (tb) {
+        tb.hidden = !(L.it && trayChargeOf(L.it) != null);
+        if (L.it) L.row.querySelector('[data-d="trayword"]').textContent = L.trays === 1 ? batchWordOf(L.it) : plural(batchWordOf(L.it));
+      }
       if (!L.it || !L.n) return;
       if (!costed(L.it)) {
         anyUncosted = true;
         html += '<div class="dline"><span>' + esc(L.it.name) + " — no recipe costed</span><span>no cost</span></div>";
         return;
       }
-      var u = linePortions(L), c = u * chargeOf(L.it);
+      var u = linePortions(L), c = lineCharge(L);
       units += u; total += c;
       words[portionWordOf(L.it)] = 1;
       var val = u * (+L.it.price || 0);
       retail += val;
       html += '<div class="dline"><span><b>' + esc(count(u, portionWordOf(L.it))) + "</b> " +
         esc(L.it.name) + ", expires " + niceDate(addDays(madeOn, L.it.shelf)) +
+        (trayChargeOf(L.it) != null ? " (" + count(L.trays, batchWordOf(L.it)) + " at " + cur() + " " + money(trayChargeOf(L.it)) + ")" : "") +
         "</span><span class=\"num\">costs " + cur() + " " + money(c) +
         " \u00b7 worth " + cur() + " " + money(val) + "</span></div>";
     });
@@ -3805,7 +3825,8 @@
     var summary = [], uncosted = [];
     lines.forEach(function (L) {
       if (costed(L.it)) {
-        summary.push(count(linePortions(L), portionWordOf(L.it)) + " " + L.it.name);
+        summary.push(count(linePortions(L), portionWordOf(L.it)) + " " + L.it.name +
+          (trayChargeOf(L.it) != null ? " \u2014 " + count(L.trays, batchWordOf(L.it)) + ", " + cur() + " " + money(lineCharge(L)) : ""));
       } else {
         summary.push(L.n + " " + L.it.name + " (no cost)");
         uncosted.push(L.it.name);
@@ -3831,7 +3852,9 @@
         return {
           id: id("b"), drop: drop, itemId: L.it.id,
           qty: linePortions(L),
-          unitCost: chargeOf(L.it), unitPrice: L.it.price, realEach: realEachOf(L.it),
+          unitCost: trayChargeOf(L.it) != null ? lineCharge(L) / linePortions(L) : chargeOf(L.it),
+          unitPrice: L.it.price, realEach: realEachOf(L.it),
+          trays: trayChargeOf(L.it) != null ? L.trays : undefined, trayCharge: trayChargeOf(L.it) != null ? trayChargeOf(L.it) : undefined,
           batches: null,
           batchWord: batchWordOf(L.it), portionWord: portionWordOf(L.it),
           shelf: L.it.shelf, madeOn: madeOn,
@@ -3884,6 +3907,9 @@
     var chgEl = card.querySelector('[data-f="charge"]');
     var chgRaw = chgEl ? (chgEl.value || "").trim() : "";
     var charge = chgRaw === "" ? null : Math.round((parseFloat(chgRaw) || 0) * 100) / 100;
+    var trEl = card.querySelector('[data-f="chargeTray"]');
+    var trRaw = trEl ? (trEl.value || "").trim() : "";
+    var trayCharge = trRaw === "" || !(parseFloat(trRaw) > 0) ? null : Math.round(parseFloat(trRaw) * 100) / 100;
     var price = val(card.querySelector('[data-f="price"]'));
     var pword = card.querySelector('[data-f="portionWord"]').value.trim() || "portion";
     if (per <= 0) { toast("Pieces in one of them must be above zero.", true); return; }
@@ -3895,6 +3921,7 @@
       if (realPack == null) { delete t.realPackaging; } else { t.realPackaging = realPack; }
       if (overhead != null) t.overhead = overhead;
       if (charge == null) { delete t.chargeCost; } else { t.chargeCost = charge; }
+      if (trayCharge == null) { delete t.chargeTray; } else { t.chargeTray = trayCharge; }
     }, "Recipe saved.");
   }
 
