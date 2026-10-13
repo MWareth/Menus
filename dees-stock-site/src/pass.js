@@ -31,8 +31,8 @@ const MENU_BY_ID = new Map(PASS_MENU.map((m) => [m.id, m]));
    (for 48 hours), so nobody can farm points from home. ---- */
 export const POINTS_PER_STAMP = 10;
 export const GAMES = ["stack", "catch", "crack", "smash"];
-const GAME_MAX = 25;                         // points for a perfect game
-export const LIVES = 3;                      // plays per stamped order; only the best one earns points
+const GAME_MAX = 2;                          // Smash Points for every game played, whatever the score
+export const LIVES = 5;                      // plays per stamped order; scores only count for the game leaderboard
 const TOKEN_HOURS = 48;
 const SCRATCH = [[10, 35], [15, 30], [25, 20], [50, 12], [100, 3]];   // [points, chance %]
 export const REWARDS = [
@@ -359,7 +359,13 @@ export async function handlePass(request, env, path, d) {
     const month = dubaiMonth(), rows = await board(month, 50);
     const top = rows.slice(0, 10).map((x, i) => ({ rank: i + 1, name: shortName(x), n: x.n, you: x.phone === phone }));
     const mine = phone ? rows.findIndex((x) => x.phone === phone) : -1;
-    const out = { month, prizeMin: PRIZE_MIN, top, me: mine >= 0 ? { rank: mine + 1, n: rows[mine].n } : null };
+    const out = { month, prizeMin: PRIZE_MIN, top, me: mine >= 0 ? { rank: mine + 1, n: rows[mine].n } : null, games: {} };
+    /* game leaderboards: each customer's best score per game this month (Crack the Brûlée out of 1000) */
+    const from = month + "-01T00:00:00.000Z", gtop = (await env.DB.prepare(
+      "SELECT p.game, p.phone, c.first, c.last, MAX(CASE WHEN p.game = 'crack' THEN p.raw ELSE p.score END) AS best FROM pass_plays p" +
+      " JOIN pass_customers c ON c.phone = p.phone WHERE p.kind LIKE 'game%' AND p.finished >= ? AND c.board_hide = 0 AND p.score > 0" +
+      " GROUP BY p.game, p.phone ORDER BY best DESC").bind(new Date(Date.parse(from) - 4 * 3600e3).toISOString()).all()).results || [];
+    GAMES.forEach((g) => { out.games[g] = gtop.filter((x) => x.game === g).slice(0, 5).map((x, i) => ({ rank: i + 1, name: shortName(x), score: x.best, you: x.phone === phone })); });
     if (s) {   /* the crew needs to know who to reward: last month's #1, with a number to call */
       const last = (await board(dubaiMonth(-1), 1))[0];
       out.lastWinner = last && last.n >= PRIZE_MIN ? { month: dubaiMonth(-1), name: last.first + " " + last.last, phone: last.phone, n: last.n } : null;
@@ -381,7 +387,7 @@ export async function handlePass(request, env, path, d) {
       return ok({ play: open.id, resumed: true });
     }
     const v = (await livesByVisit(phone))[0];
-    if (!v) return fail("Your next order unlocks 3 more lives.", 409);
+    if (!v) return fail("Your next order unlocks " + LIVES + " more lives.", 409);
     const id = playId();
     try {
       await env.DB.prepare("INSERT INTO pass_plays (id, phone, visit_id, kind, game, started) VALUES (?, ?, ?, ?, ?, ?)")
@@ -401,18 +407,15 @@ export async function handlePass(request, env, path, d) {
     const raw = p.game === "crack" ? (quick ? 0 : Math.max(0, Math.min(1000, Math.round(Number(b.raw) || 0)))) : null;
     const score = quick ? 0 : raw != null ? Math.round(raw / 10) : Math.max(0, Math.min(100, Math.round(Number(b.score) || 0)));
     const before = raw != null ? ((await env.DB.prepare("SELECT MAX(raw) AS r FROM pass_plays WHERE phone = ? AND game = ?").bind(phone, p.game).first()) || {}).r || 0 : 0;
-    const pts = Math.round(score / 100 * GAME_MAX);
+    const pts = quick ? 0 : GAME_MAX;   /* every real game earns the same; the score is for the leaderboard */
     const now = new Date().toISOString();
     const res = await env.DB.prepare("UPDATE pass_plays SET finished = ?, score = ?, points = ?, raw = ? WHERE id = ? AND finished IS NULL").bind(now, score, pts, raw, p.id).run();
     if (!(res.meta && res.meta.changes)) return fail("That game is already over.", 409);
-    /* only the best game of an order pays: a better retry tops the points up, a worse one adds nothing */
-    const prevBest = ((await env.DB.prepare("SELECT MAX(points) AS m FROM pass_plays WHERE visit_id = ? AND kind LIKE 'game%' AND finished IS NOT NULL AND id != ?")
-      .bind(p.visit_id, p.id).first()) || {}).m || 0;
-    const gain = Math.max(0, pts - prevBest);
+    const gain = pts;
     if (gain) await pointsRow(phone, gain, "game", p.game + " " + score).run();
     const earned = score >= 90 ? await award(phone, ["high_score"]) : [];
     const used = ((await env.DB.prepare("SELECT COUNT(*) AS n FROM pass_plays WHERE visit_id = ? AND kind LIKE 'game%'").bind(p.visit_id).first()) || {}).n || 0;
-    return ok({ score, raw, points: gain, best: Math.max(prevBest, pts), livesOrder: Math.max(0, LIVES - used), achievements: earned, customer: await withStats(await get(phone)),
+    return ok({ score, raw, points: gain, livesOrder: Math.max(0, LIVES - used), achievements: earned, customer: await withStats(await get(phone)),
       record: raw != null ? Math.max(before, raw) : null, newRecord: raw != null && raw > 0 && raw > before });
   }
 

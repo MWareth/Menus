@@ -74,6 +74,8 @@ button{cursor:pointer}
 .lives{margin:0;font-size:18px;letter-spacing:.04em}.lives b{font-size:14px;letter-spacing:.06em;color:var(--butter);margin-left:4px}
 .g-lives{margin:0;font-size:14px;font-weight:800;color:var(--paper);letter-spacing:.04em}
 .g-end .btn{width:100%}
+.gboards{display:grid;grid-template-columns:1fr;gap:10px;margin-top:8px}
+.gb>b{font-size:14px}.gb .lb{margin-top:6px}.gb .lb li{padding:7px 10px}.gb .lb b{font-size:16px}
 .crewlink{display:block;margin:10px auto 0;background:none;border:0;color:var(--line);font:inherit;font-size:11px;letter-spacing:.08em;cursor:pointer;padding:4px 10px}
 .staffbar .linkbtn{margin-left:auto;background:none;border:0;color:var(--muted);font:inherit;font-weight:900;letter-spacing:.06em;cursor:pointer;padding:6px 4px}
 .staffbar a[aria-current="page"]{background:var(--butter);color:var(--carbon);border-color:var(--butter)}
@@ -300,6 +302,13 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     h += B.top.length ? '<ol class="lb">' + B.top.map(function (r) {
       return '<li' + (r.you ? ' class="you"' : "") + '><span class="rk">' + (r.rank === 1 ? "🥇" : r.rank === 2 ? "🥈" : r.rank === 3 ? "🥉" : r.rank) + "</span><span>" + esc(r.name) + (r.you ? " (you)" : "") +
         '</span><b>' + r.n + "</b></li>"; }).join("") + "</ol>" : '<p class="note">Nobody has finished a card this month yet. Be the first.</p>';
+    if (B.games) {
+      h += '<div class="lbl" style="margin-top:14px">🎮 Game leaderboards · ' + monthName(B.month) + '</div><div class="gboards">' +
+        Object.keys(GAME_INFO).map(function (g) { var rows = B.games[g] || [], i = GAME_INFO[g];
+          return '<div class="gb"><b>' + i[0] + " " + i[1] + "</b>" + (rows.length ? '<ol class="lb">' + rows.slice(0, 3).map(function (r) {
+            return '<li' + (r.you ? ' class="you"' : "") + '><span class="rk">' + (r.rank === 1 ? "🥇" : r.rank === 2 ? "🥈" : "🥉") + "</span><span>" + esc(r.name) + (r.you ? " (you)" : "") + "</span><b>" + r.score + "</b></li>"; }).join("") + "</ol>"
+            : '<p class="note">No scores yet. Be first.</p>') + "</div>"; }).join("") + "</div>";
+    }
     if (mine) {
       if (mine.boardHide) h += '<p class="note">You\'re hidden from Top Smashers.</p>';
       else if (B.me && B.me.rank > 10) h += '<p class="note">You\'re #' + B.me.rank + " with " + B.me.n + " this month.</p>";
@@ -642,7 +651,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     crack: ["🔨", "Crack the Brûlée", "3 rounds of 15 seconds. Tap fast, score out of 1000. Beat your record."],
     smash: ["🥩", "Perfect Smash", "Hit SMASH when the marker is in the middle. 5 rounds."]
   };
-  function hearts(n) { return n > 0 ? "❤️".repeat(Math.min(n, 3)) + (n > 3 ? " +" + (n - 3) : "") : "🖤"; }
+  function hearts(n) { return n > 0 ? "❤️".repeat(Math.min(n, 5)) + (n > 5 ? " +" + (n - 5) : "") : "🖤"; }
   function pickerHtml(practice) {
     return '<div class="games" style="width:100%">' + (S.games || Object.keys(GAME_INFO)).map(function (g) { var i = GAME_INFO[g];
       return '<button type="button" data-' + (practice ? "practice" : "game") + '="' + g + '"><span>' + i[0] + "</span><b>" + i[1] + "</b></button>"; }).join("") + "</div>";
@@ -661,11 +670,11 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       '<div class="scratch"><div class="scr-prize" id="scr-prize">?</div><canvas id="scr" width="300" height="140" aria-label="Scratch card"></canvas></div>';
     if (c.gamesLeft) {
       h += '<p class="lives">' + hearts(c.gamesLeft) + " <b>" + c.gamesLeft + " " + (c.gamesLeft === 1 ? "life" : "lives") + " left</b></p>" +
-        '<p class="note">Every order gives you ' + (c.lives || 3) + " lives: retry a game or switch. Only your best game per order earns points (up to " + (S.gameMax || 25) + ').</p><div class="games">';
+        '<p class="note">Every order gives you ' + (c.lives || 5) + " lives: retry a game or switch. <b style=\"color:var(--butter)\">Every game = +" + (S.gameMax || 2) + ' Smash Points.</b> Your best scores go on the game leaderboards.</p><div class="games">';
       (S.games || []).forEach(function (g) { var i = GAME_INFO[g], rc = c.records && c.records[g];
         h += '<button type="button" data-game="' + g + '"><span>' + i[0] + "</span><b>" + i[1] + "</b><small>" + i[2] + (rc ? '<br><b style="color:var(--butter);font-family:inherit;font-size:12px">🏆 Your record: ' + rc + "</b>" : "") + "</small></button>"; });
       h += "</div>";
-    } else if (!c.scratchLeft) h += '<p class="lives">🖤 <b>No lives left</b></p><p class="note">Every order gives you 3 lives and a scratch card. Show your card at the window, then play while you wait.</p>';
+    } else if (!c.scratchLeft) h += '<p class="lives">🖤 <b>No lives left</b></p><p class="note">Every order gives you 5 lives and a scratch card. Show your card at the window, then play while you wait.</p>';
     h += "</div>";
     return h;
   }
@@ -742,11 +751,11 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
           ov.innerHTML = '<div class="g-end"><p class="big">' + (f.ok ? (f.score >= 90 ? "🔥 LEGENDARY" : f.score >= 60 ? "😎 NICE" : "👊 GOOD TRY") : "Game over") + "</p>" +
             big +
             '<p class="note">' + (f.practice ? "Practice round: no points counted." : f.saved ? "No internet. Your score is saved and your points are added as soon as you're back online."
-              : f.ok ? (f.points ? "+" + f.points + " Smash Points" : "No new points: your best game this order is still worth " + (f.best || 0) + ". Beat it to earn more.") : esc(f.error || "")) + "</p>";
+              : f.ok ? (f.points ? "+" + f.points + " Smash Points · your score goes on the game leaderboard" : "That finished too fast to count.") : esc(f.error || "")) + "</p>";
           if (f.ok && f.customer) { S.customer = Object.assign(S.customer, f.customer); celebrate(f); }
           var lives = practice ? 1 : f.customer ? f.customer.gamesLeft : f.saved ? Math.max(0, ((S.customer && S.customer.gamesLeft) || 1) - 1) : 0;
           var end = ov.querySelector(".g-end");
-          end.insertAdjacentHTML("beforeend", (practice ? "" : '<p class="lives">' + hearts(lives) + " <b>" + (lives ? lives + " " + (lives === 1 ? "life" : "lives") + " left" : "No lives left · your next order brings 3 more") + "</b></p>") +
+          end.insertAdjacentHTML("beforeend", (practice ? "" : '<p class="lives">' + hearts(lives) + " <b>" + (lives ? lives + " " + (lives === 1 ? "life" : "lives") + " left" : "No lives left · your next order brings 5 more") + "</b></p>") +
             (lives ? '<button type="button" class="btn pri" data-' + (practice ? "practice" : "game") + '="' + id + '">🔁 PLAY AGAIN</button>' +
               '<button type="button" class="btn ghost" id="g-switch">🎮 CHANGE GAME</button>' : "") +
             '<button type="button" class="btn ' + (lives ? "ghost" : "pri") + '" id="g-close">' + (practice ? "BACK" : "BACK TO MY CARD") + "</button>");
