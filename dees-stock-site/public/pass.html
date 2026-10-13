@@ -109,6 +109,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
 (function () {
   var app = document.getElementById("app");
   var S = { customer: null, staff: null, need: 9, menu: [] };
+  var welcomeP = null;
   var screen = "home", basket = {}, found = null, rv = { food: 0, vibe: 0, card: "burger" }, redeemFor = null, owner = null;
   var MENU = {};
 
@@ -156,6 +157,12 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     if (c.pending) h += '<div class="panel"><div class="lbl">How was your visit on ' + niceDate(c.pending.at) + "?</div>" +
       '<p class="note">Two quick ratings and an optional comment.' + (c.bonus ? "" : ' Your first review earns a <b style="color:var(--butter)">bonus stamp</b>.') + "</p>" +
       '<button type="button" class="btn pri" id="go-review">RATE MY VISIT</button></div>';
+    if (c.surprise) {
+      var sp = c.surprise.indexOf("dessert:") === 0 ? "a free " + (MENU[c.surprise.slice(8)] ? MENU[c.surprise.slice(8)].name.replace(/ \(.*\)$/, "") : "dessert") : "10% off your first order";
+      if (c.visits.length <= 1) h += '<div class="panel" style="border-color:var(--butter)"><div class="lbl" style="color:var(--butter)">🎁 Your welcome surprise</div><p class="big">' + esc(sp) + '</p><p class="note">Thanks for joining the Pass Card.</p></div>';
+    } else if (!c.visits.length) {
+      h += '<div class="panel" style="border-color:var(--butter)"><div class="lbl" style="color:var(--butter)">🎁 A surprise is waiting</div><p class="note">Show your code with your first order and see what you get. A free dessert or 10% off the whole order.</p></div>';
+    }
     h += cardHtml(c, "burger") + cardHtml(c, "dessert");
     h += '<div class="panel"><div class="lbl">Show this at the window</div><div class="qrbox"><div class="qr"><img src="/api/pass/qr.svg" alt="Your Pass Card QR code"></div>' +
       '<div style="flex:1 1 160px"><p class="big">' + esc(fmtPhone(c.phone)) + '</p><p class="note">This code is yours only. The truck scans it to add your stamps. Every burger and dessert is a stamp; a Brownie Bag counts as 2.</p></div></div></div>';
@@ -216,6 +223,10 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       '<div class="kpis"><div class="kpi"><b>' + Math.min(c.burger, S.need) + "/" + S.need + '</b><span>Burger card</span></div><div class="kpi"><b>' + Math.min(c.dessert, S.need) + "/" + S.need + "</b><span>Dee'sert card</span></div></div>";
     ["burger", "dessert"].forEach(function (k) { if (c[k] >= S.need) h += '<button type="button" class="btn red" data-redeem="' + k + '">GIVE FREE ' + k.toUpperCase() + "</button>"; });
     h += "</div>";
+    if (welcomeP) h += '<div class="panel" style="background:var(--butter);color:var(--carbon);border-color:var(--butter)"><div class="lbl" style="color:var(--carbon)">🎁 First visit · welcome surprise</div>' +
+      (welcomeP.kind === "dessert"
+        ? '<p class="big" style="color:var(--carbon)">Give a free ' + esc(welcomeP.stock) + '</p><p style="margin:0;font-weight:700">Take it from the lot that expires ' + esc(niceDate(welcomeP.expires + "T12:00:00Z")) + '. It comes off the stock as a giveaway when you stamp the order.</p>'
+        : '<p class="big" style="color:var(--carbon)">10% off the whole order</p><p style="margin:0;font-weight:700">Take 10% off the total before they pay, then stamp the order.</p>') + "</div>";
     var btn = function (m) { return '<button type="button" data-add="' + m.id + '"><b>' + esc(m.name) + "</b><small>+" + m.stamps + " stamp" + (m.stamps > 1 ? "s" : "") + (basket[m.id] ? " · " + basket[m.id] + " added" : "") + "</small></button>"; };
     h += '<div class="panel"><div class="lbl">What did they buy?</div><div class="lbl" style="color:var(--butter)">Burgers</div><div class="items">' +
       S.menu.filter(function (m) { return m.card === "burger"; }).map(btn).join("") + '</div><div class="lbl" style="color:var(--bad)">Dee\'serts</div><div class="items">' +
@@ -257,7 +268,9 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     var h = '<div class="panel"><div class="lbl">The truck QR</div><div class="kpis">' + kpi(scanTotal, "scans of the truck QR") + kpi(scanToday, "scans today") +
       kpi(O.customers.length, "signed up") + kpi(conv, "of scans signed up") + "</div></div>";
     h += '<div class="panel"><div class="lbl">Customers and reviews</div><div class="kpis">' + kpi(back, "came back more than once") + kpi(O.visits.length, "stamped orders") +
-      kpi(avg("food"), "food quality, " + revs.length + " reviews") + kpi(avg("vibe"), "atmosphere") + kpi(freeB, "free burgers given") + kpi(O.redeems.length - freeB, "free desserts given") + "</div></div>";
+      kpi(avg("food"), "food quality, " + revs.length + " reviews") + kpi(avg("vibe"), "atmosphere") + kpi(freeB, "free burgers given") + kpi(O.redeems.length - freeB, "free desserts given") +
+      kpi(O.customers.filter(function (c) { return c.surprise && c.surprise.indexOf("dessert:") === 0; }).length, "welcome desserts (giveaways)") +
+      kpi(O.customers.filter(function (c) { return c.surprise === "discount10"; }).length, "welcome 10% discounts") + "</div></div>";
     if (Object.keys(items).length) h += '<div class="panel"><div class="lbl">What people buy</div><div class="tw"><table><thead><tr><th>ITEM</th><th class="r">BOUGHT</th></tr></thead><tbody>' +
       O.menu.filter(function (m) { return items[m.id]; }).sort(function (a, b) { return items[b.id] - items[a.id]; }).map(function (m) { return "<tr><td>" + esc(m.name) + '</td><td class="r">' + items[m.id] + "</td></tr>"; }).join("") + "</tbody></table></div></div>";
     var cms = revs.filter(function (v) { return v.comment; });
@@ -295,7 +308,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       S = res; MENU = {}; (res.menu || []).forEach(function (m) { MENU[m.id] = m; });
       if (r.name === "scan" && S.staff) {
         return api("/api/pass/staff/find?q=" + encodeURIComponent(r.code)).then(function (f) {
-          found = f.ok ? f.customer : null; basket = {}; render();
+          found = f.ok ? f.customer : null; welcomeP = f.ok ? f.welcome : null; basket = {}; render();
           if (!f.ok) showErr("s-err", f.error || "That code isn't a Pass Card.");
         });
       }
@@ -324,7 +337,9 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       t.disabled = true;
       api("/api/pass/staff/stamp", { phone: found.phone, items: basket }).then(function (res) {
         if (!res.ok) { t.disabled = false; toast(res.error || "Couldn't stamp. Try again."); return; }
-        found = res.customer; basket = {}; render(); toast("Stamped: +" + res.added.burger + " burger, +" + res.added.dessert + " dessert");
+        found = res.customer; basket = {}; welcomeP = null; render();
+        toast(res.welcome ? "Stamped. Welcome surprise: " + res.welcome.label + (res.welcome.kind === "dessert" ? " (logged as a giveaway)" : "")
+          : "Stamped: +" + res.added.burger + " burger, +" + res.added.dessert + " dessert");
       });
     }
     else if (t.hasAttribute("data-redeem")) { redeemFor = t.getAttribute("data-redeem"); render(); }
@@ -363,7 +378,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
         toast(r.bonus ? "Thanks! Bonus stamp added to your " + r.bonus + " card" : "Thanks for the review");
       });
     }
-    if (f.id === "f-find") api("/api/pass/staff/find?q=" + encodeURIComponent(val("s-q"))).then(function (r) { done(); if (!r.ok) return showErr("s-err", r.error); found = r.customer; basket = {}; render(); });
+    if (f.id === "f-find") api("/api/pass/staff/find?q=" + encodeURIComponent(val("s-q"))).then(function (r) { done(); if (!r.ok) return showErr("s-err", r.error); found = r.customer; welcomeP = r.welcome; basket = {}; render(); });
     if (f.id === "f-reset") api("/api/pass/staff/resetpin", { phone: found.phone, pin: val("rp-pin") }).then(function (r) { done(); if (!r.ok) return showErr("rp-err", r.error); toast("New PIN set. Tell the customer."); render(); });
     if (f.id === "f-del") api("/api/pass/delete", { pin: val("del-pin") }).then(function (r) { done(); if (!r.ok) return showErr("del-err", r.error); S.customer = null; render(); toast("Your Pass Card was deleted."); });
   });

@@ -37,7 +37,7 @@ async function ensureTables(env) {
       "CREATE TABLE IF NOT EXISTS pass_customers (phone TEXT PRIMARY KEY, first TEXT NOT NULL, last TEXT NOT NULL," +
       " email TEXT, pin TEXT NOT NULL, offers INTEGER NOT NULL DEFAULT 0, burger INTEGER NOT NULL DEFAULT 0," +
       " dessert INTEGER NOT NULL DEFAULT 0, bonus INTEGER NOT NULL DEFAULT 0, joined TEXT NOT NULL," +
-      " fails INTEGER NOT NULL DEFAULT 0, lock_until TEXT)"
+      " fails INTEGER NOT NULL DEFAULT 0, lock_until TEXT, surprise TEXT, surprise_at TEXT)"
     ),
     env.DB.prepare(
       "CREATE TABLE IF NOT EXISTS pass_visits (id INTEGER PRIMARY KEY AUTOINCREMENT, phone TEXT NOT NULL," +
@@ -94,7 +94,7 @@ export async function handlePass(request, env, path, d) {
   const get = (phone) => env.DB.prepare("SELECT * FROM pass_customers WHERE phone = ?").bind(phone).first();
   const body = async () => (request.method === "POST" ? await request.json().catch(() => ({})) : {});
   const pub = (c) => c && ({ phone: c.phone, first: c.first, last: c.last, email: c.email || "", offers: !!c.offers,
-    burger: c.burger, dessert: c.dessert, bonus: !!c.bonus, joined: c.joined });
+    burger: c.burger, dessert: c.dessert, bonus: !!c.bonus, joined: c.joined, surprise: c.surprise || null });
   const fail = (error, status = 400) => d.json({ ok: false, error }, status);
   const ok = (x, headers) => d.json({ ok: true, ...x }, 200, headers);
 
@@ -217,7 +217,8 @@ export async function handlePass(request, env, path, d) {
       const c = phone ? await get(phone) : null;
       if (!c) return fail("No Pass Card with that number. Ask them to sign up with the QR on the truck.", 404);
       const last = await env.DB.prepare("SELECT at FROM pass_visits WHERE phone = ? ORDER BY at DESC LIMIT 1").bind(phone).first();
-      return ok({ customer: pub(c), lastVisit: last ? last.at : null });
+      const welcome = !last && !c.surprise ? await pickSurprise(env, d) : null;
+      return ok({ customer: pub(c), lastVisit: last ? last.at : null, welcome });
     }
 
     if (path === "/api/pass/staff/stamp" && request.method === "POST") {
@@ -234,12 +235,24 @@ export async function handlePass(request, env, path, d) {
         if (m.card === "burger") burger += q * m.stamps; else dessert += q * m.stamps;
       });
       if (!burger && !dessert) return fail("Pick at least one item.");
+      /* first visit: the welcome surprise. A dessert on its last day (or the
+         day before) goes out free as a giveaway; otherwise 10% off the order. */
+      let welcome = null;
+      const before = await env.DB.prepare("SELECT 1 AS x FROM pass_visits WHERE phone = ? LIMIT 1").bind(phone).first();
+      if (!before && !c.surprise) {
+        const pick = await pickSurprise(env, d);
+        if (pick.kind === "dessert" && (await giftFromStock(env, d, pick.stock, me, { lotId: pick.lotId, ch: "Pass Card welcome" }))) welcome = pick;
+        else welcome = { kind: "discount", label: "10% off the whole order" };
+        const tag = welcome.kind === "dessert" ? "dessert:" + welcome.item : "discount10";
+        await env.DB.prepare("UPDATE pass_customers SET surprise = ?, surprise_at = ? WHERE phone = ? AND surprise IS NULL")
+          .bind(tag, new Date().toISOString(), phone).run();
+      }
       await env.DB.batch([
         env.DB.prepare("UPDATE pass_customers SET burger = burger + ?, dessert = dessert + ? WHERE phone = ?").bind(burger, dessert, phone),
         env.DB.prepare("INSERT INTO pass_visits (phone, at, items, by, burger, dessert) VALUES (?, ?, ?, ?, ?, ?)")
           .bind(phone, new Date().toISOString(), JSON.stringify(items), me.id, burger, dessert)
       ]);
-      return ok({ customer: pub(await get(phone)), added: { burger, dessert } });
+      return ok({ customer: pub(await get(phone)), added: { burger, dessert }, welcome });
     }
 
     if (path === "/api/pass/staff/redeem" && request.method === "POST") {
@@ -282,7 +295,8 @@ export async function handlePass(request, env, path, d) {
 /* A free dessert comes out of the stock as a giveaway, on the oldest open lot
    of that item that still has pieces in date. If none is found the redeem
    still stands and the truck logs it by hand. */
-async function giftFromStock(env, d, itemName, me) {
+async function giftFromStock(env, d, itemName, me, opts) {
+  opts = opts || {};
   const today = dubaiDay();
   const addDays = (ds, n) => { const t = new Date(ds + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() + (+n || 0)); return t.toISOString().slice(0, 10); };
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -295,11 +309,35 @@ async function giftFromStock(env, d, itemName, me) {
     const lot = (st.batches || [])
       .filter((b) => b.itemId === it.id && !b.voided && !closed.has(b.drop || b.id) && left(b) > 0 &&
         addDays(b.madeOn, b.shelf) >= today)
+      .filter((b) => !opts.lotId || b.id === opts.lotId)
       .sort((a, b) => (a.madeOn < b.madeOn ? -1 : a.madeOn > b.madeOn ? 1 : 0))[0];
     if (!lot) return false;
-    lot.sales = (lot.sales || []).concat([{ qty: 1, kind: "gift", by: me.id, at: new Date().toISOString(), on: today, ch: "Pass Card" }]);
+    lot.sales = (lot.sales || []).concat([{ qty: 1, kind: "gift", by: me.id, at: new Date().toISOString(), on: today, ch: opts.ch || "Pass Card" }]);
     st.updatedAt = new Date().toISOString();
     if ((await d.saveBoard(env, board.version, st)) != null) return true;
   }
   return false;
+}
+
+/* The welcome surprise for a first visit: the dessert lot closest to its
+   expiry, if one is on its last day or the day before and still has pieces;
+   otherwise 10% off the whole order. Read-only: nothing is taken until the
+   first order is stamped. */
+async function pickSurprise(env, d) {
+  const today = dubaiDay();
+  const addDays = (ds, n) => { const t = new Date(ds + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() + (+n || 0)); return t.toISOString().slice(0, 10); };
+  const soon = addDays(today, 1);
+  const st = (await d.loadBoard(env)).state;
+  const closed = new Set((st.weeks || []).map((w) => w.start));
+  const left = (b) => (+b.qty || 0) - (b.sales || []).reduce((a, s) => a + (+s.qty || 0), 0);
+  const menuByStock = new Map(PASS_MENU.filter((m) => m.stock).map((m) => [m.stock, m]));
+  const items = new Map((st.items || []).map((i) => [i.id, i]));
+  const best = (st.batches || [])
+    .map((b) => ({ b, it: items.get(b.itemId), exp: addDays(b.madeOn, b.shelf) }))
+    .filter((x) => x.it && menuByStock.has(x.it.name) && !x.b.voided && !closed.has(x.b.drop || x.b.id) &&
+      left(x.b) > 0 && x.exp >= today && x.exp <= soon)
+    .sort((x, y) => (x.exp < y.exp ? -1 : x.exp > y.exp ? 1 : 0))[0];
+  if (!best) return { kind: "discount", label: "10% off the whole order" };
+  const m = menuByStock.get(best.it.name);
+  return { kind: "dessert", item: m.id, stock: best.it.name, lotId: best.b.id, label: "a free " + best.it.name, expires: best.exp };
 }
