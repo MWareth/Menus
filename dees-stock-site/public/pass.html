@@ -184,6 +184,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
 <div id="game" class="game" hidden role="dialog" aria-label="Game"></div>
 <div id="qrbig" class="qrbig" hidden role="dialog" aria-modal="true" aria-label="Your Pass Card QR code"></div>
 <div id="toast" class="toast" hidden></div>
+<script src="/qrcode.js"></script>
 <script>
 (function () {
   var app = document.getElementById("app");
@@ -367,11 +368,18 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   function recall(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
   var offline = false;
   /* stamps that couldn't reach the server wait here and send themselves later */
-  /* the QR's address carries the card's own code, so a phone never shows one person's QR on another's card */
+  /* the QR is drawn right here on the phone from the same card data as the name and number above it,
+     so it can never show another person's code (no image is fetched, nothing can be stale) */
+  var qrMemo = {};
   function qrSrc() {
-    var c = S.customer || {}, saved = recall("pc_qr");
-    if (offline && saved && saved.code === c.code) return saved.data;
-    return "/api/pass/qr.svg?c=" + encodeURIComponent(c.code || "");
+    var c = S.customer || {};
+    if (!c.code) return "";
+    if (qrMemo[c.code]) return qrMemo[c.code];
+    if (typeof qrcode !== "function") return "/api/pass/qr.svg?c=" + encodeURIComponent(c.code);
+    var q = qrcode(0, "M"); q.addData(location.origin + "/pass/s/" + c.code); q.make();
+    var svg = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true })
+      .replace(/fill="white"/g, 'fill="#FFD21C"').replace(/fill="black"/g, 'fill="#101010"');
+    return (qrMemo[c.code] = "data:image/svg+xml;base64," + btoa(svg));
   }
   function queue() { return recall("pc_queue") || []; }
   function queueStamp(phone, items) {
@@ -715,9 +723,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       if (res.customer) {
         syncFinish();
         store("pc_card", res);
-        var qc = res.customer.code;
-        fetch("/api/pass/qr.svg?c=" + encodeURIComponent(qc), { credentials: "same-origin", cache: "no-store" }).then(function (q) { return q.ok ? q.text() : null; })
-          .then(function (t) { if (t) store("pc_qr", { code: qc, data: "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(t))) }); }).catch(function () {});
+        store("pc_qr", null);   /* old saved QR pictures are no longer used: the QR is drawn from the card itself */
       }
       if (r.name === "card" && S.staff) { history.replaceState(null, "", crewHome()); screen = "home"; return load(); }
       if (r.name === "scan" && S.staff) {
