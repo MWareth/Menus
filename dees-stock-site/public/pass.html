@@ -640,10 +640,12 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     var items = {}; O.visits.forEach(function (v) { Object.keys(v.items).forEach(function (k) { items[k] = (items[k] || 0) + v.items[k]; }); });
     var freeB = O.redeems.filter(function (r) { return r.card === "burger"; }).length;
     var kpi = function (v, l) { return '<div class="kpi"><b>' + v + "</b><span>" + esc(l) + "</span></div>"; };
-    var h = (S.staff.role === "admin" ? '<div class="panel"><div class="lbl">🛟 Backup</div><p class="note">A copy of everything (customers, stamps, points and the stock) is saved automatically every night at 2am. You can also download one any time and keep it on your phone or Google Drive.</p>' +
+    /* admin-only tools sit at the very bottom of the page */
+    var tools = S.staff.role === "admin" ? '<div class="panel"><div class="lbl">🛟 Backup</div><p class="note">A copy of everything (customers, stamps, points and the stock) is saved automatically every night at 2am. You can also download one any time and keep it on your phone or Google Drive.</p>' +
       '<a class="btn ghost" href="/api/pass/backup" download style="text-align:center;text-decoration:none">DOWNLOAD BACKUP</a></div>' +
       '<div class="panel"><div class="lbl">✉️ Email</div><p class="note">Sends one test email to your alert address (ALERT_TO) and shows what Gmail answered.</p>' +
-      '<button class="btn ghost" type="button" data-mailtest>SEND TEST EMAIL</button><p class="note" id="mailtest-out"></p></div>' : "") + practiceHtml() +
+      '<button class="btn ghost" type="button" data-mailtest>SEND TEST EMAIL</button><p class="note" id="mailtest-out"></p></div>' : "";
+    var h = practiceHtml() +
       '<div class="panel"><div class="lbl">The truck QR</div><div class="kpis">' + kpi(scanTotal, "scans of the truck QR") + kpi(scanToday, "scans today") +
       kpi(O.customers.length, "signed up") + kpi(conv, "of scans signed up") + "</div></div>";
     h += '<div class="panel"><div class="lbl">Customers and reviews</div><div class="kpis">' + kpi(back, "came back more than once") + kpi(O.visits.length, "stamped orders") +
@@ -678,7 +680,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       '</tbody></table></div><button type="button" class="btn ghost" id="copy-csv">COPY FOR EXCEL</button></div>';
     if (scans.length) h += '<div class="panel"><div class="lbl">Truck QR scans by day</div><div class="tw"><table><tbody>' +
       scans.slice(0, 30).map(function (s) { return "<tr><td>" + niceDate(s.day + "T12:00:00Z") + '</td><td class="r">' + s.n + "</td></tr>"; }).join("") + "</tbody></table></div></div>";
-    return h;
+    return h + tools;
   }
 
   /* ---------------- render + load ---------------- */
