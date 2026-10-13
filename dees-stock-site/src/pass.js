@@ -32,6 +32,7 @@ const MENU_BY_ID = new Map(PASS_MENU.map((m) => [m.id, m]));
 export const POINTS_PER_STAMP = 10;
 export const GAMES = ["stack", "catch", "crack", "smash"];
 const GAME_MAX = 25;                         // points for a perfect game
+export const LIVES = 3;                      // plays per stamped order; only the best one earns points
 const TOKEN_HOURS = 48;
 const SCRATCH = [[10, 35], [15, 30], [25, 20], [50, 12], [100, 3]];   // [points, chance %]
 export const REWARDS = [
@@ -187,8 +188,14 @@ export async function handlePass(request, env, path, d) {
     " WHERE v.phone = ? AND v.at >= ? AND p.id IS NULL ORDER BY v.at ASC")
     .bind(kind, phone, new Date(Date.now() - TOKEN_HOURS * 3600e3).toISOString()).all()).results || []).map((x) => x.id);
   const OPEN_HOURS = 2;
-  const openPlay = (phone) => env.DB.prepare("SELECT id FROM pass_plays WHERE phone = ? AND kind = 'game' AND finished IS NULL AND started >= ? ORDER BY started DESC LIMIT 1")
+  const openPlay = (phone) => env.DB.prepare("SELECT id FROM pass_plays WHERE phone = ? AND kind LIKE 'game%' AND finished IS NULL AND started >= ? ORDER BY started DESC LIMIT 1")
     .bind(phone, new Date(Date.now() - OPEN_HOURS * 3600e3).toISOString()).first();
+  /* lives: each order from the last 48h gives LIVES plays (rows "game", "game:2", "game:3") */
+  const livesByVisit = async (phone) => ((await env.DB.prepare(
+    "SELECT v.id, COUNT(p.id) AS used FROM pass_visits v LEFT JOIN pass_plays p ON p.visit_id = v.id AND p.kind LIKE 'game%'" +
+    " WHERE v.phone = ? AND v.at >= ? GROUP BY v.id, v.at ORDER BY v.at ASC")
+    .bind(phone, new Date(Date.now() - TOKEN_HOURS * 3600e3).toISOString()).all()).results || []).filter((x) => x.used < LIVES);
+  const livesLeft = async (phone) => (await livesByVisit(phone)).reduce((a, x) => a + LIVES - x.used, 0) + ((await openPlay(phone)) ? 1 : 0);
   const playId = () => [...crypto.getRandomValues(new Uint8Array(12))].map((x) => x.toString(16).padStart(2, "0")).join("");
   /* achievements: each pays out once, recorded as a points row "ach:<id>" */
   const award = async (phone, ids) => {
@@ -219,7 +226,7 @@ export async function handlePass(request, env, path, d) {
       .forEach((x) => { if (x.r) records[x.game] = x.r; });
     const ach = ((await env.DB.prepare("SELECT kind FROM pass_points WHERE phone = ? AND kind LIKE 'ach:%'").bind(c.phone).all()).results || []).map((x) => x.kind.slice(4));
     return { ...pub(c), done, doneMonth: month, boardHide: !!c.board_hide, points: await balance(c.phone), records,
-      gamesLeft: (await tokens(c.phone, "game")).length + ((await openPlay(c.phone)) ? 1 : 0), scratchLeft: (await tokens(c.phone, "scratch")).length, achievements: ach };
+      gamesLeft: await livesLeft(c.phone), lives: LIVES, scratchLeft: (await tokens(c.phone, "scratch")).length, achievements: ach };
   };
   /* Top Smashers: cards finished this month, ties go to whoever got there first.
      Public rows carry first name + last initial only. */
@@ -378,11 +385,13 @@ export async function handlePass(request, env, path, d) {
       await env.DB.prepare("UPDATE pass_plays SET game = ?, started = ? WHERE id = ? AND finished IS NULL").bind(b.game, new Date().toISOString(), open.id).run();
       return ok({ play: open.id, resumed: true });
     }
-    const t = (await tokens(phone, "game"))[0];
-    if (!t) return fail("Your next order unlocks a game.", 409);
+    const v = (await livesByVisit(phone))[0];
+    if (!v) return fail("Your next order unlocks 3 more lives.", 409);
     const id = playId();
-    await env.DB.prepare("INSERT INTO pass_plays (id, phone, visit_id, kind, game, started) VALUES (?, ?, ?, 'game', ?, ?)")
-      .bind(id, phone, t, b.game, new Date().toISOString()).run();
+    try {
+      await env.DB.prepare("INSERT INTO pass_plays (id, phone, visit_id, kind, game, started) VALUES (?, ?, ?, ?, ?, ?)")
+        .bind(id, phone, v.id, v.used ? "game:" + (v.used + 1) : "game", b.game, new Date().toISOString()).run();
+    } catch (e) { return fail("Tap the game again.", 409); }   /* two taps at once took the same life */
     return ok({ play: id });
   }
 
@@ -390,7 +399,7 @@ export async function handlePass(request, env, path, d) {
     const phone = await customerId();
     if (!phone) return fail("signed_out", 401);
     const b = await body();
-    const p = await env.DB.prepare("SELECT * FROM pass_plays WHERE id = ? AND phone = ? AND kind = 'game' AND finished IS NULL").bind(String(b.play || ""), phone).first();
+    const p = await env.DB.prepare("SELECT * FROM pass_plays WHERE id = ? AND phone = ? AND kind LIKE 'game%' AND finished IS NULL").bind(String(b.play || ""), phone).first();
     if (!p) return fail("That game is already over.", 409);
     /* every game takes a while (Crack the Brûlée is 3 x 15 s); a faster finish is a replayed request, not a game */
     const quick = Date.now() - Date.parse(p.started) < (p.game === "crack" ? 40000 : 6000);
@@ -401,9 +410,14 @@ export async function handlePass(request, env, path, d) {
     const now = new Date().toISOString();
     const res = await env.DB.prepare("UPDATE pass_plays SET finished = ?, score = ?, points = ?, raw = ? WHERE id = ? AND finished IS NULL").bind(now, score, pts, raw, p.id).run();
     if (!(res.meta && res.meta.changes)) return fail("That game is already over.", 409);
-    if (pts) await pointsRow(phone, pts, "game", p.game + " " + score).run();
+    /* only the best game of an order pays: a better retry tops the points up, a worse one adds nothing */
+    const prevBest = ((await env.DB.prepare("SELECT MAX(points) AS m FROM pass_plays WHERE visit_id = ? AND kind LIKE 'game%' AND finished IS NOT NULL AND id != ?")
+      .bind(p.visit_id, p.id).first()) || {}).m || 0;
+    const gain = Math.max(0, pts - prevBest);
+    if (gain) await pointsRow(phone, gain, "game", p.game + " " + score).run();
     const earned = score >= 90 ? await award(phone, ["high_score"]) : [];
-    return ok({ score, raw, points: pts, achievements: earned, customer: await withStats(await get(phone)),
+    const used = ((await env.DB.prepare("SELECT COUNT(*) AS n FROM pass_plays WHERE visit_id = ? AND kind LIKE 'game%'").bind(p.visit_id).first()) || {}).n || 0;
+    return ok({ score, raw, points: gain, best: Math.max(prevBest, pts), livesOrder: Math.max(0, LIVES - used), achievements: earned, customer: await withStats(await get(phone)),
       record: raw != null ? Math.max(before, raw) : null, newRecord: raw != null && raw > 0 && raw > before });
   }
 

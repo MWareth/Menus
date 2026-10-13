@@ -71,6 +71,9 @@ button{cursor:pointer}
 .g-end{margin:auto;text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center;width:100%;max-width:340px}
 .g-score{font-family:'Lilita One',sans-serif;font-size:72px;line-height:1;color:var(--butter);margin:0}.g-score small{font-size:24px;color:var(--muted)}
 .qbar{position:fixed;left:12px;right:12px;bottom:12px;z-index:40;background:var(--butter);color:var(--carbon);border-radius:14px;padding:12px 14px;font-weight:800;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.lives{margin:0;font-size:18px;letter-spacing:.04em}.lives b{font-size:14px;letter-spacing:.06em;color:var(--butter);margin-left:4px}
+.g-lives{margin:0;font-size:14px;font-weight:800;color:var(--paper);letter-spacing:.04em}
+.g-end .btn{width:100%}
 .crewlink{display:block;margin:10px auto 0;background:none;border:0;color:var(--line);font:inherit;font-size:11px;letter-spacing:.08em;cursor:pointer;padding:4px 10px}
 .staffbar .linkbtn{margin-left:auto;background:none;border:0;color:var(--muted);font:inherit;font-weight:900;letter-spacing:.06em;cursor:pointer;padding:6px 4px}
 .staffbar a[aria-current="page"]{background:var(--butter);color:var(--carbon);border-color:var(--butter)}
@@ -607,6 +610,12 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       qb.hidden = false; document.body.style.overflow = "hidden"; document.getElementById("qr-close").focus();
     }
     else if (t.id === "qr-close") { document.getElementById("qrbig").hidden = true; document.body.style.overflow = ""; var o = document.getElementById("qr-open"); if (o) o.focus(); }
+    else if (t.id === "g-switch") {
+      var pm = !!(t.closest(".g-end") && t.closest(".g-end").getAttribute("data-practice-mode"));
+      var ov2 = document.getElementById("game");
+      ov2.innerHTML = '<div class="g-end"><p class="big">Pick a game</p>' + (pm ? "" : '<p class="lives">' + hearts(S.customer ? S.customer.gamesLeft : 0) + " <b>" + (S.customer ? S.customer.gamesLeft : 0) + " lives left</b></p>") +
+        pickerHtml(pm) + '<button type="button" class="btn ghost" id="g-close">' + (pm ? "BACK" : "BACK TO MY CARD") + "</button></div>";
+    }
     else if (t.id === "g-close") { var ov = document.getElementById("game"); ov.hidden = true; ov.innerHTML = ""; document.body.style.overflow = ""; load(); }
     else if (t.hasAttribute("data-free")) {
       t.disabled = true;
@@ -631,6 +640,11 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     crack: ["🔨", "Crack the Brûlée", "3 rounds of 15 seconds. Tap fast, score out of 1000. Beat your record."],
     smash: ["🥩", "Perfect Smash", "Hit SMASH when the marker is in the middle. 5 rounds."]
   };
+  function hearts(n) { return n > 0 ? "❤️".repeat(Math.min(n, 3)) + (n > 3 ? " +" + (n - 3) : "") : "🖤"; }
+  function pickerHtml(practice) {
+    return '<div class="games" style="width:100%">' + (S.games || Object.keys(GAME_INFO)).map(function (g) { var i = GAME_INFO[g];
+      return '<button type="button" data-' + (practice ? "practice" : "game") + '="' + g + '"><span>' + i[0] + "</span><b>" + i[1] + "</b></button>"; }).join("") + "</div>";
+  }
   function pointsHtml(c) {
     var h = '<div class="panel pts"><div class="pts-top"><div><div class="lbl">⚡ Smash Points</div><p class="pts-n">' + (c.points || 0) + "</p></div>" +
       '<p class="note" style="text-align:right">' + (S.pointsPerStamp || 10) + " points for every stamp.<br>Spend them at the window.</p></div>";
@@ -644,11 +658,12 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     if (c.scratchLeft) h += '<p class="note">You\'ve got a <b style="color:var(--butter)">scratch card</b> from your order. Scratch it!</p>' +
       '<div class="scratch"><div class="scr-prize" id="scr-prize">?</div><canvas id="scr" width="300" height="140" aria-label="Scratch card"></canvas></div>';
     if (c.gamesLeft) {
-      h += '<p class="note">' + c.gamesLeft + " game" + (c.gamesLeft > 1 ? "s" : "") + " to play. Up to " + (S.gameMax || 25) + " points each.</p><div class=\"games\">";
+      h += '<p class="lives">' + hearts(c.gamesLeft) + " <b>" + c.gamesLeft + " " + (c.gamesLeft === 1 ? "life" : "lives") + " left</b></p>" +
+        '<p class="note">Every order gives you ' + (c.lives || 3) + " lives: retry a game or switch. Only your best game per order earns points (up to " + (S.gameMax || 25) + ').</p><div class="games">';
       (S.games || []).forEach(function (g) { var i = GAME_INFO[g], rc = c.records && c.records[g];
         h += '<button type="button" data-game="' + g + '"><span>' + i[0] + "</span><b>" + i[1] + "</b><small>" + i[2] + (rc ? '<br><b style="color:var(--butter);font-family:inherit;font-size:12px">🏆 Your record: ' + rc + "</b>" : "") + "</small></button>"; });
       h += "</div>";
-    } else if (!c.scratchLeft) h += '<p class="note">Every order unlocks a game and a scratch card. Show your card at the window, then play while you wait.</p>';
+    } else if (!c.scratchLeft) h += '<p class="lives">🖤 <b>No lives left</b></p><p class="note">Every order gives you 3 lives and a scratch card. Show your card at the window, then play while you wait.</p>';
     h += "</div>";
     return h;
   }
@@ -703,9 +718,12 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       if (!r.ok) { toast(r.error); return; }
       var ov = document.getElementById("game"), info = GAME_INFO[id];
       ov.hidden = false; document.body.style.overflow = "hidden";
-      ov.innerHTML = '<div class="g-top"><b>' + info[0] + " " + info[1] + '</b><span id="g-hud"></span></div><canvas id="g-cv"></canvas><p class="g-help">' + info[2] + "</p>";
+      var left = practice ? null : Math.max(0, ((S.customer && S.customer.gamesLeft) || 1) - 1);
+      ov.innerHTML = '<div class="g-top"><b>' + info[0] + " " + info[1] + '</b><span id="g-hud"></span></div>' +
+        (practice ? '<p class="g-lives">PRACTICE · no points</p>' : '<p class="g-lives">' + hearts(left) + " " + left + " " + (left === 1 ? "life" : "lives") + " left after this game</p>") +
+        '<canvas id="g-cv"></canvas><p class="g-help">' + info[2] + "</p>";
       var cv = document.getElementById("g-cv"), dpr = Math.min(2, window.devicePixelRatio || 1);
-      var W = Math.min(window.innerWidth - 24, 420), H = Math.min(window.innerHeight - 170, 560);
+      var W = Math.min(window.innerWidth - 24, 420), H = Math.min(window.innerHeight - 200, 560);
       cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + "px"; cv.style.height = H + "px";
       var ctx = cv.getContext("2d"); ctx.scale(dpr, dpr);
       var hud = document.getElementById("g-hud");
@@ -722,9 +740,15 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
           ov.innerHTML = '<div class="g-end"><p class="big">' + (f.ok ? (f.score >= 90 ? "🔥 LEGENDARY" : f.score >= 60 ? "😎 NICE" : "👊 GOOD TRY") : "Game over") + "</p>" +
             big +
             '<p class="note">' + (f.practice ? "Practice round: no points counted." : f.saved ? "No internet. Your score is saved and your points are added as soon as you're back online."
-              : f.ok ? "+" + f.points + " Smash Points" : esc(f.error || "")) + "</p>" +
-            '<button type="button" class="btn pri" id="g-close">' + (practice ? "BACK" : "BACK TO MY CARD") + "</button></div>";
+              : f.ok ? (f.points ? "+" + f.points + " Smash Points" : "No new points: your best game this order is still worth " + (f.best || 0) + ". Beat it to earn more.") : esc(f.error || "")) + "</p>";
           if (f.ok && f.customer) { S.customer = Object.assign(S.customer, f.customer); celebrate(f); }
+          var lives = practice ? 1 : f.customer ? f.customer.gamesLeft : f.saved ? Math.max(0, ((S.customer && S.customer.gamesLeft) || 1) - 1) : 0;
+          var end = ov.querySelector(".g-end");
+          end.insertAdjacentHTML("beforeend", (practice ? "" : '<p class="lives">' + hearts(lives) + " <b>" + (lives ? lives + " " + (lives === 1 ? "life" : "lives") + " left" : "No lives left · your next order brings 3 more") + "</b></p>") +
+            (lives ? '<button type="button" class="btn pri" data-' + (practice ? "practice" : "game") + '="' + id + '">🔁 PLAY AGAIN</button>' +
+              '<button type="button" class="btn ghost" id="g-switch">🎮 CHANGE GAME</button>' : "") +
+            '<button type="button" class="btn ' + (lives ? "ghost" : "pri") + '" id="g-close">' + (practice ? "BACK" : "BACK TO MY CARD") + "</button>");
+          end.setAttribute("data-practice-mode", practice ? "1" : "");
         });
       };
       GAME[id](ctx, W, H, cv, hud, finish);
