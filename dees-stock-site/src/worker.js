@@ -13,6 +13,7 @@
  */
 
 import { SEED } from "./seed.js";
+import { handlePass } from "./pass.js";
 
 const enc = new TextEncoder();
 const DAY = 86400;
@@ -688,6 +689,21 @@ function harden(res) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    /* the Pass Card: its own API, its own page, and the truck poster's counter */
+    if (url.pathname.startsWith("/api/pass/") || url.pathname === "/t" || url.pathname === "/scan") {
+      try {
+        await ready(env);
+        return harden(await handlePass(request, env, url.pathname, {
+          json, hmac, sameString, cookies, sessionSecret, loadBoard, saveBoard, whoAmI
+        }));
+      } catch (err) {
+        return harden(json({ ok: false, error: "server_error", detail: String(err && err.message) }, 500));
+      }
+    }
+    if (url.pathname === "/pass" || url.pathname.startsWith("/pass/")) {
+      return harden(await env.ASSETS.fetch(new Request(new URL("/pass", url), request)));
+    }
 
     if (url.pathname.startsWith("/api/")) {
       try {

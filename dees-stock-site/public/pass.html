@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101010">
+<title>The Pass Card · Smash &amp; Pass</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Cairo:wght@500;700;900&display=swap">
+<style>
+:root{
+  --carbon:#101010; --panel:#1B1B19; --line:#2E2E2A; --paper:#FFF9EE; --muted:#B3AEA3;
+  --butter:#FFD21C; --ketchup:#F02820; --ok:#5BD08A; --bad:#FF8A80;
+  --display:'Lilita One','Arial Black',sans-serif; --body:Cairo,'Segoe UI',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--carbon);color:var(--paper);margin:0}
+body{font-family:var(--body);font-size:15px;line-height:1.45;padding:env(safe-area-inset-top,0px) 16px calc(40px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:460px;margin:0 auto;display:flex;flex-direction:column;gap:16px;min-width:0;width:100%}
+.wrap>*,.panel>*{min-width:0}
+h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;letter-spacing:.01em;text-wrap:balance}
+button,input,textarea{font-family:inherit;font-size:15px}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--butter);outline-offset:2px}
+.brand{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-top:18px}
+.brand h1{font-size:44px;line-height:.9;color:var(--butter)}
+.brand h1 span{display:block;color:var(--paper);font-size:18px;letter-spacing:.18em;font-family:var(--body);font-weight:900;margin-bottom:4px}
+.brand p{margin:0;color:var(--muted);font-size:12.5px;max-width:150px;text-align:right}
+.staffbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--muted)}
+.staffbar a{color:var(--paper);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 12px;text-decoration:none;font-weight:900;letter-spacing:.06em}
+.staffbar a[aria-current="page"]{background:var(--butter);color:var(--carbon);border-color:var(--butter)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.lbl{font-size:11.5px;font-weight:900;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field input,.field textarea{background:var(--carbon);color:var(--paper);border:1px solid var(--line);border-radius:12px;padding:11px 12px;width:100%;min-width:0}
+.field textarea{min-height:84px;resize:vertical}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;color:var(--muted)}
+.check input{margin-top:3px;accent-color:var(--butter);width:18px;height:18px;flex:none}
+.btn{border:0;border-radius:14px;padding:13px 16px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;font-size:14px}
+.btn[disabled]{opacity:.5}
+.pri{background:var(--butter);color:var(--carbon)}
+.red{background:var(--ketchup);color:var(--paper)}
+.ghost{background:transparent;color:var(--paper);border:1px solid var(--line)}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>*{flex:1 1 140px}
+.err{color:var(--bad);font-size:13.5px;font-weight:700;margin:0}
+.note{color:var(--muted);font-size:12.5px;margin:0}
+.note a{color:var(--butter)}
+.hello{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.hello h2{font-size:26px}
+.card{border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.card.burger{background:var(--butter);color:var(--carbon)}
+.card.dessert{background:var(--ketchup);color:var(--paper)}
+.card-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.card-h h3{font-size:28px;line-height:1}
+.card-h b{font-weight:900;font-size:13px;letter-spacing:.08em}
+.stamps{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.st{aspect-ratio:1;max-width:100%;border-radius:50%;border:2.5px dashed currentColor;opacity:.55;display:grid;place-items:center;font-family:var(--display);font-size:13px}
+.st.on{opacity:1;border-style:solid;background:var(--carbon);color:var(--butter)}
+.dessert .st.on{color:var(--paper)}
+.st.free{opacity:1;border-style:solid;font-size:12px}
+.st.free.ready{background:var(--carbon);color:var(--butter);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(1.08)}}
+@media (prefers-reduced-motion:reduce){.st.free.ready{animation:none}}
+.card .meta{font-weight:700;font-size:13px}
+.ready-banner{background:var(--carbon);color:var(--butter);border-radius:12px;padding:8px 12px;font-weight:900;letter-spacing:.06em;font-size:13px;text-align:center}
+.qrbox{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.qr{background:#fff;padding:6px;border-radius:12px;flex:none;width:150px;height:150px}
+.qr img{display:block;width:138px;height:138px}
+.big{font-family:var(--display);font-size:22px;color:var(--butter);margin:0}
+.dots{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.dots button{background:var(--carbon);color:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 0;font-family:var(--display);font-size:18px}
+.dots button[aria-pressed="true"],.pick button[aria-pressed="true"]{background:var(--butter);color:var(--carbon);border-color:var(--butter)}
+.pick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pick button{border-radius:12px;padding:12px;font-weight:900;border:2px solid var(--line);background:var(--carbon);color:var(--paper)}
+.items{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.items button{background:var(--carbon);color:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:left;display:flex;flex-direction:column;gap:2px;min-width:0}
+.items button b{font-size:14px}
+.items button small{color:var(--muted);font-size:12px;font-weight:700}
+.bl{display:flex;justify-content:space-between;gap:8px;font-weight:700;font-size:14px}
+.bl button{background:none;border:0;color:var(--muted);font-size:13px;text-decoration:underline}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.kpi{background:var(--carbon);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:2px}
+.kpi b{font-family:var(--display);font-size:26px;color:var(--butter);font-variant-numeric:tabular-nums}
+.kpi span{font-size:12.5px;color:var(--muted);font-weight:700}
+.tw{overflow-x:auto;max-width:100%}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th{text-align:left;color:var(--muted);font-size:11px;letter-spacing:.12em;font-weight:900;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.r{text-align:right}
+.cm{display:flex;flex-direction:column;gap:8px}
+.cm div{background:var(--carbon);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:14px}
+.cm small{display:block;color:var(--muted);font-weight:700;font-size:12px;margin-top:4px}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--paper);color:var(--carbon);font-weight:900;padding:11px 18px;border-radius:999px;max-width:90vw;z-index:9;font-size:14px}
+details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="brand">
+    <h1><span>SMASH &amp; PASS</span>THE PASS CARD</h1>
+    <p>Buy 9, the 10th is on us. Pass the payment this time.</p>
+  </header>
+  <nav class="staffbar" id="staffbar" hidden></nav>
+  <main id="app" class="wrap" aria-live="polite"><div class="panel"><p class="note">Loading your card…</p></div></main>
+</div>
+<div id="toast" class="toast" hidden></div>
+<script>
+(function () {
+  var app = document.getElementById("app");
+  var S = { customer: null, staff: null, need: 9, menu: [] };
+  var screen = "home", basket = {}, found = null, rv = { food: 0, vibe: 0, card: "burger" }, redeemFor = null, owner = null;
+  var MENU = {};
+
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function toast(t) { var el = document.getElementById("toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { el.hidden = true; }, 2800); }
+  function niceDate(iso) { return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" }); }
+  function fmtPhone(p) { return String(p || "").replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3"); }
+  function api(path, body) {
+    return fetch(path, body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), credentials: "same-origin" } : { credentials: "same-origin" })
+      .then(function (r) { return r.json().catch(function () { return { ok: false, error: "Something went wrong. Try again." }; }); })
+      .catch(function () { return { ok: false, error: "No connection. Check your internet and try again." }; });
+  }
+  function route() {
+    var p = location.pathname.replace(/\/+$/, "");
+    if (p.indexOf("/pass/s/") === 0) return { name: "scan", code: decodeURIComponent(p.slice(8)) };
+    if (p === "/pass/truck") return { name: "truck" };
+    if (p === "/pass/owner") return { name: "owner" };
+    return { name: "card" };
+  }
+  function go(path) { history.pushState(null, "", path); load(); }
+  window.addEventListener("popstate", load);
+
+  /* ---------------- shared pieces ---------------- */
+  function stamps(n) {
+    var h = '<div class="stamps" aria-label="' + Math.min(n, S.need) + " of " + S.need + ' stamps">';
+    for (var i = 0; i < S.need; i++) h += '<div class="st' + (i < n ? " on" : "") + '">' + (i < n ? "✓" : i + 1) + "</div>";
+    return h + '<div class="st free' + (n >= S.need ? " ready" : "") + '">FREE</div></div>';
+  }
+  function cardHtml(c, k) {
+    var n = c[k], left = Math.max(0, S.need - n), word = k === "burger" ? "burger" : "dessert";
+    return '<section class="card ' + k + '"><div class="card-h"><h3>' + (k === "burger" ? "Burgers" : "Dee'serts") + "</h3><b>" + Math.min(n, S.need) + " / " + S.need + "</b></div>" + stamps(n) +
+      (n >= S.need ? '<div class="ready-banner">YOUR FREE ' + word.toUpperCase() + " IS READY · ANY ONE YOU LIKE</div>"
+        : '<div class="meta">' + left + " more " + (left === 1 ? "stamp" : "stamps") + " and your next " + word + " is free.</div>") +
+      (n > S.need ? '<div class="meta">+' + (n - S.need) + " extra carried to your next card</div>" : "") + "</section>";
+  }
+  function itemsText(items) { return Object.keys(items || {}).map(function (k) { return items[k] + "× " + (MENU[k] ? MENU[k].name : k); }).join(", "); }
+  function showErr(id, t) { var el = document.getElementById(id); if (el) { el.textContent = t; el.hidden = false; } }
+
+  /* ---------------- customer ---------------- */
+  function viewCard() {
+    var c = S.customer;
+    if (!c) return screen === "join" ? joinForm() : loginForm();
+    if (screen === "review" && c.pending) return reviewForm(c);
+    var h = '<div class="hello"><h2>Hey ' + esc(c.first) + '</h2><button type="button" class="btn ghost" id="logout" style="flex:none;padding:8px 12px">LOG OUT</button></div>';
+    if (c.pending) h += '<div class="panel"><div class="lbl">How was your visit on ' + niceDate(c.pending.at) + "?</div>" +
+      '<p class="note">Two quick ratings and an optional comment.' + (c.bonus ? "" : ' Your first review earns a <b style="color:var(--butter)">bonus stamp</b>.') + "</p>" +
+      '<button type="button" class="btn pri" id="go-review">RATE MY VISIT</button></div>';
+    h += cardHtml(c, "burger") + cardHtml(c, "dessert");
+    h += '<div class="panel"><div class="lbl">Show this at the window</div><div class="qrbox"><div class="qr"><img src="/api/pass/qr.svg" alt="Your Pass Card QR code"></div>' +
+      '<div style="flex:1 1 160px"><p class="big">' + esc(fmtPhone(c.phone)) + '</p><p class="note">This code is yours only. The truck scans it to add your stamps. Every burger and dessert is a stamp; a Brownie Bag counts as 2.</p></div></div></div>';
+    if (c.visits.length) {
+      h += '<div class="panel"><div class="lbl">Your visits</div>';
+      c.visits.forEach(function (v) { h += '<div class="bl"><span>' + niceDate(v.at) + " · " + esc(itemsText(v.items)) + '</span><span style="color:var(--muted);flex:none">' + (v.food ? "★ " + v.food + "/" + v.vibe : "") + "</span></div>"; });
+      h += "</div>";
+    }
+    h += '<details class="panel"><summary>Delete my Pass Card</summary><p class="note">This removes your card, your stamps and your reviews for good.</p>' +
+      '<form id="f-del" class="row" novalidate><div class="field"><label for="del-pin">Your PIN</label><input id="del-pin" inputmode="numeric" maxlength="4" type="password" autocomplete="current-password"></div>' +
+      '<button class="btn red" type="submit" style="align-self:flex-end">DELETE FOR GOOD</button></form><p class="err" id="del-err" hidden></p></details>';
+    return h;
+  }
+  function loginForm() {
+    return '<form class="panel" id="f-login" novalidate><div class="lbl">Log in</div>' +
+      '<div class="field"><label for="l-phone">Mobile number</label><input id="l-phone" inputmode="tel" autocomplete="tel" placeholder="05X XXX XXXX"></div>' +
+      '<div class="field"><label for="l-pin">4-digit PIN</label><input id="l-pin" inputmode="numeric" maxlength="4" type="password" autocomplete="current-password"></div>' +
+      '<p class="err" id="l-err" hidden></p><button class="btn pri" type="submit">OPEN MY CARD</button>' +
+      '<button class="btn ghost" type="button" id="to-join">NEW HERE? GET A PASS CARD</button>' +
+      '<p class="note">Forgot your PIN? Ask at the truck window and they\'ll reset it.</p></form>';
+  }
+  function joinForm() {
+    return '<form class="panel" id="f-join" novalidate><div class="lbl">Get your Pass Card</div>' +
+      '<div class="row"><div class="field"><label for="j-first">First name</label><input id="j-first" autocomplete="given-name"></div>' +
+      '<div class="field"><label for="j-last">Last name</label><input id="j-last" autocomplete="family-name"></div></div>' +
+      '<div class="field"><label for="j-phone">Mobile number</label><input id="j-phone" inputmode="tel" autocomplete="tel" placeholder="05X XXX XXXX"></div>' +
+      '<div class="field"><label for="j-email">Email</label><input id="j-email" type="email" autocomplete="email"></div>' +
+      '<div class="field"><label for="j-pin">Choose a 4-digit PIN</label><input id="j-pin" inputmode="numeric" maxlength="4" type="password" autocomplete="new-password"></div>' +
+      '<label class="check"><input type="checkbox" id="j-ok"><span>I agree that Smash &amp; Pass keeps my name, number, email, what I buy and my reviews to run the Pass Card. I can delete my card at any time.</span></label>' +
+      '<label class="check"><input type="checkbox" id="j-offers"><span>Send me offers on WhatsApp or email (optional).</span></label>' +
+      '<p class="err" id="j-err" hidden></p><button class="btn pri" type="submit">CREATE MY CARD</button>' +
+      '<button class="btn ghost" type="button" id="to-login">I ALREADY HAVE ONE</button></form>';
+  }
+  function reviewForm(c) {
+    var dots = function (k) { var h = '<div class="dots" role="group">'; for (var i = 1; i <= 5; i++) h += '<button type="button" data-rate="' + k + '" data-v="' + i + '" aria-pressed="' + (rv[k] === i) + '">' + i + "</button>"; return h + "</div>"; };
+    return '<form class="panel" id="f-review" novalidate><div class="lbl">Your visit · ' + niceDate(c.pending.at) + "</div>" +
+      "<b>Food quality</b>" + dots("food") + "<b>The atmosphere</b>" + dots("vibe") +
+      '<div class="field"><label for="r-text">Anything else? Ideas, wishes, complaints</label><textarea id="r-text" maxlength="500"></textarea></div>' +
+      (c.bonus ? "" : '<div class="lbl">Your bonus stamp goes on</div><div class="pick"><button type="button" data-card="burger" aria-pressed="' + (rv.card === "burger") + '">🍔 Burgers</button><button type="button" data-card="dessert" aria-pressed="' + (rv.card === "dessert") + '">🍰 Dee\'serts</button></div>') +
+      '<p class="err" id="r-err" hidden></p><button class="btn pri" type="submit">SEND REVIEW</button><button class="btn ghost" type="button" id="r-back">LATER</button></form>';
+  }
+
+  /* ---------------- truck ---------------- */
+  function needStaff() {
+    return '<div class="panel"><div class="lbl">Truck staff only</div><p class="note">Log in to the stock app on this phone first, then scan the card again.</p>' +
+      '<a class="btn pri" href="/" style="text-align:center;text-decoration:none">OPEN THE STOCK APP</a></div>';
+  }
+  function viewTruck() {
+    if (!S.staff) return needStaff();
+    if (redeemFor && found) return redeemPanel();
+    var h = '<form class="panel" id="f-find" novalidate><div class="lbl">Find the customer</div>' +
+      '<div class="row"><div class="field" style="flex:2 1 180px"><label for="s-q">Mobile number</label><input id="s-q" inputmode="tel" placeholder="05X XXX XXXX"></div>' +
+      '<button class="btn pri" type="submit" style="align-self:flex-end;flex:1 1 90px">FIND</button></div>' +
+      '<p class="note">Faster: open the phone camera and scan the customer\'s QR. It opens their card here.</p><p class="err" id="s-err" hidden></p></form>';
+    if (!found) return h;
+    var c = found;
+    h += '<div class="panel"><div class="hello"><h2>' + esc(c.first + " " + c.last) + '</h2><span class="note">' + esc(fmtPhone(c.phone)) + "</span></div>" +
+      '<div class="kpis"><div class="kpi"><b>' + Math.min(c.burger, S.need) + "/" + S.need + '</b><span>Burger card</span></div><div class="kpi"><b>' + Math.min(c.dessert, S.need) + "/" + S.need + "</b><span>Dee'sert card</span></div></div>";
+    ["burger", "dessert"].forEach(function (k) { if (c[k] >= S.need) h += '<button type="button" class="btn red" data-redeem="' + k + '">GIVE FREE ' + k.toUpperCase() + "</button>"; });
+    h += "</div>";
+    var btn = function (m) { return '<button type="button" data-add="' + m.id + '"><b>' + esc(m.name) + "</b><small>+" + m.stamps + " stamp" + (m.stamps > 1 ? "s" : "") + (basket[m.id] ? " · " + basket[m.id] + " added" : "") + "</small></button>"; };
+    h += '<div class="panel"><div class="lbl">What did they buy?</div><div class="lbl" style="color:var(--butter)">Burgers</div><div class="items">' +
+      S.menu.filter(function (m) { return m.card === "burger"; }).map(btn).join("") + '</div><div class="lbl" style="color:var(--bad)">Dee\'serts</div><div class="items">' +
+      S.menu.filter(function (m) { return m.card === "dessert"; }).map(btn).join("") + "</div>";
+    var keys = Object.keys(basket);
+    if (keys.length) {
+      h += keys.map(function (k) { return '<div class="bl"><span>' + basket[k] + "× " + esc(MENU[k].name) + '</span><button type="button" data-less="' + k + '">remove one</button></div>'; }).join("") +
+        '<button type="button" class="btn pri" id="stamp">STAMP THIS ORDER</button>';
+    }
+    h += '</div><details class="panel"><summary>Customer forgot their PIN</summary><form id="f-reset" class="row" novalidate>' +
+      '<div class="field"><label for="rp-pin">New 4-digit PIN</label><input id="rp-pin" inputmode="numeric" maxlength="4"></div>' +
+      '<button class="btn ghost" type="submit" style="align-self:flex-end">SET NEW PIN</button></form><p class="err" id="rp-err" hidden></p></details>';
+    return h;
+  }
+  function redeemPanel() {
+    var k = redeemFor;
+    return '<div class="panel"><div class="lbl">Free ' + k + " for " + esc(found.first) + '</div><p class="note">Which one are they taking?' +
+      (k === "dessert" ? " It comes off the stock as a giveaway automatically." : "") + '</p><div class="items">' +
+      S.menu.filter(function (m) { return m.card === k; }).map(function (m) { return '<button type="button" data-free="' + m.id + '"><b>' + esc(m.name) + "</b><small>free</small></button>"; }).join("") +
+      '</div><button type="button" class="btn ghost" id="free-cancel">CANCEL</button></div>';
+  }
+
+  /* ---------------- owner ---------------- */
+  function viewOwner() {
+    if (!S.staff) return needStaff();
+    if (!owner) return '<div class="panel"><p class="note">Loading…</p></div>';
+    var O = owner, revs = O.visits.filter(function (v) { return v.food; });
+    var avg = function (k) { return revs.length ? (revs.reduce(function (a, v) { return a + v[k]; }, 0) / revs.length).toFixed(1) + "★" : "–"; };
+    var per = {}; O.visits.forEach(function (v) { per[v.phone] = (per[v.phone] || 0) + 1; });
+    var back = Object.keys(per).filter(function (p) { return per[p] > 1; }).length;
+    var scans = O.scans.filter(function (s) { return s.src === "truck"; });
+    var scanTotal = scans.reduce(function (a, s) { return a + s.n; }, 0);
+    var today = new Date(Date.now() + 4 * 3600e3).toISOString().slice(0, 10);
+    var scanToday = scans.filter(function (s) { return s.day === today; }).reduce(function (a, s) { return a + s.n; }, 0);
+    var conv = scanTotal ? Math.round((O.customers.length / scanTotal) * 100) + "%" : "–";
+    var items = {}; O.visits.forEach(function (v) { Object.keys(v.items).forEach(function (k) { items[k] = (items[k] || 0) + v.items[k]; }); });
+    var freeB = O.redeems.filter(function (r) { return r.card === "burger"; }).length;
+    var kpi = function (v, l) { return '<div class="kpi"><b>' + v + "</b><span>" + esc(l) + "</span></div>"; };
+    var h = '<div class="panel"><div class="lbl">The truck QR</div><div class="kpis">' + kpi(scanTotal, "scans of the truck QR") + kpi(scanToday, "scans today") +
+      kpi(O.customers.length, "signed up") + kpi(conv, "of scans signed up") + "</div></div>";
+    h += '<div class="panel"><div class="lbl">Customers and reviews</div><div class="kpis">' + kpi(back, "came back more than once") + kpi(O.visits.length, "stamped orders") +
+      kpi(avg("food"), "food quality, " + revs.length + " reviews") + kpi(avg("vibe"), "atmosphere") + kpi(freeB, "free burgers given") + kpi(O.redeems.length - freeB, "free desserts given") + "</div></div>";
+    if (Object.keys(items).length) h += '<div class="panel"><div class="lbl">What people buy</div><div class="tw"><table><thead><tr><th>ITEM</th><th class="r">BOUGHT</th></tr></thead><tbody>' +
+      O.menu.filter(function (m) { return items[m.id]; }).sort(function (a, b) { return items[b.id] - items[a.id]; }).map(function (m) { return "<tr><td>" + esc(m.name) + '</td><td class="r">' + items[m.id] + "</td></tr>"; }).join("") + "</tbody></table></div></div>";
+    var cms = revs.filter(function (v) { return v.comment; });
+    var byPhone = {}; O.customers.forEach(function (c) { byPhone[c.phone] = c; });
+    h += '<div class="panel"><div class="lbl">Comments</div><div class="cm">' + (cms.map(function (v) { var c = byPhone[v.phone];
+      return "<div>" + esc(v.comment) + "<small>" + esc(c ? c.first + " " + c.last : "") + " · " + niceDate(v.at) + " · food " + v.food + "/5 · atmosphere " + v.vibe + "/5</small></div>"; }).join("") || '<p class="note">No comments yet.</p>') + "</div></div>";
+    h += '<div class="panel"><div class="lbl">Customers</div><div class="tw"><table><thead><tr><th>FIRST</th><th>LAST</th><th>MOBILE</th><th>EMAIL</th><th class="r">VISITS</th><th class="r">🍔</th><th class="r">🍰</th><th>OFFERS</th><th>JOINED</th></tr></thead><tbody>' +
+      O.customers.map(function (c) { return "<tr><td>" + esc(c.first) + "</td><td>" + esc(c.last) + "</td><td>" + esc(c.phone) + "</td><td>" + esc(c.email) + '</td><td class="r">' + (per[c.phone] || 0) +
+        '</td><td class="r">' + c.burger + '</td><td class="r">' + c.dessert + "</td><td>" + (c.offers ? "yes" : "no") + "</td><td>" + niceDate(c.joined) + "</td></tr>"; }).join("") +
+      '</tbody></table></div><button type="button" class="btn ghost" id="copy-csv">COPY FOR EXCEL</button></div>';
+    if (scans.length) h += '<div class="panel"><div class="lbl">Truck QR scans by day</div><div class="tw"><table><tbody>' +
+      scans.slice(0, 30).map(function (s) { return "<tr><td>" + niceDate(s.day + "T12:00:00Z") + '</td><td class="r">' + s.n + "</td></tr>"; }).join("") + "</tbody></table></div></div>";
+    return h;
+  }
+
+  /* ---------------- render + load ---------------- */
+  function render() {
+    var r = route();
+    var bar = document.getElementById("staffbar");
+    if (S.staff) {
+      bar.hidden = false;
+      bar.innerHTML = "<span>" + esc(S.staff.name) + " ·</span>" + [["/pass/truck", "TRUCK"], ["/pass/owner", "OWNER"], ["/pass", "MY CARD"]].map(function (l) {
+        var cur = (r.name === "truck" || r.name === "scan") && l[0] === "/pass/truck" || r.name === "owner" && l[0] === "/pass/owner" || r.name === "card" && l[0] === "/pass";
+        return '<a href="' + l[0] + '" data-nav' + (cur ? ' aria-current="page"' : "") + ">" + l[1] + "</a>"; }).join("");
+    } else bar.hidden = true;
+    if (r.name === "card") app.innerHTML = viewCard();
+    else if (r.name === "owner") app.innerHTML = viewOwner();
+    else if (r.name === "scan" && !S.staff) app.innerHTML = '<div class="panel"><div class="lbl">A Pass Card</div><p class="note">This is a customer\'s Pass Card code. Show it at the Smash &amp; Pass window to collect stamps.</p><a class="btn pri" href="/pass" data-nav style="text-align:center;text-decoration:none">OPEN MY OWN CARD</a></div>';
+    else app.innerHTML = viewTruck();
+  }
+  function load() {
+    var r = route();
+    api("/api/pass/session").then(function (res) {
+      if (!res.ok) { app.innerHTML = '<div class="panel"><p class="err">Couldn\'t load the Pass Card. Pull down to refresh.</p></div>'; return; }
+      S = res; MENU = {}; (res.menu || []).forEach(function (m) { MENU[m.id] = m; });
+      if (r.name === "scan" && S.staff) {
+        return api("/api/pass/staff/find?q=" + encodeURIComponent(r.code)).then(function (f) {
+          found = f.ok ? f.customer : null; basket = {}; render();
+          if (!f.ok) showErr("s-err", f.error || "That code isn't a Pass Card.");
+        });
+      }
+      if (r.name === "owner" && S.staff) {
+        owner = null; render();
+        return api("/api/pass/owner").then(function (o) { owner = o.ok ? o : null; render(); });
+      }
+      render();
+    });
+  }
+
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest("a[data-nav]");
+    if (a) { e.preventDefault(); found = null; redeemFor = null; go(a.getAttribute("href")); return; }
+    var t = e.target.closest("button"); if (!t) return;
+    if (t.id === "to-join") { screen = "join"; render(); }
+    else if (t.id === "to-login") { screen = "home"; render(); }
+    else if (t.id === "go-review") { screen = "review"; render(); }
+    else if (t.id === "r-back") { screen = "home"; render(); }
+    else if (t.id === "logout") api("/api/pass/logout", {}).then(function () { S.customer = null; screen = "home"; render(); });
+    else if (t.hasAttribute("data-rate")) { rv[t.getAttribute("data-rate")] = +t.getAttribute("data-v"); keepText(); }
+    else if (t.hasAttribute("data-card")) { rv.card = t.getAttribute("data-card"); keepText(); }
+    else if (t.hasAttribute("data-add")) { var k = t.getAttribute("data-add"); basket[k] = (basket[k] || 0) + 1; render(); }
+    else if (t.hasAttribute("data-less")) { var k2 = t.getAttribute("data-less"); if (--basket[k2] <= 0) delete basket[k2]; render(); }
+    else if (t.id === "stamp") {
+      t.disabled = true;
+      api("/api/pass/staff/stamp", { phone: found.phone, items: basket }).then(function (res) {
+        if (!res.ok) { t.disabled = false; toast(res.error || "Couldn't stamp. Try again."); return; }
+        found = res.customer; basket = {}; render(); toast("Stamped: +" + res.added.burger + " burger, +" + res.added.dessert + " dessert");
+      });
+    }
+    else if (t.hasAttribute("data-redeem")) { redeemFor = t.getAttribute("data-redeem"); render(); }
+    else if (t.id === "free-cancel") { redeemFor = null; render(); }
+    else if (t.hasAttribute("data-free")) {
+      t.disabled = true;
+      var item = t.getAttribute("data-free");
+      api("/api/pass/staff/redeem", { phone: found.phone, card: redeemFor, item: item }).then(function (res) {
+        if (!res.ok) { t.disabled = false; toast(res.error || "Couldn't redeem. Try again."); return; }
+        found = res.customer; redeemFor = null; render();
+        toast("Free " + MENU[item].name + " given." + (res.stock === "not_found" ? " Not found in stock: log it as GAVE AWAY by hand." : ""));
+      });
+    }
+    else if (t.id === "copy-csv" && owner) {
+      var rows = [["first", "last", "mobile", "email", "burger stamps", "dessert stamps", "offers", "joined"]].concat(owner.customers.map(function (c) {
+        return [c.first, c.last, c.phone, c.email, c.burger, c.dessert, c.offers ? "yes" : "no", c.joined.slice(0, 10)].map(function (x) { return '"' + String(x).replace(/"/g, '""') + '"'; }); }));
+      var csv = rows.map(function (r) { return r.join(","); }).join("\n");
+      (navigator.clipboard ? navigator.clipboard.writeText(csv) : Promise.reject()).then(function () { toast("Copied. Paste into Excel."); }, function () { toast("Couldn't copy on this phone."); });
+    }
+  });
+  function keepText() { var ta = document.getElementById("r-text"), v = ta ? ta.value : ""; render(); var n = document.getElementById("r-text"); if (n) n.value = v; }
+
+  document.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var f = e.target, val = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ""; };
+    var btn = f.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
+    var done = function () { if (btn) btn.disabled = false; };
+    if (f.id === "f-login") api("/api/pass/login", { phone: val("l-phone"), pin: val("l-pin") }).then(function (r) { done(); if (!r.ok) return showErr("l-err", r.error); load(); });
+    if (f.id === "f-join") api("/api/pass/join", { first: val("j-first"), last: val("j-last"), phone: val("j-phone"), email: val("j-email"), pin: val("j-pin"),
+      consent: document.getElementById("j-ok").checked, offers: document.getElementById("j-offers").checked }).then(function (r) { done(); if (!r.ok) return showErr("j-err", r.error); screen = "home"; load(); toast("Your Pass Card is ready"); });
+    if (f.id === "f-review") {
+      if (!rv.food || !rv.vibe) { done(); return showErr("r-err", "Pick a number for both food and atmosphere."); }
+      api("/api/pass/review", { food: rv.food, vibe: rv.vibe, comment: val("r-text"), card: rv.card }).then(function (r) {
+        done(); if (!r.ok) return showErr("r-err", r.error);
+        screen = "home"; rv = { food: 0, vibe: 0, card: "burger" }; load();
+        toast(r.bonus ? "Thanks! Bonus stamp added to your " + r.bonus + " card" : "Thanks for the review");
+      });
+    }
+    if (f.id === "f-find") api("/api/pass/staff/find?q=" + encodeURIComponent(val("s-q"))).then(function (r) { done(); if (!r.ok) return showErr("s-err", r.error); found = r.customer; basket = {}; render(); });
+    if (f.id === "f-reset") api("/api/pass/staff/resetpin", { phone: found.phone, pin: val("rp-pin") }).then(function (r) { done(); if (!r.ok) return showErr("rp-err", r.error); toast("New PIN set. Tell the customer."); render(); });
+    if (f.id === "f-del") api("/api/pass/delete", { pin: val("del-pin") }).then(function (r) { done(); if (!r.ok) return showErr("del-err", r.error); S.customer = null; render(); toast("Your Pass Card was deleted."); });
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>
