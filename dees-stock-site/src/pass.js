@@ -12,6 +12,7 @@
  * cannot be made up for someone else's.
  */
 import qrcode from "qrcode-generator";
+import { mailReady, sendMail, orderEmail } from "./mail.js";
 
 export const NEED = 9;
 /* `off` = not sold right now: kept so past visits still read right, hidden from the truck */
@@ -104,6 +105,8 @@ async function ensureTables(env) {
   try { await env.DB.prepare("ALTER TABLE pass_plays ADD COLUMN raw INTEGER").run(); } catch (e) { /* already there */ }
   /* added later: the phone (browser) a card was made on, so one phone makes one card */
   try { await env.DB.prepare("ALTER TABLE pass_customers ADD COLUMN device TEXT").run(); } catch (e) { /* already there */ }
+  /* added later: 1 = the customer turned off order emails */
+  try { await env.DB.prepare("ALTER TABLE pass_customers ADD COLUMN no_order_email INTEGER NOT NULL DEFAULT 0").run(); } catch (e) { /* already there */ }
   readyDone = true;
 }
 
@@ -394,6 +397,17 @@ export async function handlePass(request, env, path, d) {
     return ok(out);
   }
 
+  /* the "Stop order emails" link in every order email */
+  if (path === "/api/pass/unsub" && request.method === "GET") {
+    const u = new URL(request.url), phone = normPhone(u.searchParams.get("p") || "");
+    const good = validPhone(phone) && d.sameString(u.searchParams.get("t") || "", (await d.hmac(secret, "unsub:" + phone)).slice(0, 24));
+    if (good) await env.DB.prepare("UPDATE pass_customers SET no_order_email = 1 WHERE phone = ?").bind(phone).run();
+    return new Response('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><body style="font-family:Arial,sans-serif;background:#101010;color:#FFF9EE;padding:32px">' +
+      (good ? "<h2 style=\"color:#FFD21C\">Done</h2><p>You won't get order emails any more. Your Pass Card works exactly the same.</p>"
+        : "<h2>That link didn't work</h2><p>Ask at the truck window and we'll turn order emails off for you.</p>") + "</body>",
+      { status: good ? 200 : 400, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+  }
+
   if (path === "/api/pass/game/start" && request.method === "POST") {
     const phone = await customerId();
     if (!phone) return fail("signed_out", 401);
@@ -521,7 +535,18 @@ export async function handlePass(request, env, path, d) {
           .bind(phone, new Date().toISOString(), JSON.stringify(items), me.id, burger, dessert)
       ]);
       const earned = await checkOrderAchievements(phone);
-      return ok({ customer: await withStats(await get(phone)), added: { burger, dessert }, welcome, completed: done.map((x) => x[1]),
+      const after = await withStats(await get(phone));
+      /* the customer's order email, sent after the reply so the truck never waits for it */
+      if (mailReady(env) && c.email && !c.no_order_email && d.later) {
+        const origin = new URL(request.url).origin;
+        const mail = orderEmail({
+          first: c.first, need: NEED, card: { burger: after.burger, dessert: after.dessert }, points: after.points, gameMin: GAME_WINDOW_MIN,
+          items: Object.entries(items).map(([k, n]) => n + "× " + MENU_BY_ID.get(k).name).join(", "),
+          link: origin + "/pass", unsub: origin + "/api/pass/unsub?p=" + encodeURIComponent(phone) + "&t=" + (await d.hmac(secret, "unsub:" + phone)).slice(0, 24)
+        });
+        d.later(sendMail(env, { to: c.email, fromName: "Smash & Pass", ...mail }));
+      }
+      return ok({ customer: after, added: { burger, dessert }, welcome, completed: done.map((x) => x[1]),
         points: (burger + dessert) * POINTS_PER_STAMP, achievements: earned });
     }
 

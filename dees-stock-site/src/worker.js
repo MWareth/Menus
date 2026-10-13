@@ -14,6 +14,7 @@
 
 import { SEED } from "./seed.js";
 import { handlePass, nightlyBackup } from "./pass.js";
+import { mailReady, sendMail, alertEmail, dubaiTime } from "./mail.js";
 
 const enc = new TextEncoder();
 const DAY = 86400;
@@ -600,7 +601,7 @@ function mergeSave(stored, incoming, me) {
 
 /* ============ the API ============ */
 
-async function api(request, env, path) {
+async function api(request, env, path, later = () => {}) {
   await ready(env);
   const board = await repaired(env, await loadBoard(env));
   const me = await whoAmI(request, env, board.state);
@@ -700,6 +701,7 @@ async function api(request, env, path) {
     }
     const merged = mergeSave(board.state, body.state, me);
     const version = await saveBoard(env, board.version, merged);
+    if (version != null && mailReady(env) && env.ALERT_TO) later(saleAlert(env, board.state, merged, me, new URL(request.url).origin));
     if (version == null) {
       const now = await loadBoard(env);
       return json({
@@ -732,6 +734,24 @@ async function api(request, env, path) {
   return json({ ok: false, error: "not_found" }, 404);
 }
 
+/* Owner alert: every new sale logged in Dee's Stock (all of it is desserts), one email per save. */
+async function saleAlert(env, before, after, me, origin) {
+  const seen = new Set();
+  (before.batches || []).forEach((b) => (b.sales || []).forEach((s) => seen.add(b.id + "|" + s.at + "|" + s.qty)));
+  const items = new Map((after.items || []).map((i) => [i.id, i.name]));
+  const team = new Map((after.team || []).map((u) => [u.id, u.name]));
+  const fresh = [];
+  (after.batches || []).forEach((b) => (b.sales || []).forEach((s) => {
+    if (s.kind || !(+s.qty > 0) || seen.has(b.id + "|" + s.at + "|" + s.qty)) return;   /* sales only, not gifts, waste or fixes */
+    fresh.push({ name: items.get(b.itemId) || "Dessert", qty: +s.qty, ch: s.ch || "", by: team.get(s.by) || me.name, at: s.at });
+  }));
+  if (!fresh.length) return;
+  const lines = fresh.map((f) => f.qty + "× " + f.name + (f.ch ? " · " + f.ch : "") + " · " + dubaiTime(f.at) + " · logged by " + f.by);
+  const n = fresh.reduce((a, f) => a + f.qty, 0);
+  const mail = alertEmail({ title: "🍰 " + n + " dessert" + (n === 1 ? "" : "s") + " sold", lines, link: origin + "/" });
+  await sendMail(env, { to: env.ALERT_TO, fromName: "Dee's Stock alerts", ...mail });
+}
+
 /* ============ the Worker ============ */
 
 function harden(res) {
@@ -755,7 +775,9 @@ export default {
     ctx.waitUntil(nightlyBackup(env, { loadBoard }).then((n) => console.log("backup saved", n, "bytes"))
       .catch((e) => console.error("backup failed", e && e.message)));
   },
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
+    /* emails go out in the background, after the reply; a failed email never fails the request */
+    const later = (p) => { const q = Promise.resolve(p).catch((e) => console.error("background task failed", e && e.message)); if (ctx && ctx.waitUntil) ctx.waitUntil(q); };
     const url = new URL(request.url);
 
     /* the Pass Card: its own API, its own page, and the truck poster's counter */
@@ -763,7 +785,7 @@ export default {
       try {
         await ready(env);
         return harden(await handlePass(request, env, url.pathname, {
-          json, hmac, sameString, cookies, sessionSecret, loadBoard, saveBoard, whoAmI
+          json, hmac, sameString, cookies, sessionSecret, loadBoard, saveBoard, whoAmI, later
         }));
       } catch (err) {
         return harden(json({ ok: false, error: "server_error", detail: String(err && err.message) }, 500));
@@ -778,7 +800,7 @@ export default {
 
     if (url.pathname.startsWith("/api/")) {
       try {
-        return harden(await api(request, env, url.pathname));
+        return harden(await api(request, env, url.pathname, later));
       } catch (err) {
         return harden(json({ ok: false, error: "server_error", detail: String(err && err.message) }, 500));
       }
