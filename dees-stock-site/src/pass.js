@@ -414,7 +414,7 @@ export async function handlePass(request, env, path, d) {
     return ok({ customer: await withStats(await get(phone)) });
   }
 
-  if (path.startsWith("/api/pass/staff/") || path === "/api/pass/owner") {
+  if (path.startsWith("/api/pass/staff/") || path === "/api/pass/owner" || path === "/api/pass/backup") {
     const me = await staff();
     if (!me) return fail("staff_only", 401);
 
@@ -424,7 +424,7 @@ export async function handlePass(request, env, path, d) {
       const c = phone ? await get(phone) : null;
       if (!c) return fail("No Pass Card with that number. Ask them to sign up with the QR on the truck.", 404);
       const last = await env.DB.prepare("SELECT at FROM pass_visits WHERE phone = ? ORDER BY at DESC LIMIT 1").bind(phone).first();
-      const welcome = !last && !c.surprise ? await pickSurprise(env, d) : null;
+      const welcome = !c.surprise ? await pickSurprise(env, d) : null;
       return ok({ customer: await withStats(c), lastVisit: last ? last.at : null, welcome });
     }
 
@@ -442,11 +442,16 @@ export async function handlePass(request, env, path, d) {
         if (m.card === "burger") burger += q * m.stamps; else dessert += q * m.stamps;
       });
       if (!burger && !dessert) return fail("Pick at least one item.");
+      /* an offline stamp may be sent twice (retry after a dropped reply): its id makes the second one a no-op */
+      const qid = typeof b.qid === "string" && /^[a-z0-9-]{8,40}$/.test(b.qid) ? b.qid : null;
+      if (qid && await env.DB.prepare("SELECT 1 AS x FROM pass_points WHERE phone = ? AND kind = 'order' AND note LIKE ?").bind(phone, "%#" + qid).first())
+        return ok({ customer: await withStats(c), added: { burger: 0, dessert: 0 }, welcome: null, completed: [], points: 0, achievements: [], duplicate: true });
       /* first visit: the welcome surprise. A dessert on its last day (or the
          day before) goes out free as a giveaway; otherwise 10% off the order. */
       let welcome = null;
-      const before = await env.DB.prepare("SELECT 1 AS x FROM pass_visits WHERE phone = ? LIMIT 1").bind(phone).first();
-      if (!before && !c.surprise) {
+      /* a stamp saved offline and sent later can't hand anything over, so it
+         skips the surprise; the customer gets it on their next live visit */
+      if (!c.surprise && b.offline !== true) {
         const pick = await pickSurprise(env, d);
         if (pick.kind === "dessert" && (await giftFromStock(env, d, pick.stock, me, { lotId: pick.lotId, ch: "Pass Card welcome" }))) welcome = pick;
         else welcome = { kind: "discount", label: "10% off the whole order" };
@@ -457,7 +462,7 @@ export async function handlePass(request, env, path, d) {
       const done = [...filled("burger", phone, c.burger, burger), ...filled("dessert", phone, c.dessert, dessert)];
       await env.DB.batch([
         ...done.map(([p, k]) => completion(p, k)),
-        pointsRow(phone, (burger + dessert) * POINTS_PER_STAMP, "order", Object.entries(items).map(([k, n]) => n + "x " + k).join(", ")),
+        pointsRow(phone, (burger + dessert) * POINTS_PER_STAMP, "order", Object.entries(items).map(([k, n]) => n + "x " + k).join(", ") + (qid ? " #" + qid : "")),
         env.DB.prepare("UPDATE pass_customers SET burger = burger + ?, dessert = dessert + ? WHERE phone = ?").bind(burger, dessert, phone),
         env.DB.prepare("INSERT INTO pass_visits (phone, at, items, by, burger, dessert) VALUES (?, ?, ?, ?, ?, ?)")
           .bind(phone, new Date().toISOString(), JSON.stringify(items), me.id, burger, dessert)
@@ -509,6 +514,13 @@ export async function handlePass(request, env, path, d) {
       return res.meta && res.meta.changes ? ok({}) : fail("Customer not found.", 404);
     }
 
+    if (path === "/api/pass/backup" && request.method === "GET") {
+      if (me.role !== "admin") return fail("Only the admin can download a backup.", 403);
+      const snap = await snapshot(env, d);
+      return new Response(JSON.stringify(snap), { headers: { "content-type": "application/json; charset=utf-8",
+        "content-disposition": 'attachment; filename="dees-stock-backup-' + dubaiDay() + '.json"', "cache-control": "no-store" } });
+    }
+
     if (path === "/api/pass/owner" && request.method === "GET") {
       const all = async (sql) => (await env.DB.prepare(sql).all()).results || [];
       const customers = (await all("SELECT * FROM pass_customers ORDER BY joined DESC")).map(pub);
@@ -522,6 +534,29 @@ export async function handlePass(request, env, path, d) {
     }
   }
   return fail("not_found", 404);
+}
+
+/* Everything worth keeping, in one object: the stock board and every Pass Card table. */
+export async function snapshot(env, d) {
+  await ensureTables(env);
+  const board = await d.loadBoard(env);
+  const tables = {};
+  for (const t of ["pass_customers", "pass_visits", "pass_redeems", "pass_completions", "pass_points", "pass_plays", "pass_scans"]) {
+    tables[t] = (await env.DB.prepare("SELECT * FROM " + t).all()).results || [];
+  }
+  return { app: "dees-stock", at: new Date().toISOString(), board: { version: board.version, state: board.state }, pass: tables };
+}
+
+/* Nightly: keep a copy of everything in the backups table, last 30 nights. */
+export async function nightlyBackup(env, d) {
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS backups (day TEXT PRIMARY KEY, at TEXT NOT NULL, json TEXT NOT NULL)").run();
+  const snap = await snapshot(env, d);
+  let json = JSON.stringify(snap);
+  /* a D1 row holds about 2 MB; if it ever outgrows that, keep the Pass Card part (Time Travel still has the rest) */
+  if (json.length > 1900000) json = JSON.stringify({ ...snap, board: { version: snap.board.version, skipped: "too big for one row" } });
+  await env.DB.prepare("INSERT OR REPLACE INTO backups (day, at, json) VALUES (?, ?, ?)").bind(dubaiDay(), new Date().toISOString(), json).run();
+  await env.DB.prepare("DELETE FROM backups WHERE day NOT IN (SELECT day FROM backups ORDER BY day DESC LIMIT 30)").run();
+  return json.length;
 }
 
 /* A free dessert comes out of the stock as a giveaway, on the oldest open lot

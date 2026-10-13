@@ -13,7 +13,7 @@
  */
 
 import { SEED } from "./seed.js";
-import { handlePass } from "./pass.js";
+import { handlePass, nightlyBackup } from "./pass.js";
 
 const enc = new TextEncoder();
 const DAY = 86400;
@@ -749,6 +749,12 @@ function harden(res) {
 }
 
 export default {
+  /* nightly backup (cron in wrangler.jsonc); Cloudflare D1 Time Travel is the second safety net */
+  async scheduled(event, env, ctx) {
+    await ready(env);
+    ctx.waitUntil(nightlyBackup(env, { loadBoard }).then((n) => console.log("backup saved", n, "bytes"))
+      .catch((e) => console.error("backup failed", e && e.message)));
+  },
   async fetch(request, env) {
     const url = new URL(request.url);
 

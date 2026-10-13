@@ -70,6 +70,7 @@ button{cursor:pointer}
 .g-help{color:var(--muted);font-size:13px;text-align:center;max-width:380px;margin:0}
 .g-end{margin:auto;text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center;width:100%;max-width:340px}
 .g-score{font-family:'Lilita One',sans-serif;font-size:72px;line-height:1;color:var(--butter);margin:0}.g-score small{font-size:24px;color:var(--muted)}
+.qbar{position:fixed;left:12px;right:12px;bottom:12px;z-index:40;background:var(--butter);color:var(--carbon);border-radius:14px;padding:12px 14px;font-weight:800;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .crewlink{display:block;margin:10px auto 0;background:none;border:0;color:var(--line);font:inherit;font-size:11px;letter-spacing:.08em;cursor:pointer;padding:4px 10px}
 .staffbar .linkbtn{margin-left:auto;background:none;border:0;color:var(--muted);font:inherit;font-weight:900;letter-spacing:.06em;cursor:pointer;padding:6px 4px}
 .staffbar a[aria-current="page"]{background:var(--butter);color:var(--carbon);border-color:var(--butter)}
@@ -161,6 +162,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   <nav class="staffbar" id="staffbar" hidden></nav>
   <main id="app" class="wrap" aria-live="polite"><div class="panel"><p class="note">Loading your card…</p></div></main>
 </div>
+<div id="qbar" class="qbar" hidden role="status"></div>
 <div id="game" class="game" hidden role="dialog" aria-label="Game"></div>
 <div id="qrbig" class="qrbig" hidden role="dialog" aria-modal="true" aria-label="Your Pass Card QR code"></div>
 <div id="toast" class="toast" hidden></div>
@@ -201,11 +203,47 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     if (n.length < c[3] || n.length > c[4]) { showErr(errId, c[1] + " numbers are " + lenText(c) + " after +" + c[2] + "."); return null; }
     return "+" + c[2] + n;
   }
+  /* net: true = the internet or the server failed (not a "no" from the server) */
   function api(path, body) {
     return fetch(path, body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), credentials: "same-origin" } : { credentials: "same-origin" })
-      .then(function (r) { return r.json().catch(function () { return { ok: false, error: "Something went wrong. Try again." }; }); })
-      .catch(function () { return { ok: false, error: "No connection. Check your internet and try again." }; });
+      .then(function (r) { return r.json().then(function (j) { if (r.status >= 500) j.net = true; return j; },
+        function () { return { ok: false, net: r.status >= 500, error: "Something went wrong. Try again." }; }); })
+      .catch(function () { return { ok: false, net: true, error: "No connection. Check your internet and try again." }; });
   }
+  /* ---- backup plan: this phone remembers things so the truck never stops ---- */
+  function store(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private mode */ } }
+  function recall(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
+  var offline = false;
+  /* stamps that couldn't reach the server wait here and send themselves later */
+  function qrSrc() { return offline && recall("pc_qr") ? recall("pc_qr") : "/api/pass/qr.svg"; }
+  function queue() { return recall("pc_queue") || []; }
+  function queueStamp(phone, items) {
+    var q = queue(); q.push({ qid: Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10), phone: phone, items: items, at: new Date().toISOString() });
+    store("pc_queue", q); paintQueue();
+  }
+  var syncing = false;
+  function syncQueue() {
+    var q = queue(); if (!q.length || syncing) return; syncing = true;
+    var item = q[0];
+    api("/api/pass/staff/stamp", { phone: item.phone, items: item.items, offline: true, qid: item.qid }).then(function (res) {
+      syncing = false;
+      if (res.net || res.error === "staff_only") { paintQueue(); return; }      /* still offline / logged out: try later */
+      offline = false;
+      store("pc_queue", queue().filter(function (x) { return x.qid !== item.qid; }));
+      if (!res.ok) toast("A saved stamp for " + fmtPhone(item.phone) + " couldn't be added: " + res.error);
+      else if (!queue().length) toast("✅ Saved stamps sent");
+      paintQueue(); syncQueue();
+    });
+  }
+  function paintQueue() {
+    var el = document.getElementById("qbar"); if (!el) return; var n = queue().length;
+    el.hidden = !n && !offline;
+    el.textContent = n ? "⏳ " + n + " stamp" + (n > 1 ? "s" : "") + " saved on this phone. They send by themselves when the internet is back."
+      : "📴 Offline. Stamps you add are saved on this phone and sent later.";
+  }
+  setInterval(syncQueue, 20000);
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(function () {});
+  window.addEventListener("online", syncQueue);
   function route() {
     var p = location.pathname.replace(/\/+$/, "");
     if (p.indexOf("/pass/s/") === 0) return { name: "scan", code: decodeURIComponent(p.slice(8)) };
@@ -264,9 +302,10 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     if (!c) return screen === "join" ? joinForm() : screen === "crew" ? needStaff() + '<button class="btn ghost" type="button" id="to-login">BACK</button>' : loginForm();
     if (screen === "review" && c.pending) return reviewForm(c);
     var h = '<div class="hello"><h2>Hey ' + esc(c.first) + '</h2><button type="button" class="btn ghost" id="logout" style="flex:none;padding:8px 12px">LOG OUT</button></div>';
+    if (offline) h += '<div class="panel" style="border-color:var(--butter)"><p class="note" style="margin:0">📴 <b>No internet.</b> This is your saved card, and your QR still works at the window. Stamps and points update when you\'re back online.</p></div>';
     /* the QR sits on top as a thumbnail; tapping it fills the screen for the truck to scan */
     h += '<button type="button" class="panel qr-top" id="qr-open" aria-label="Show my QR code full screen">' +
-      '<span class="qr-thumb"><img src="/api/pass/qr.svg" alt=""></span>' +
+      '<span class="qr-thumb"><img src="' + qrSrc() + '" alt=""></span>' +
       '<span class="qr-txt"><span class="lbl">Show your QR code</span><b>' + esc(fmtPhone(c.phone)) + "</b>" +
       '<small>A unique QR code made for your phone number. Tap to make it big.</small></span><span class="qr-go" aria-hidden="true">⤢</span></button>';
     if (c.pending) h += '<div class="panel"><div class="lbl">How was your visit on ' + niceDate(c.pending.at) + "?</div>" +
@@ -339,13 +378,18 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       '<p class="note">Faster: open the phone camera and scan the customer\'s QR. It opens their card here.</p><p class="err" id="s-err" hidden></p></form>';
     if (!found) return h;
     var c = found;
+    if (c.offline) {
+      h += '<div class="panel"><div class="hello"><h2>' + esc(fmtPhone(c.phone)) + '</h2><span class="note">offline</span></div>' +
+        '<p class="note">No internet, so their card can\'t load. Add the order anyway: it\'s saved on this phone and lands on their card when you\'re back online. Free items and points wait until then.</p></div>';
+    } else {
     h += '<div class="panel"><div class="hello"><h2>' + esc(c.first + " " + c.last) + '</h2><span class="note">' + esc(fmtPhone(c.phone)) + "</span></div>" +
-      '<div class="kpis"><div class="kpi"><b>' + (c.burger % S.need) + "/" + S.need + '</b><span>Burger card</span></div><div class="kpi"><b>' + (c.dessert % S.need) + "/" + S.need + "</b><span>Dee'sert card</span></div>" +
-      '<div class="kpi"><b>' + (levelOf(c).cur ? levelOf(c).cur[2] : "–") + " " + levelOf(c).total + "</b><span>cards finished</span></div></div>";
+      (c.offline ? "" : '<div class="kpis"><div class="kpi"><b>' + (c.burger % S.need) + "/" + S.need + '</b><span>Burger card</span></div><div class="kpi"><b>' + (c.dessert % S.need) + "/" + S.need + "</b><span>Dee'sert card</span></div>" +
+      '<div class="kpi"><b>' + (levelOf(c).cur ? levelOf(c).cur[2] : "–") + " " + levelOf(c).total + "</b><span>cards finished</span></div></div>");
     ["burger", "dessert"].forEach(function (k) { var f = freeOf(c, k); if (f) h += '<button type="button" class="btn red" data-redeem="' + k + '">GIVE FREE ' + k.toUpperCase() + (f > 1 ? " · " + f + " WAITING" : "") + "</button>"; });
     h += '<p class="note" style="margin-top:10px">⚡ <b style="color:var(--butter)">' + (c.points || 0) + "</b> Smash Points</p>";
     (S.rewards || []).forEach(function (rw) { if ((c.points || 0) >= rw.cost) h += '<button type="button" class="btn ghost" data-redeem="pts:' + rw.id + '">SPEND ' + rw.cost + " PTS · " + esc(rw.name).toUpperCase() + "</button>"; });
     h += "</div>";
+    }
     if (welcomeP) h += '<div class="panel" style="background:var(--butter);color:var(--carbon);border-color:var(--butter)"><div class="lbl" style="color:var(--carbon)">🎁 First visit · welcome surprise</div>' +
       (welcomeP.kind === "dessert"
         ? '<p class="big" style="color:var(--carbon)">Give a free ' + esc(welcomeP.stock) + '</p><p style="margin:0;font-weight:700">Take it from the lot that expires ' + esc(niceDate(welcomeP.expires + "T12:00:00Z")) + '. It comes off the stock as a giveaway when you stamp the order.</p>'
@@ -395,7 +439,9 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     var items = {}; O.visits.forEach(function (v) { Object.keys(v.items).forEach(function (k) { items[k] = (items[k] || 0) + v.items[k]; }); });
     var freeB = O.redeems.filter(function (r) { return r.card === "burger"; }).length;
     var kpi = function (v, l) { return '<div class="kpi"><b>' + v + "</b><span>" + esc(l) + "</span></div>"; };
-    var h = '<div class="panel"><div class="lbl">The truck QR</div><div class="kpis">' + kpi(scanTotal, "scans of the truck QR") + kpi(scanToday, "scans today") +
+    var h = (S.staff.role === "admin" ? '<div class="panel"><div class="lbl">🛟 Backup</div><p class="note">A copy of everything (customers, stamps, points and the stock) is saved automatically every night at 2am. You can also download one any time and keep it on your phone or Google Drive.</p>' +
+      '<a class="btn ghost" href="/api/pass/backup" download style="text-align:center;text-decoration:none">DOWNLOAD BACKUP</a></div>' : "") +
+      '<div class="panel"><div class="lbl">The truck QR</div><div class="kpis">' + kpi(scanTotal, "scans of the truck QR") + kpi(scanToday, "scans today") +
       kpi(O.customers.length, "signed up") + kpi(conv, "of scans signed up") + "</div></div>";
     h += '<div class="panel"><div class="lbl">Customers and reviews</div><div class="kpis">' + kpi(back, "came back more than once") + kpi(O.visits.length, "stamped orders") +
       kpi(avg("food"), "food quality, " + revs.length + " reviews") + kpi(avg("vibe"), "atmosphere") + kpi(freeB, "free burgers given") + kpi(O.redeems.length - freeB, "free desserts given") +
@@ -460,8 +506,27 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   function load() {
     var r = route();
     api("/api/pass/session").then(function (res) {
-      if (!res.ok) { app.innerHTML = '<div class="panel"><p class="err">Couldn\'t load the Pass Card. Pull down to refresh.</p></div>'; return; }
+      if (!res.ok) {
+        /* no internet / server down: fall back to what this phone remembers */
+        var crewSaved = recall("pc_staff"), cardSaved = recall("pc_card");
+        if (res.net && (r.name === "truck" || r.name === "scan") && crewSaved) {
+          S = crewSaved; MENU = {}; (S.menu || []).forEach(function (m) { MENU[m.id] = m; }); offline = true; paintQueue();
+          if (r.name === "scan") { found = { offline: true, phone: r.code.split("-")[0], first: "", last: "" }; basket = {}; welcomeP = null; }
+          return render();
+        }
+        if (res.net && r.name === "card" && cardSaved) {
+          S = cardSaved; MENU = {}; (S.menu || []).forEach(function (m) { MENU[m.id] = m; }); offline = true; return render();
+        }
+        app.innerHTML = '<div class="panel"><p class="err">Couldn\'t load the Pass Card. ' + (res.net ? "No internet right now. " : "") + 'Pull down to refresh.</p></div>'; return;
+      }
+      offline = false; paintQueue();
       S = res; MENU = {}; (res.menu || []).forEach(function (m) { MENU[m.id] = m; });
+      if (res.staff) { var keep = Object.assign({}, res); delete keep.customer; store("pc_staff", keep); syncQueue(); }
+      if (res.customer) {
+        store("pc_card", res);
+        fetch("/api/pass/qr.svg", { credentials: "same-origin" }).then(function (q) { return q.ok ? q.text() : null; })
+          .then(function (t) { if (t) store("pc_qr", "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(t)))); }).catch(function () {});
+      }
       if (r.name === "card" && S.staff) { history.replaceState(null, "", crewHome()); screen = "home"; return load(); }
       if (r.name === "scan" && S.staff) {
         return api("/api/pass/staff/find?q=" + encodeURIComponent(r.code)).then(function (f) {
@@ -482,7 +547,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     var a = e.target.closest("a[data-nav]");
     if (a) { e.preventDefault(); found = null; redeemFor = null; go(a.getAttribute("href")); return; }
     var t = e.target.closest("button"); if (!t) return;
-    if (t.id === "st-out") { api("/api/logout", {}).then(function () { found = null; owner = null; screen = "home"; go("/pass"); }); return; }
+    if (t.id === "st-out") { api("/api/logout", {}).then(function () { found = null; owner = null; store("pc_staff", null); screen = "home"; go("/pass"); }); return; }
     if (t.id === "to-join") { screen = "join"; render(); }
     else if (t.id === "to-login") { screen = "home"; render(); }
     else if (t.id === "to-crew") { screen = "crew"; render(); }
@@ -490,7 +555,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     else if (t.id === "r-back") { screen = "home"; render(); }
     else if (t.id === "lb-hide" && S.customer) { t.disabled = true; api("/api/pass/board/hide", { hide: !S.customer.boardHide }).then(function (r) {
       if (r.ok) { S.customer = Object.assign(S.customer, r.customer); } return api("/api/pass/board"); }).then(function (b) { lb = b && b.ok ? b : lb; render(); }); }
-    else if (t.id === "logout") api("/api/pass/logout", {}).then(function () { S.customer = null; screen = "home"; render(); });
+    else if (t.id === "logout") api("/api/pass/logout", {}).then(function () { S.customer = null; store("pc_card", null); store("pc_qr", null); screen = "home"; render(); });
     else if (t.hasAttribute("data-rate")) { rv[t.getAttribute("data-rate")] = +t.getAttribute("data-v"); keepText(); }
     else if (t.hasAttribute("data-card")) { rv.card = t.getAttribute("data-card"); keepText(); }
     else if (t.hasAttribute("data-add")) { var k = t.getAttribute("data-add"); basket[k] = (basket[k] || 0) + 1; render(); }
@@ -498,6 +563,10 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     else if (t.id === "stamp") {
       t.disabled = true;
       api("/api/pass/staff/stamp", { phone: found.phone, items: basket }).then(function (res) {
+        if (!res.ok && res.net) {
+          queueStamp(found.phone, basket); basket = {}; welcomeP = null; render();
+          toast("No signal. Stamp saved on this phone, it sends by itself."); return;
+        }
         if (!res.ok) { t.disabled = false; toast(res.error || "Couldn't stamp. Try again."); return; }
         found = res.customer; basket = {}; welcomeP = null; render();
         toast(res.welcome ? "Stamped. Welcome surprise: " + res.welcome.label + (res.welcome.kind === "dessert" ? " (logged as a giveaway)" : "")
@@ -519,7 +588,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     else if (t.id === "qr-open" && S.customer) {
       var qb = document.getElementById("qrbig");
       qb.innerHTML = '<div class="qrbig-in"><p class="lbl" style="color:var(--carbon)">Show this at the window</p>' +
-        '<img src="/api/pass/qr.svg" alt="Your Pass Card QR code"><p class="qrbig-name">' + esc(S.customer.first + " " + S.customer.last) + "</p>" +
+        '<img src="' + qrSrc() + '" alt="Your Pass Card QR code"><p class="qrbig-name">' + esc(S.customer.first + " " + S.customer.last) + "</p>" +
         '<p class="qrbig-num">' + esc(fmtPhone(S.customer.phone)) + '</p><p class="note" style="color:#555">The truck scans it to add your stamps. Every burger and dessert is a stamp; a Brownie Bag counts as 2.</p>' +
         '<button type="button" class="btn pri" id="qr-close">DONE</button></div>';
       qb.hidden = false; document.body.style.overflow = "hidden"; document.getElementById("qr-close").focus();
@@ -814,9 +883,12 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       });
     }
     if (f.id === "f-staff") api("/api/login", { user: val("st-user"), pin: val("st-pin") }).then(function (r) { done(); if (!r.ok) return showErr("st-err", r.error); load(); });
-    if (f.id === "f-find") api("/api/pass/staff/find?q=" + encodeURIComponent(val("s-q"))).then(function (r) { done(); if (!r.ok) return showErr("s-err", r.error); found = r.customer; welcomeP = r.welcome; basket = {}; render(); });
+    if (f.id === "f-find") api("/api/pass/staff/find?q=" + encodeURIComponent(val("s-q"))).then(function (r) {
+      done();
+      if (!r.ok && r.net && val("s-q").replace(/\D/g, "").length >= 8) { offline = true; paintQueue(); found = { offline: true, phone: val("s-q"), first: "", last: "" }; welcomeP = null; basket = {}; return render(); }
+      if (!r.ok) return showErr("s-err", r.error); found = r.customer; welcomeP = r.welcome; basket = {}; render(); });
     if (f.id === "f-reset") api("/api/pass/staff/resetpin", { phone: found.phone, pin: val("rp-pin") }).then(function (r) { done(); if (!r.ok) return showErr("rp-err", r.error); toast("New PIN set. Tell the customer."); render(); });
-    if (f.id === "f-del") api("/api/pass/delete", { pin: val("del-pin") }).then(function (r) { done(); if (!r.ok) return showErr("del-err", r.error); S.customer = null; render(); toast("Your Pass Card was deleted."); });
+    if (f.id === "f-del") api("/api/pass/delete", { pin: val("del-pin") }).then(function (r) { done(); if (!r.ok) return showErr("del-err", r.error); S.customer = null; store("pc_card", null); store("pc_qr", null); render(); toast("Your Pass Card was deleted."); });
   });
 
   load();
