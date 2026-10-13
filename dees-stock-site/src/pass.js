@@ -34,7 +34,8 @@ const MENU_BY_ID = new Map(PASS_MENU.filter((m) => !m.off).map((m) => [m.id, m])
 export const POINTS_PER_STAMP = 10;
 export const GAMES = ["stack", "catch", "crack", "smash"];
 const GAME_MAX = 2;                          // Smash Points for every game played, whatever the score
-export const LIVES = 5;                      // plays per stamped order; scores only count for the game leaderboard
+export const GAME_WINDOW_MIN = 30;           // after a stamp, games are open (unlimited) for this long, then lock
+/* only the first game of each order earns GAME_MAX points; the rest are for fun and the leaderboard */
 const TOKEN_HOURS = 48;
 const SCRATCH = [[10, 35], [15, 30], [25, 20], [50, 12], [100, 3]];   // [points, chance %]
 export const REWARDS = [
@@ -101,6 +102,8 @@ async function ensureTables(env) {
   try { await env.DB.prepare("ALTER TABLE pass_customers ADD COLUMN board_hide INTEGER NOT NULL DEFAULT 0").run(); } catch (e) { /* already there */ }
   /* added later: a game's own score (Crack the Brûlée is out of 1000), for personal records */
   try { await env.DB.prepare("ALTER TABLE pass_plays ADD COLUMN raw INTEGER").run(); } catch (e) { /* already there */ }
+  /* added later: the phone (browser) a card was made on, so one phone makes one card */
+  try { await env.DB.prepare("ALTER TABLE pass_customers ADD COLUMN device TEXT").run(); } catch (e) { /* already there */ }
   readyDone = true;
 }
 
@@ -200,12 +203,13 @@ export async function handlePass(request, env, path, d) {
   const OPEN_HOURS = 2;
   const openPlay = (phone) => env.DB.prepare("SELECT id FROM pass_plays WHERE phone = ? AND kind LIKE 'game%' AND finished IS NULL AND started >= ? ORDER BY started DESC LIMIT 1")
     .bind(phone, new Date(Date.now() - OPEN_HOURS * 3600e3).toISOString()).first();
-  /* lives: each order from the last 48h gives LIVES plays (rows "game", "game:2", "game:3") */
-  const livesByVisit = async (phone) => ((await env.DB.prepare(
-    "SELECT v.id, COUNT(p.id) AS used FROM pass_visits v LEFT JOIN pass_plays p ON p.visit_id = v.id AND p.kind LIKE 'game%'" +
-    " WHERE v.phone = ? AND v.at >= ? GROUP BY v.id, v.at ORDER BY v.at ASC")
-    .bind(phone, new Date(Date.now() - TOKEN_HOURS * 3600e3).toISOString()).all()).results || []).filter((x) => x.used < LIVES);
-  const livesLeft = async (phone) => (await livesByVisit(phone)).reduce((a, x) => a + LIVES - x.used, 0) + ((await openPlay(phone)) ? 1 : 0);
+  /* game window: the latest stamped order opens the games for GAME_WINDOW_MIN minutes, unlimited plays */
+  const gameWindow = async (phone) => {
+    const v = await env.DB.prepare("SELECT id, at FROM pass_visits WHERE phone = ? ORDER BY at DESC LIMIT 1").bind(phone).first();
+    if (!v) return null;
+    const until = Date.parse(v.at) + GAME_WINDOW_MIN * 60e3;
+    return until > Date.now() ? { visit: v.id, until: new Date(until).toISOString() } : null;
+  };
   const playId = () => [...crypto.getRandomValues(new Uint8Array(12))].map((x) => x.toString(16).padStart(2, "0")).join("");
   /* achievements: each pays out once, recorded as a points row "ach:<id>" */
   const award = async (phone, ids) => {
@@ -236,7 +240,7 @@ export async function handlePass(request, env, path, d) {
       .forEach((x) => { if (x.r) records[x.game] = x.r; });
     const ach = ((await env.DB.prepare("SELECT kind FROM pass_points WHERE phone = ? AND kind LIKE 'ach:%'").bind(c.phone).all()).results || []).map((x) => x.kind.slice(4));
     return { ...pub(c), done, doneMonth: month, boardHide: !!c.board_hide, points: await balance(c.phone), records,
-      gamesLeft: await livesLeft(c.phone), lives: LIVES, scratchLeft: (await tokens(c.phone, "scratch")).length, achievements: ach };
+      gamesUntil: ((await gameWindow(c.phone)) || {}).until || null, gameWindowMin: GAME_WINDOW_MIN, scratchLeft: (await tokens(c.phone, "scratch")).length, achievements: ach };
   };
   /* Top Smashers: cards finished this month, ties go to whoever got there first.
      Public rows carry first name + last initial only. */
@@ -278,12 +282,18 @@ export async function handlePass(request, env, path, d) {
   if (path === "/api/pass/qr.svg" && request.method === "GET") {
     const phone = await customerId();
     if (!phone || !(await get(phone))) return fail("signed_out", 401);
-    const url = new URL(request.url);
+    const url = new URL(request.url), code = await cardCode(phone);
+    /* the page asks for ?c=<its card code>; a phone holding an older page for someone else gets nothing */
+    const want = url.searchParams.get("c");
+    if (want && !d.sameString(want, code)) return fail("This QR belongs to another card. Reload the page.", 409);
     const qr = qrcode(0, "M");
-    qr.addData(url.origin + "/pass/s/" + (await cardCode(phone)));
+    qr.addData(url.origin + "/pass/s/" + code);
     qr.make();
-    return new Response(qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true }), {
-      headers: { "content-type": "image/svg+xml; charset=utf-8", "cache-control": "private, max-age=3600" }
+    /* brand colours: black squares on Smash yellow (dark on light, so every camera still reads it) */
+    const svg = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true })
+      .replace(/fill="white"/g, 'fill="#FFD21C"').replace(/fill="black"/g, 'fill="#101010"');
+    return new Response(svg, {
+      headers: { "content-type": "image/svg+xml; charset=utf-8", "cache-control": "no-store" }
     });
   }
 
@@ -298,12 +308,18 @@ export async function handlePass(request, env, path, d) {
     if (!/^\d{4}$/.test(pin)) return fail("Your PIN needs exactly 4 digits.");
     if (b.consent !== true) return fail("Tick the box to agree, so we can keep your stamps.");
     if (await get(phone)) return fail("This number already has a Pass Card. Log in instead.", 409);
+    /* one Pass Card per phone: a long-lived cookie marks the phone that made a card */
+    const device = /^[a-f0-9]{24}$/.test(d.cookies(request).pd || "") ? d.cookies(request).pd : playId();
+    if (await env.DB.prepare("SELECT 1 AS x FROM pass_customers WHERE device = ? LIMIT 1").bind(device).first())
+      return fail("This phone already made a Pass Card. Log in with that card's number instead.", 409);
     /* one Pass Card per email too (compared without capitals or spaces) */
     if (await env.DB.prepare("SELECT 1 AS x FROM pass_customers WHERE lower(trim(email)) = ? LIMIT 1").bind(email.toLowerCase()).first())
       return fail("This email already has a Pass Card. Log in with that card's number, or use another email.", 409);
-    await env.DB.prepare("INSERT INTO pass_customers (phone, first, last, email, pin, offers, joined) VALUES (?, ?, ?, ?, ?, ?, ?)")
-      .bind(phone, first, last, email || null, await pinOf(phone, pin), b.offers === true ? 1 : 0, new Date().toISOString()).run();
-    return ok({}, { "set-cookie": await issue(phone) });
+    await env.DB.prepare("INSERT INTO pass_customers (phone, first, last, email, pin, offers, joined, device) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(phone, first, last, email || null, await pinOf(phone, pin), b.offers === true ? 1 : 0, new Date().toISOString(), device).run();
+    const res = ok({}, { "set-cookie": await issue(phone) });
+    res.headers.append("set-cookie", "pd=" + device + "; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=" + 2 * 365 * 86400);
+    return res;
   }
 
   if (path === "/api/pass/login" && request.method === "POST") {
@@ -390,13 +406,14 @@ export async function handlePass(request, env, path, d) {
       await env.DB.prepare("UPDATE pass_plays SET game = ?, started = ? WHERE id = ? AND finished IS NULL").bind(b.game, new Date().toISOString(), open.id).run();
       return ok({ play: open.id, resumed: true });
     }
-    const v = (await livesByVisit(phone))[0];
-    if (!v) return fail("Your next order unlocks " + LIVES + " more lives.", 409);
+    const w = await gameWindow(phone);
+    if (!w) return fail("Games open for " + GAME_WINDOW_MIN + " minutes after your next order. Show your QR at the window.", 409);
+    const used = ((await env.DB.prepare("SELECT COUNT(*) AS n FROM pass_plays WHERE visit_id = ? AND kind LIKE 'game%'").bind(w.visit).first()) || {}).n || 0;
     const id = playId();
     try {
       await env.DB.prepare("INSERT INTO pass_plays (id, phone, visit_id, kind, game, started) VALUES (?, ?, ?, ?, ?, ?)")
-        .bind(id, phone, v.id, v.used ? "game:" + (v.used + 1) : "game", b.game, new Date().toISOString()).run();
-    } catch (e) { return fail("Tap the game again.", 409); }   /* two taps at once took the same life */
+        .bind(id, phone, w.visit, used ? "game:" + (used + 1) + ":" + id.slice(0, 6) : "game", b.game, new Date().toISOString()).run();
+    } catch (e) { return fail("Tap the game again.", 409); }   /* two taps at once */
     return ok({ play: id });
   }
 
@@ -411,15 +428,16 @@ export async function handlePass(request, env, path, d) {
     const raw = p.game === "crack" ? (quick ? 0 : Math.max(0, Math.min(1000, Math.round(Number(b.raw) || 0)))) : null;
     const score = quick ? 0 : raw != null ? Math.round(raw / 10) : Math.max(0, Math.min(100, Math.round(Number(b.score) || 0)));
     const before = raw != null ? ((await env.DB.prepare("SELECT MAX(raw) AS r FROM pass_plays WHERE phone = ? AND game = ?").bind(phone, p.game).first()) || {}).r || 0 : 0;
-    const pts = quick ? 0 : GAME_MAX;   /* every real game earns the same; the score is for the leaderboard */
+    /* the first real game of an order earns the points; every other game is for fun and the leaderboard */
+    const paid = ((await env.DB.prepare("SELECT COUNT(*) AS n FROM pass_plays WHERE visit_id = ? AND kind LIKE 'game%' AND points > 0").bind(p.visit_id).first()) || {}).n || 0;
+    const pts = quick || paid ? 0 : GAME_MAX;
     const now = new Date().toISOString();
     const res = await env.DB.prepare("UPDATE pass_plays SET finished = ?, score = ?, points = ?, raw = ? WHERE id = ? AND finished IS NULL").bind(now, score, pts, raw, p.id).run();
     if (!(res.meta && res.meta.changes)) return fail("That game is already over.", 409);
     const gain = pts;
     if (gain) await pointsRow(phone, gain, "game", p.game + " " + score).run();
     const earned = score >= 90 ? await award(phone, ["high_score"]) : [];
-    const used = ((await env.DB.prepare("SELECT COUNT(*) AS n FROM pass_plays WHERE visit_id = ? AND kind LIKE 'game%'").bind(p.visit_id).first()) || {}).n || 0;
-    return ok({ score, raw, points: gain, livesOrder: Math.max(0, LIVES - used), achievements: earned, customer: await withStats(await get(phone)),
+    return ok({ score, raw, points: gain, alreadyPaid: !!paid, achievements: earned, customer: await withStats(await get(phone)),
       record: raw != null ? Math.max(before, raw) : null, newRecord: raw != null && raw > 0 && raw > before });
   }
 

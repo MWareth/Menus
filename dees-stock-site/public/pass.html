@@ -129,19 +129,19 @@ details.more>.panel{margin-bottom:12px}
 .ready-banner{background:var(--carbon);color:var(--butter);border-radius:12px;padding:8px 12px;font-weight:900;letter-spacing:.06em;font-size:13px;text-align:center}
 .qrbox{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 .panel.qr-top{display:flex;flex-direction:row;gap:14px;align-items:center;width:100%;text-align:left;color:var(--paper);font:inherit;cursor:pointer;border-color:var(--butter)}
-.qr-thumb{flex:none;width:78px;height:78px;background:#fff;border-radius:12px;padding:5px}
+.qr-thumb{flex:none;width:78px;height:78px;background:#FFD21C;border-radius:12px;padding:5px}
 .qr-thumb img{display:block;width:100%;height:100%}
 .qr-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .qr-txt b{font-size:18px;color:var(--butter)}
 .qr-txt small{color:var(--muted);font-size:12.5px;line-height:1.35}
 .qr-go{flex:none;font-size:22px;color:var(--butter)}
-.qrbig{position:fixed;inset:0;z-index:60;background:#fff;display:grid;place-items:center;padding:20px;overflow:auto}
+.qrbig{position:fixed;inset:0;z-index:60;background:#FFD21C;display:grid;place-items:center;padding:20px;overflow:auto}
 .qrbig-in{width:100%;max-width:420px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--carbon)}
 .qrbig-in img{width:min(86vw,380px);height:auto;aspect-ratio:1;display:block}
 .qrbig-name{font-size:22px;font-weight:900;margin:6px 0 0}
 .qrbig-num{font-size:18px;font-weight:700;margin:0;letter-spacing:.04em}
 .qrbig .btn{width:100%;margin-top:8px}
-.qr{background:#fff;padding:6px;border-radius:12px;flex:none;width:150px;height:150px}
+.qr{background:#FFD21C;padding:6px;border-radius:12px;flex:none;width:150px;height:150px}
 .qr img{display:block;width:138px;height:138px}
 .big{font-family:var(--display);font-size:22px;color:var(--butter);margin:0}
 .dots{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
@@ -304,7 +304,16 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     "Pick a number for both food and atmosphere.": "اختر رقماً للأكل والأجواء.", "There's no visit waiting for a review.": "لا توجد زيارة بانتظار التقييم.",
     "Your next order unlocks 5 more lives.": "طلبك القادم يفتح 5 محاولات أخرى.", "Tap the game again.": "اضغط على اللعبة مرة أخرى.",
     "That game is already over.": "هذه اللعبة انتهت بالفعل.", "Your next order brings a new scratch card.": "طلبك القادم يعطيك بطاقة خدش جديدة.",
-    "That scratch card is already used.": "بطاقة الخدش هذه مستخدمة.", "Pick a game.": "اختر لعبة.", "FREE": "مجاناً", "San Sebastian": "سان سيباستيان", "Brownie Bag": "كيس البراوني", "Crème Brûlée": "كريم بروليه"
+    "That scratch card is already used.": "بطاقة الخدش هذه مستخدمة.", "Pick a game.": "اختر لعبة.", "This phone already made a Pass Card. Log in with that card's number instead.": "هذا الجوال أنشأ بطاقة باس من قبل. سجّل الدخول برقم تلك البطاقة.",
+    "🎮 Games open · 1 min left": "🎮 الألعاب مفتوحة · باقي دقيقة", "🎮 Games open · {n} min left": "🎮 الألعاب مفتوحة · باقي {n} دقيقة", "🔒 Games are locked": "🔒 الألعاب مقفلة",
+    "Play as much as you like while you wait. <b>+{p} Smash Points</b> for this order's games. Your best scores go on the game leaderboards.":
+      "العب قدر ما تحب وأنت تنتظر. <b>+{p} نقاط سماش</b> لألعاب هذا الطلب. أفضل نتائجك تظهر في لوحة المتصدرين.",
+    "Games open for {n} minutes after every order, and from your second order you get a scratch card too. Show your QR at the window, then play while you wait.":
+      "تُفتح الألعاب لمدة {n} دقيقة بعد كل طلب، ومن طلبك الثاني تحصل على بطاقة خدش أيضاً. اعرض رمز QR عند النافذة والعب وأنت تنتظر.",
+    "Points for this order are already in. Keep playing for the leaderboard!": "نقاط هذا الطلب أُضيفت بالفعل. استمر في اللعب من أجل لوحة المتصدرين!",
+    "🔒 Time's up. Games open again with your next order.": "🔒 انتهى الوقت. تُفتح الألعاب مجدداً مع طلبك القادم.",
+    "🎮 <b>Games:</b> after every order, play as much as you like for 30 minutes while you wait.": "🎮 <b>الألعاب:</b> بعد كل طلب العب قدر ما تحب لمدة 30 دقيقة وأنت تنتظر.",
+    "Games open for 30 minutes after your next order. Show your QR at the window.": "تُفتح الألعاب لمدة 30 دقيقة بعد طلبك القادم. اعرض رمز QR عند النافذة.", "FREE": "مجاناً", "San Sebastian": "سان سيباستيان", "Brownie Bag": "كيس البراوني", "Crème Brûlée": "كريم بروليه"
   };
   var LANG = (function () { var s = recall("pc_lang"); return s === "ar" || s === "en" ? s : (String(navigator.language || "").toLowerCase().indexOf("ar") === 0 ? "ar" : "en"); })();
   function crewView() { var r = route(); return r.name === "truck" || r.name === "owner" || (r.name === "scan" && !!(S && S.staff)); }
@@ -358,7 +367,12 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   function recall(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
   var offline = false;
   /* stamps that couldn't reach the server wait here and send themselves later */
-  function qrSrc() { return offline && recall("pc_qr") ? recall("pc_qr") : "/api/pass/qr.svg"; }
+  /* the QR's address carries the card's own code, so a phone never shows one person's QR on another's card */
+  function qrSrc() {
+    var c = S.customer || {}, saved = recall("pc_qr");
+    if (offline && saved && saved.code === c.code) return saved.data;
+    return "/api/pass/qr.svg?c=" + encodeURIComponent(c.code || "");
+  }
   function queue() { return recall("pc_queue") || []; }
   function queueStamp(phone, items) {
     var q = queue(); q.push({ qid: Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10), phone: phone, items: items, at: new Date().toISOString() });
@@ -476,7 +490,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       '<button type="button" class="howto-x" id="howto-x" aria-label="' + L("Close") + '">✕</button></div>' +
       '<p>' + L("🍔🍰 <b>Stamps:</b> every order gets 1 burger stamp and/or 1 dessert stamp. 9 stamps = a free one.") + "</p>" +
       '<p>' + L("⚡ <b>Points:</b> earned from orders and games. Spend them at the window on free food.") + "</p>" +
-      '<p>' + L("❤️ <b>Lives:</b> every order gives you 5 games to play while you wait.") + "</p></div>";
+      '<p>' + L("🎮 <b>Games:</b> after every order, play as much as you like for 30 minutes while you wait.") + "</p></div>";
     if (c.pending) h += '<div class="panel"><div class="lbl">' + L("How was your visit on {d}?", { d: niceDate(c.pending.at) }) + "</div>" +
       '<p class="note">' + L("Two quick ratings and an optional comment.") + (c.bonus ? "" : " " + L("Your first review earns a <b>bonus stamp</b>.")) + "</p>" +
       '<button type="button" class="btn pri" id="go-review">' + L("RATE MY VISIT") + "</button></div>";
@@ -701,8 +715,9 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       if (res.customer) {
         syncFinish();
         store("pc_card", res);
-        fetch("/api/pass/qr.svg", { credentials: "same-origin" }).then(function (q) { return q.ok ? q.text() : null; })
-          .then(function (t) { if (t) store("pc_qr", "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(t)))); }).catch(function () {});
+        var qc = res.customer.code;
+        fetch("/api/pass/qr.svg?c=" + encodeURIComponent(qc), { credentials: "same-origin", cache: "no-store" }).then(function (q) { return q.ok ? q.text() : null; })
+          .then(function (t) { if (t) store("pc_qr", { code: qc, data: "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(t))) }); }).catch(function () {});
       }
       if (r.name === "card" && S.staff) { history.replaceState(null, "", crewHome()); screen = "home"; return load(); }
       if (r.name === "scan" && S.staff) {
@@ -767,8 +782,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       var qb = document.getElementById("qrbig");
       qb.innerHTML = '<div class="qrbig-in"><p class="lbl" style="color:var(--carbon)">' + L("Show this at the window") + "</p>" +
         '<img src="' + qrSrc() + '" alt="Your Pass Card QR code"><p class="qrbig-name">' + esc(S.customer.first + " " + S.customer.last) + "</p>" +
-        '<p class="qrbig-num" dir="ltr">' + esc(fmtPhone(S.customer.phone)) + '</p><p class="note" style="color:#555">' + L("The truck scans it to add your stamps. Each order earns 1 burger stamp if it has burgers and 1 dessert stamp if it has desserts.") + "</p>" +
-        '<button type="button" class="btn pri" id="qr-close">' + L("DONE") + "</button></div>";
+        '<p class="qrbig-num" dir="ltr">' + esc(fmtPhone(S.customer.phone)) + '</p><p class="note" style="color:#3A3220">' + L("The truck scans it to add your stamps. Each order earns 1 burger stamp if it has burgers and 1 dessert stamp if it has desserts.") + "</p>" +
+        '<button type="button" class="btn" id="qr-close" style="background:#101010;color:#FFD21C">' + L("DONE") + "</button></div>";
       qb.hidden = false; document.body.style.overflow = "hidden"; document.getElementById("qr-close").focus();
     }
     else if (t.id === "lang") { LANG = LANG === "ar" ? "en" : "ar"; store("pc_lang", LANG); render(); }
@@ -778,7 +793,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     else if (t.id === "g-switch") {
       var pm = !!(t.closest(".g-end") && t.closest(".g-end").getAttribute("data-practice-mode"));
       var ov2 = document.getElementById("game");
-      ov2.innerHTML = '<div class="g-end"><p class="big">' + (pm ? "Pick a game" : L("Pick a game")) + "</p>" + (pm ? "" : '<p class="lives">' + hearts(S.customer ? S.customer.gamesLeft : 0) + " <b>" + livesText(S.customer ? S.customer.gamesLeft : 0) + "</b></p>") +
+      ov2.innerHTML = '<div class="g-end"><p class="big">' + (pm ? "Pick a game" : L("Pick a game")) + "</p>" + (pm ? "" : '<p class="lives" data-window>' + windowText() + "</p>") +
         pickerHtml(pm) + '<button type="button" class="btn ghost" id="g-close">' + (pm ? "BACK" : "BACK TO MY CARD") + "</button></div>";
     }
     else if (t.id === "g-close") { var ov = document.getElementById("game"); ov.hidden = true; ov.innerHTML = ""; document.body.style.overflow = ""; load(); }
@@ -805,8 +820,9 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     crack: ["🔨", "Crack the Brûlée", "3 rounds of 15 seconds. Tap fast, score out of 1000. Beat your record."],
     smash: ["🥩", "Perfect Smash", "Hit SMASH when the marker is in the middle. 5 rounds."]
   };
-  function hearts(n) { return n > 0 ? "❤️".repeat(Math.min(n, 5)) + (n > 5 ? " +" + (n - 5) : "") : "🖤"; }
-  function livesText(n) { return n ? L(n === 1 ? "1 life left" : "{n} lives left", { n: n }) : L("No lives left"); }
+  /* games are open for a while after each stamped order, then lock */
+  function minsLeft() { var u = S.customer && S.customer.gamesUntil; return u ? Math.max(0, Math.ceil((Date.parse(u) - Date.now()) / 60000)) : 0; }
+  function windowText() { var m = minsLeft(); return m ? L(m === 1 ? "🎮 Games open · 1 min left" : "🎮 Games open · {n} min left", { n: m }) : L("🔒 Games are locked"); }
   function pickerHtml(practice) {
     return '<div class="games" style="width:100%">' + (S.games || Object.keys(GAME_INFO)).map(function (g) { var i = GAME_INFO[g];
       return '<button type="button" data-' + (practice ? "practice" : "game") + '="' + g + '"><span>' + i[0] + "</span><b>" + L(i[1]) + "</b></button>"; }).join("") + "</div>";
@@ -825,13 +841,13 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     var h = '<div class="panel"><div class="lbl">' + L("🎮 Game zone") + "</div>" + (c.records && c.records.crack ? '<p class="note">' + L("🏆 Your Crack the Brûlée record: <b>{n} / 1000</b>", { n: c.records.crack }) + "</p>" : "");
     if (c.scratchLeft) h += '<p class="note">' + L("You've got a <b>scratch card</b> from your order. Scratch it!") + "</p>" +
       '<div class="scratch"><div class="scr-prize" id="scr-prize">?</div><canvas id="scr" width="300" height="140" aria-label="' + L("Scratch card") + '"></canvas></div>';
-    if (c.gamesLeft) {
-      h += '<p class="lives">' + hearts(c.gamesLeft) + " <b>" + livesText(c.gamesLeft) + "</b></p>" +
-        '<p class="note">' + L("Every order gives you {n} lives: retry a game or switch. <b>Every game = +{p} Smash Points.</b> Your best scores go on the game leaderboards.", { n: c.lives || 5, p: S.gameMax || 2 }) + '</p><div class="games">';
+    if (minsLeft()) {
+      h += '<p class="lives" data-window>' + windowText() + "</p>" +
+        '<p class="note">' + L("Play as much as you like while you wait. <b>+{p} Smash Points</b> for this order's games. Your best scores go on the game leaderboards.", { p: S.gameMax || 2 }) + '</p><div class="games">';
       (S.games || []).forEach(function (g) { var i = GAME_INFO[g], rc = c.records && c.records[g];
         h += '<button type="button" data-game="' + g + '"><span>' + i[0] + "</span><b>" + L(i[1]) + "</b><small>" + L(i[2]) + (rc ? '<br><b class="rec">' + L("🏆 Your record: {n}", { n: rc }) + "</b>" : "") + "</small></button>"; });
       h += "</div>";
-    } else if (!c.scratchLeft) h += '<p class="lives">🖤 <b>' + L("No lives left") + '</b></p><p class="note">' + L("Every order gives you 5 lives, and from your second order a scratch card too. Show your card at the window, then play while you wait.") + "</p>";
+    } else if (!c.scratchLeft) h += '<p class="lives">' + L("🔒 Games are locked") + '</p><p class="note">' + L("Games open for {n} minutes after every order, and from your second order you get a scratch card too. Show your QR at the window, then play while you wait.", { n: c.gameWindowMin || 30 }) + "</p>";
     return h + "</div>";
   }
   function achHtml(c) {
@@ -886,9 +902,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       if (!r.ok) { toast(r.error); return; }
       var ov = document.getElementById("game"), info = GAME_INFO[id];
       ov.hidden = false; document.body.style.overflow = "hidden";
-      var left = practice ? null : Math.max(0, ((S.customer && S.customer.gamesLeft) || 1) - 1);
       ov.innerHTML = '<div class="g-top"><b>' + info[0] + " " + L(info[1]) + '</b><span id="g-hud" dir="ltr"></span></div>' +
-        (practice ? '<p class="g-lives">PRACTICE · no points</p>' : '<p class="g-lives">' + hearts(left) + " " + L(left === 1 ? "1 life left after this game" : "{n} lives left after this game", { n: left }) + "</p>") +
+        (practice ? '<p class="g-lives">PRACTICE · no points</p>' : '<p class="g-lives" data-window>' + windowText() + "</p>") +
         '<canvas id="g-cv"></canvas><p class="g-help">' + L(info[2]) + "</p>";
       var cv = document.getElementById("g-cv"), dpr = Math.min(2, window.devicePixelRatio || 1);
       var W = Math.min(window.innerWidth - 24, 420), H = Math.min(window.innerHeight - 200, 560);
@@ -908,11 +923,11 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
           ov.innerHTML = '<div class="g-end"><p class="big">' + L(f.ok ? (f.score >= 90 ? "🔥 LEGENDARY" : f.score >= 60 ? "😎 NICE" : "👊 GOOD TRY") : "Game over") + "</p>" +
             big +
             '<p class="note">' + (f.practice ? "Practice round: no points counted." : f.saved ? L("No internet. Your score is saved and your points are added as soon as you're back online.")
-              : f.ok ? (f.points ? L("+{n} Smash Points · your score goes on the game leaderboard", { n: f.points }) : L("That finished too fast to count.")) : esc(L(f.error || ""))) + "</p>";
+              : f.ok ? (f.points ? L("+{n} Smash Points · your score goes on the game leaderboard", { n: f.points }) : f.alreadyPaid ? L("Points for this order are already in. Keep playing for the leaderboard!") : L("That finished too fast to count.")) : esc(L(f.error || ""))) + "</p>";
           if (f.ok && f.customer) { S.customer = Object.assign(S.customer, f.customer); celebrate(f); }
-          var lives = practice ? 1 : f.customer ? f.customer.gamesLeft : f.saved ? Math.max(0, ((S.customer && S.customer.gamesLeft) || 1) - 1) : 0;
+          var lives = practice ? 1 : minsLeft();
           var end = ov.querySelector(".g-end");
-          end.insertAdjacentHTML("beforeend", (practice ? "" : '<p class="lives">' + hearts(lives) + " <b>" + (lives ? livesText(lives) : L("No lives left · your next order brings 5 more")) + "</b></p>") +
+          end.insertAdjacentHTML("beforeend", (practice ? "" : '<p class="lives" data-window>' + (lives ? windowText() : L("🔒 Time's up. Games open again with your next order.")) + "</p>") +
             (lives ? '<button type="button" class="btn pri" data-' + (practice ? "practice" : "game") + '="' + id + '">' + L("🔁 PLAY AGAIN") + "</button>" +
               '<button type="button" class="btn ghost" id="g-switch">' + L("🎮 CHANGE GAME") + "</button>" : "") +
             '<button type="button" class="btn ' + (lives ? "ghost" : "pri") + '" id="g-close">' + (practice ? "BACK" : L("BACK TO MY CARD")) + "</button>");
@@ -1101,8 +1116,14 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   });
   document.addEventListener("toggle", function (e) { if (e.target && e.target.id === "more") moreOpen = e.target.open; }, true);
 
+  setInterval(function () {
+    if (route().name !== "card" || !S.customer || !S.customer.gamesUntil) return;
+    [].forEach.call(document.querySelectorAll("[data-window]"), function (el) { el.textContent = windowText(); });
+    if (!minsLeft() && document.getElementById("game").hidden && document.querySelector("[data-game]")) keepText();
+  }, 15000);
+
   /* the customer's card keeps itself up to date: when the truck stamps, it shows within a few seconds */
-  function sig(c) { return c ? [c.burger, c.dessert, c.points, c.gamesLeft, c.scratchLeft, (c.visits || []).length, c.pending ? c.pending.id : 0, (c.achievements || []).length].join("|") : ""; }
+  function sig(c) { return c ? [c.burger, c.dessert, c.points, c.gamesUntil, c.scratchLeft, (c.visits || []).length, c.pending ? c.pending.id : 0, (c.achievements || []).length].join("|") : ""; }
   setInterval(function () {
     if (route().name !== "card" || !S.customer || S.staff || document.hidden || offline || scratching || screen !== "home") return;
     if (!document.getElementById("game").hidden) return;
