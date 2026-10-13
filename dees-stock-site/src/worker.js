@@ -627,6 +627,43 @@ async function api(request, env, path) {
     });
   }
 
+  /* Admin recovery: whoever can set the ADMIN_RECOVERY secret in Cloudflare
+     (the account owner) can set a new admin PIN from /recover. With no secret
+     set, this is switched off. 5 wrong keys lock it for an hour. */
+  if (path === "/api/recover" && request.method === "POST") {
+    const key = String(env.ADMIN_RECOVERY || "");
+    if (key.length < 12) {
+      return json({ ok: false, error: "Recovery is switched off. Add the ADMIN_RECOVERY secret in Cloudflare first (12+ characters)." }, 403);
+    }
+    const lock = await env.DB.prepare("SELECT v FROM meta WHERE k = 'recoverfail'").first();
+    const fail = lock ? JSON.parse(lock.v) : { n: 0, until: 0 };
+    if (fail.until > Date.now()) return json({ ok: false, error: "Too many wrong keys. Try again in an hour." }, 429);
+    const body = await request.json().catch(() => ({}));
+    const given = String(body.key || "");
+    if (!sameString(await sha256Hex("recover:" + given), await sha256Hex("recover:" + key))) {
+      const n = fail.n + 1;
+      await env.DB.prepare("INSERT OR REPLACE INTO meta (k, v) VALUES ('recoverfail', ?)")
+        .bind(JSON.stringify(n >= 5 ? { n: 0, until: Date.now() + 3600e3 } : { n, until: 0 })).run();
+      return json({ ok: false, error: "That recovery key isn't right." }, 403);
+    }
+    const who = String(body.user || "").trim().toLowerCase();
+    const newPin = String(body.pin || "").trim();
+    if (!/^\d{4,8}$/.test(newPin)) return json({ ok: false, error: "New PIN must be 4–8 digits." }, 400);
+    const next = JSON.parse(JSON.stringify(board.state));
+    const u = (next.team || []).find((x) => x.role === "admin" && ((x.user || "").toLowerCase() === who || (x.name || "").trim().toLowerCase() === who));
+    if (!u) return json({ ok: false, error: "No admin with that username." }, 404);
+    u.pin = await pinHash(newPin);
+    next.defaultPins = next.team.some((x) => x.pin === SEED.defaultPinHash);
+    next.updatedAt = new Date().toISOString();
+    const version = await saveBoard(env, board.version, next);
+    if (version == null) return json({ ok: false, error: "Someone saved at the same moment. Try again." }, 409);
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM meta WHERE k = 'recoverfail'"),
+      env.DB.prepare("DELETE FROM meta WHERE k = ?").bind("loginfail:" + (u.user || "").toLowerCase())
+    ]);
+    return json({ ok: true, user: u.user });
+  }
+
   if (!me) return json({ ok: false, error: "signed_out" }, 401);
 
   if (path === "/api/state" && request.method === "GET") {
@@ -711,6 +748,9 @@ export default {
       } catch (err) {
         return harden(json({ ok: false, error: "server_error", detail: String(err && err.message) }, 500));
       }
+    }
+    if (url.pathname === "/recover") {
+      return harden(await env.ASSETS.fetch(new Request(new URL("/recover.html", url), request)));
     }
     if (url.pathname === "/pass" || url.pathname.startsWith("/pass/")) {
       return harden(await env.ASSETS.fetch(new Request(new URL("/pass", url), request)));
