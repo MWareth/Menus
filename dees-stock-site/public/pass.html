@@ -241,6 +241,17 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     el.textContent = n ? "⏳ " + n + " stamp" + (n > 1 ? "s" : "") + " saved on this phone. They send by themselves when the internet is back."
       : "📴 Offline. Stamps you add are saved on this phone and sent later.";
   }
+  /* a finished game whose score couldn't be sent */
+  function syncFinish() {
+    var p = recall("pc_finish"); if (!p) return;
+    api("/api/pass/game/finish", p).then(function (f) {
+      if (f.net) return;
+      store("pc_finish", null);
+      if (f.ok) { toast("+" + f.points + " Smash Points added from your last game"); if (S.customer && f.customer) { S.customer = Object.assign(S.customer, f.customer); keepText(); } }
+    });
+  }
+  setInterval(syncFinish, 20000);
+  window.addEventListener("online", syncFinish);
   setInterval(syncQueue, 20000);
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(function () {});
   window.addEventListener("online", syncQueue);
@@ -523,6 +534,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       S = res; MENU = {}; (res.menu || []).forEach(function (m) { MENU[m.id] = m; });
       if (res.staff) { var keep = Object.assign({}, res); delete keep.customer; store("pc_staff", keep); syncQueue(); }
       if (res.customer) {
+        syncFinish();
         store("pc_card", res);
         fetch("/api/pass/qr.svg", { credentials: "same-origin" }).then(function (q) { return q.ok ? q.text() : null; })
           .then(function (t) { if (t) store("pc_qr", "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(t)))); }).catch(function () {});
@@ -679,6 +691,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   /* ---- the games: each one ends with a score from 0 to 100 ---- */
   function openGame(id) {
     api("/api/pass/game/start", { game: id }).then(function (r) {
+      if (!r.ok && r.net) { toast("No internet right now. Your game is still waiting, try again in a moment."); return; }
       if (!r.ok) { toast(r.error); return; }
       var ov = document.getElementById("game"), info = GAME_INFO[id];
       ov.hidden = false; document.body.style.overflow = "hidden";
@@ -691,11 +704,14 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       var finish = function (score) {
         score = Math.max(0, Math.min(100, Math.round(score)));
         api("/api/pass/game/finish", { play: r.play, score: score }).then(function (f) {
+          /* no internet at the end: keep the score on the phone and send it later */
+          if (!f.ok && f.net) { store("pc_finish", { play: r.play, score: score }); f = { ok: true, score: score, saved: true }; }
           ov.innerHTML = '<div class="g-end"><p class="big">' + (f.ok ? (f.score >= 90 ? "🔥 LEGENDARY" : f.score >= 60 ? "😎 NICE" : "👊 GOOD TRY") : "Game over") + "</p>" +
             '<p class="g-score">' + (f.ok ? f.score : score) + "<small>/100</small></p>" +
-            '<p class="note">' + (f.ok ? "+" + f.points + " Smash Points" : esc(f.error || "")) + "</p>" +
+            '<p class="note">' + (f.saved ? "No internet. Your score is saved and your points are added as soon as you're back online."
+              : f.ok ? "+" + f.points + " Smash Points" : esc(f.error || "")) + "</p>" +
             '<button type="button" class="btn pri" id="g-close">BACK TO MY CARD</button></div>';
-          if (f.ok) { S.customer = Object.assign(S.customer, f.customer); celebrate(f); }
+          if (f.ok && f.customer) { S.customer = Object.assign(S.customer, f.customer); celebrate(f); }
         });
       };
       GAME[id](ctx, W, H, cv, hud, finish);

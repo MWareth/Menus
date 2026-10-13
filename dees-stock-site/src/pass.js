@@ -184,6 +184,9 @@ export async function handlePass(request, env, path, d) {
     "SELECT v.id FROM pass_visits v LEFT JOIN pass_plays p ON p.visit_id = v.id AND p.kind = ?" +
     " WHERE v.phone = ? AND v.at >= ? AND p.id IS NULL ORDER BY v.at ASC")
     .bind(kind, phone, new Date(Date.now() - TOKEN_HOURS * 3600e3).toISOString()).all()).results || []).map((x) => x.id);
+  const OPEN_HOURS = 2;
+  const openPlay = (phone) => env.DB.prepare("SELECT id FROM pass_plays WHERE phone = ? AND kind = 'game' AND finished IS NULL AND started >= ? ORDER BY started DESC LIMIT 1")
+    .bind(phone, new Date(Date.now() - OPEN_HOURS * 3600e3).toISOString()).first();
   const playId = () => [...crypto.getRandomValues(new Uint8Array(12))].map((x) => x.toString(16).padStart(2, "0")).join("");
   /* achievements: each pays out once, recorded as a points row "ach:<id>" */
   const award = async (phone, ids) => {
@@ -211,7 +214,7 @@ export async function handlePass(request, env, path, d) {
     (r.results || []).forEach((x) => { done[x.card] = (done[x.card] || 0) + x.n; if (x.month === dubaiMonth()) month += x.n; });
     const ach = ((await env.DB.prepare("SELECT kind FROM pass_points WHERE phone = ? AND kind LIKE 'ach:%'").bind(c.phone).all()).results || []).map((x) => x.kind.slice(4));
     return { ...pub(c), done, doneMonth: month, boardHide: !!c.board_hide, points: await balance(c.phone),
-      gamesLeft: (await tokens(c.phone, "game")).length, scratchLeft: (await tokens(c.phone, "scratch")).length, achievements: ach };
+      gamesLeft: (await tokens(c.phone, "game")).length + ((await openPlay(c.phone)) ? 1 : 0), scratchLeft: (await tokens(c.phone, "scratch")).length, achievements: ach };
   };
   /* Top Smashers: cards finished this month, ties go to whoever got there first.
      Public rows carry first name + last initial only. */
@@ -363,6 +366,13 @@ export async function handlePass(request, env, path, d) {
     if (!phone) return fail("signed_out", 401);
     const b = await body();
     if (!GAMES.includes(b.game)) return fail("Pick a game.");
+    /* a game started but never finished (the reply got lost, the phone went offline)
+       is picked up again instead of using another order */
+    const open = await openPlay(phone);
+    if (open) {
+      await env.DB.prepare("UPDATE pass_plays SET game = ?, started = ? WHERE id = ? AND finished IS NULL").bind(b.game, new Date().toISOString(), open.id).run();
+      return ok({ play: open.id, resumed: true });
+    }
     const t = (await tokens(phone, "game"))[0];
     if (!t) return fail("Your next order unlocks a game.", 409);
     const id = playId();
