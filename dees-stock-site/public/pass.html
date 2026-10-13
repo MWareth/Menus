@@ -410,7 +410,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   setInterval(syncFinish, 20000);
   window.addEventListener("online", syncFinish);
   setInterval(syncQueue, 20000);
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(function () {});
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).then(function (r) { if (r && r.update) r.update(); }).catch(function () {});
   window.addEventListener("online", syncQueue);
   function route() {
     var p = location.pathname.replace(/\/+$/, "");
