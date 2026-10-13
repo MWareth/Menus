@@ -26,15 +26,34 @@ button{cursor:pointer}
 .brand h1{font-size:44px;line-height:.9;color:var(--butter)}
 .brand h1 span{display:block;color:var(--paper);font-size:18px;letter-spacing:.18em;font-family:var(--body);font-weight:900;margin-bottom:4px}
 .brand p{margin:0;color:var(--muted);font-size:12.5px;max-width:150px;text-align:right}
+[hidden]{display:none!important}
 .staffbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--muted)}
 .staffbar a{color:var(--paper);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 12px;text-decoration:none;font-weight:900;letter-spacing:.06em}
+.tel{display:flex;gap:8px}
+.cc{position:relative;flex:0 0 108px}
+.cc-flag{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:18px;pointer-events:none}
+.field .cc input{padding-left:38px;letter-spacing:.02em}
+.cc-list{position:absolute;z-index:20;left:0;top:calc(100% + 6px);width:min(300px,80vw);max-height:260px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.45);padding:4px}
+.cc-list button{display:flex;gap:10px;align-items:center;width:100%;background:none;border:0;color:var(--paper);font:inherit;font-size:14px;text-align:left;padding:9px 10px;border-radius:8px;cursor:pointer}
+.cc-list button:hover,.cc-list button:focus{background:var(--carbon)}
+.cc-list b{min-width:46px}
+.tel input{flex:1 1 auto;min-width:0;letter-spacing:.06em}
+.lvl-badge{display:inline-block;background:var(--butter);color:var(--carbon);font-family:'Lilita One',sans-serif;font-size:18px;letter-spacing:.03em;border-radius:999px;padding:6px 14px}
+.level .note{margin-top:8px}
+.lb{list-style:none;margin:10px 0 4px;padding:0;display:flex;flex-direction:column;gap:6px}
+.lb li{display:flex;gap:10px;align-items:center;background:var(--carbon);border:1px solid var(--line);border-radius:12px;padding:9px 12px}
+.lb li span:nth-child(2){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb li.you{border-color:var(--butter)}
+.lb .rk{width:26px;text-align:center;font-weight:900}
+.lb b{font-family:'Lilita One',sans-serif;font-size:18px;color:var(--butter)}
+.linkbtn{background:none;border:0;color:var(--muted);font:inherit;font-size:12px;font-weight:900;letter-spacing:.06em;cursor:pointer;padding:8px 0}
 .crewlink{display:block;margin:10px auto 0;background:none;border:0;color:var(--line);font:inherit;font-size:11px;letter-spacing:.08em;cursor:pointer;padding:4px 10px}
 .staffbar .linkbtn{margin-left:auto;background:none;border:0;color:var(--muted);font:inherit;font-weight:900;letter-spacing:.06em;cursor:pointer;padding:6px 4px}
 .staffbar a[aria-current="page"]{background:var(--butter);color:var(--carbon);border-color:var(--butter)}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px}
 .lbl{font-size:11.5px;font-weight:900;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
 .field{display:flex;flex-direction:column;gap:5px;min-width:0}
-.field input,.field textarea{background:var(--carbon);color:var(--paper);border:1px solid var(--line);border-radius:12px;padding:11px 12px;width:100%;min-width:0}
+.field input,.field textarea,.field select{background:var(--carbon);color:var(--paper);border:1px solid var(--line);border-radius:12px;padding:11px 12px;width:100%;min-width:0}
 .field textarea{min-height:84px;resize:vertical}
 .check{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;color:var(--muted)}
 .check input{margin-top:3px;accent-color:var(--butter);width:18px;height:18px;flex:none}
@@ -111,14 +130,39 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
 (function () {
   var app = document.getElementById("app");
   var S = { customer: null, staff: null, need: 9, menu: [] };
-  var welcomeP = null;
+  var welcomeP = null, lb = null;
   var screen = "home", basket = {}, found = null, rv = { food: 0, vibe: 0, card: "burger" }, redeemFor = null, owner = null;
   var MENU = {};
 
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function toast(t) { var el = document.getElementById("toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { el.hidden = true; }, 2800); }
   function niceDate(iso) { return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" }); }
-  function fmtPhone(p) { return String(p || "").replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3"); }
+  function fmtPhone(p) {
+    p = String(p || "");
+    if (p.indexOf("00") === 0) { var c = (S.countries || []).filter(function (x) { return p.slice(2).indexOf(x[2]) === 0; })[0];
+      return c ? "+" + c[2] + " " + p.slice(2 + c[2].length) : "+" + p.slice(2); }
+    return p.replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3");
+  }
+  /* Phone = country picker (flag + dial code) + the number after it, exact length per country */
+  function flag(iso) { return iso.replace(/./g, function (ch) { return String.fromCodePoint(127397 + ch.charCodeAt(0)); }); }
+  function country(iso) { var l = S.countries || []; return l.filter(function (x) { return x[0] === iso; })[0] || l[0] || ["AE", "UAE", "971", 9, 9]; }
+  function lenText(c) { return c[3] === c[4] ? c[3] + " digits" : c[3] + " to " + c[4] + " digits"; }
+  function phoneField(id, label) {
+    var c = country(phoneField.iso || "AE");
+    return '<div class="field"><label for="' + id + '">' + label + '</label><div class="tel">' +
+      '<div class="cc"><span class="cc-flag" id="' + id + '-flag">' + flag(c[0]) + '</span>' +
+      '<input id="' + id + '-cc" data-iso="' + c[0] + '" value="+' + c[2] + '" inputmode="tel" autocomplete="off" aria-label="Country code" role="combobox" aria-expanded="false" aria-controls="' + id + '-list">' +
+      '<div class="cc-list" id="' + id + '-list" role="listbox" hidden></div></div>' +
+      '<input id="' + id + '" inputmode="numeric" autocomplete="tel-national" data-max="' + c[4] + '" placeholder="' + (c[0] === "AE" ? "561234567" : "") + '"></div>' +
+      '<p class="note" id="' + id + '-hint">' + lenText(c) + " after +" + c[2] + ", without the first 0</p></div>";
+  }
+  function readPhone(id, errId) {
+    var ccEl = document.getElementById(id + "-cc");
+    if (!ccEl.getAttribute("data-iso")) { showErr(errId, "Pick your country code from the list."); return null; }
+    var c = country(ccEl.getAttribute("data-iso")), n = document.getElementById(id).value.replace(/\D/g, "").replace(/^0/, "");
+    if (n.length < c[3] || n.length > c[4]) { showErr(errId, c[1] + " numbers are " + lenText(c) + " after +" + c[2] + "."); return null; }
+    return "+" + c[2] + n;
+  }
   function api(path, body) {
     return fetch(path, body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), credentials: "same-origin" } : { credentials: "same-origin" })
       .then(function (r) { return r.json().catch(function () { return { ok: false, error: "Something went wrong. Try again." }; }); })
@@ -140,12 +184,38 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     for (var i = 0; i < S.need; i++) h += '<div class="st' + (i < n ? " on" : "") + '">' + (i < n ? "✓" : i + 1) + "</div>";
     return h + '<div class="st free' + (n >= S.need ? " ready" : "") + '">FREE</div></div>';
   }
+  /* a full card renews by itself: the free item is banked and a fresh card starts */
+  function freeOf(c, k) { return Math.floor((c[k] || 0) / S.need); }
   function cardHtml(c, k) {
-    var n = c[k], left = Math.max(0, S.need - n), word = k === "burger" ? "burger" : "dessert";
-    return '<section class="card ' + k + '"><div class="card-h"><h3>' + (k === "burger" ? "Burgers" : "Dee'serts") + "</h3><b>" + Math.min(n, S.need) + " / " + S.need + "</b></div>" + stamps(n) +
-      (n >= S.need ? '<div class="ready-banner">YOUR FREE ' + word.toUpperCase() + " IS READY · ANY ONE YOU LIKE</div>"
-        : '<div class="meta">' + left + " more " + (left === 1 ? "stamp" : "stamps") + " and your next " + word + " is free.</div>") +
-      (n > S.need ? '<div class="meta">+' + (n - S.need) + " extra carried to your next card</div>" : "") + "</section>";
+    var n = (c[k] || 0) % S.need, free = freeOf(c, k), left = S.need - n, word = k === "burger" ? "burger" : "dessert";
+    var done = c.done ? c.done[k] : 0;
+    return '<section class="card ' + k + '"><div class="card-h"><h3>' + (k === "burger" ? "Burgers" : "Dee'serts") + "</h3><b>" + n + " / " + S.need + "</b></div>" + stamps(n) +
+      (free ? '<div class="ready-banner">' + (k === "burger" ? "🍔 " : "🍰 ") + free + " FREE " + word.toUpperCase() + (free > 1 ? "S" : "") + " WAITING · ANY ONE YOU LIKE</div>" : "") +
+      '<div class="meta">' + left + " more " + (left === 1 ? "stamp" : "stamps") + " and " + (free ? "another" : "your next") + " " + word + " is free." +
+      (done ? " · <b>" + done + "</b> card" + (done > 1 ? "s" : "") + " done" : "") + "</div></section>";
+  }
+  /* fan level from every card ever finished (both cards together) */
+  var LEVELS = [[10, "Smash Legend", "👑"], [5, "Loyal Fan", "🔥"], [3, "Regular", "⭐"], [1, "Smasher", "🍔"]];
+  function levelOf(c) {
+    var t = c.done ? c.done.burger + c.done.dessert : 0, cur = null, next = null;
+    LEVELS.forEach(function (l) { if (t >= l[0] && !cur) cur = l; });
+    for (var i = LEVELS.length - 1; i >= 0; i--) if (t < LEVELS[i][0]) { next = LEVELS[i]; break; }
+    return { total: t, cur: cur, next: next };
+  }
+  function monthName(m) { return new Date(m + "-15T12:00:00Z").toLocaleDateString("en-GB", { month: "long" }); }
+  function boardHtml(B, mine) {
+    if (!B) return '<div class="panel"><div class="lbl">🏆 Top Smashers</div><p class="note">Loading…</p></div>';
+    var h = '<div class="panel board"><div class="lbl">🏆 Top Smashers · ' + monthName(B.month) + "</div>" +
+      '<p class="note">Most cards finished this month. <b style="color:var(--butter)">#1 wins a free meal on us</b> (at least ' + B.prizeMin + " cards to qualify).</p>";
+    h += B.top.length ? '<ol class="lb">' + B.top.map(function (r) {
+      return '<li' + (r.you ? ' class="you"' : "") + '><span class="rk">' + (r.rank === 1 ? "🥇" : r.rank === 2 ? "🥈" : r.rank === 3 ? "🥉" : r.rank) + "</span><span>" + esc(r.name) + (r.you ? " (you)" : "") +
+        '</span><b>' + r.n + "</b></li>"; }).join("") + "</ol>" : '<p class="note">Nobody has finished a card this month yet. Be the first.</p>';
+    if (mine) {
+      if (mine.boardHide) h += '<p class="note">You\'re hidden from Top Smashers.</p>';
+      else if (B.me && B.me.rank > 10) h += '<p class="note">You\'re #' + B.me.rank + " with " + B.me.n + " this month.</p>";
+      h += '<button type="button" class="linkbtn" id="lb-hide">' + (mine.boardHide ? "SHOW ME ON TOP SMASHERS" : "HIDE MY NAME FROM TOP SMASHERS") + "</button>";
+    }
+    return h + "</div>";
   }
   function itemsText(items) { return Object.keys(items || {}).map(function (k) { return items[k] + "× " + (MENU[k] ? MENU[k].name : k); }).join(", "); }
   function showErr(id, t) { var el = document.getElementById(id); if (el) { el.textContent = t; el.hidden = false; } }
@@ -165,7 +235,12 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     } else if (!c.visits.length) {
       h += '<div class="panel" style="border-color:var(--butter)"><div class="lbl" style="color:var(--butter)">🎁 A surprise is waiting</div><p class="note">Show your code with your first order and see what you get. A free dessert or 10% off the whole order.</p></div>';
     }
+    var lv = levelOf(c);
+    h += '<div class="panel level"><div><span class="lvl-badge">' + (lv.cur ? lv.cur[2] + " " + lv.cur[1].toUpperCase() : "NEW ON THE CARD") + "</span></div>" +
+      '<p class="note"><b>' + lv.total + "</b> card" + (lv.total === 1 ? "" : "s") + " finished" + (c.doneMonth ? " · <b>" + c.doneMonth + "</b> this month" : "") +
+      (lv.next ? " · " + (lv.next[0] - lv.total) + " more to " + lv.next[2] + " " + lv.next[1] : " · top level") + "</p></div>";
     h += cardHtml(c, "burger") + cardHtml(c, "dessert");
+    h += boardHtml(lb, c);
     h += '<div class="panel"><div class="lbl">Show this at the window</div><div class="qrbox"><div class="qr"><img src="/api/pass/qr.svg" alt="Your Pass Card QR code"></div>' +
       '<div style="flex:1 1 160px"><p class="big">' + esc(fmtPhone(c.phone)) + '</p><p class="note">This code is yours only. The truck scans it to add your stamps. Every burger and dessert is a stamp; a Brownie Bag counts as 2.</p></div></div></div>';
     if (c.visits.length) {
@@ -180,7 +255,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   }
   function loginForm() {
     return '<form class="panel" id="f-login" novalidate><div class="lbl">Log in</div>' +
-      '<div class="field"><label for="l-phone">Mobile number</label><input id="l-phone" inputmode="tel" autocomplete="tel" placeholder="05X XXX XXXX"></div>' +
+      phoneField("l-phone", "Mobile number") +
       '<div class="field"><label for="l-pin">4-digit PIN</label><input id="l-pin" inputmode="numeric" maxlength="4" type="password" autocomplete="current-password"></div>' +
       '<p class="err" id="l-err" hidden></p><button class="btn pri" type="submit">OPEN MY CARD</button>' +
       '<button class="btn ghost" type="button" id="to-join">NEW HERE? GET A PASS CARD</button>' +
@@ -191,8 +266,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     return '<form class="panel" id="f-join" novalidate><div class="lbl">Get your Pass Card</div>' +
       '<div class="row"><div class="field"><label for="j-first">First name</label><input id="j-first" autocomplete="given-name"></div>' +
       '<div class="field"><label for="j-last">Last name</label><input id="j-last" autocomplete="family-name"></div></div>' +
-      '<div class="field"><label for="j-phone">Mobile number</label><input id="j-phone" inputmode="tel" autocomplete="tel" placeholder="05X XXX XXXX"></div>' +
-      '<div class="field"><label for="j-email">Email</label><input id="j-email" type="email" autocomplete="email"></div>' +
+      phoneField("j-phone", "Mobile number") +
+      '<div class="field"><label for="j-email">Email</label><input id="j-email" type="email" autocomplete="email" required></div>' +
       '<div class="field"><label for="j-pin">Choose a 4-digit PIN</label><input id="j-pin" inputmode="numeric" maxlength="4" type="password" autocomplete="new-password"></div>' +
       '<label class="check"><input type="checkbox" id="j-ok"><span>I agree that Smash &amp; Pass keeps my name, number, email, what I buy and my reviews to run the Pass Card. I can delete my card at any time.</span></label>' +
       '<label class="check"><input type="checkbox" id="j-offers"><span>Send me offers on WhatsApp or email (optional).</span></label>' +
@@ -219,14 +294,15 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     if (!S.staff) return needStaff();
     if (redeemFor && found) return redeemPanel();
     var h = '<form class="panel" id="f-find" novalidate><div class="lbl">Find the customer</div>' +
-      '<div class="row"><div class="field" style="flex:2 1 180px"><label for="s-q">Mobile number</label><input id="s-q" inputmode="tel" placeholder="05X XXX XXXX"></div>' +
+      '<div class="row"><div class="field" style="flex:2 1 180px"><label for="s-q">Mobile number</label><input id="s-q" inputmode="tel" placeholder="05X XXX XXXX or +966…"></div>' +
       '<button class="btn pri" type="submit" style="align-self:flex-end;flex:1 1 90px">FIND</button></div>' +
       '<p class="note">Faster: open the phone camera and scan the customer\'s QR. It opens their card here.</p><p class="err" id="s-err" hidden></p></form>';
     if (!found) return h;
     var c = found;
     h += '<div class="panel"><div class="hello"><h2>' + esc(c.first + " " + c.last) + '</h2><span class="note">' + esc(fmtPhone(c.phone)) + "</span></div>" +
-      '<div class="kpis"><div class="kpi"><b>' + Math.min(c.burger, S.need) + "/" + S.need + '</b><span>Burger card</span></div><div class="kpi"><b>' + Math.min(c.dessert, S.need) + "/" + S.need + "</b><span>Dee'sert card</span></div></div>";
-    ["burger", "dessert"].forEach(function (k) { if (c[k] >= S.need) h += '<button type="button" class="btn red" data-redeem="' + k + '">GIVE FREE ' + k.toUpperCase() + "</button>"; });
+      '<div class="kpis"><div class="kpi"><b>' + (c.burger % S.need) + "/" + S.need + '</b><span>Burger card</span></div><div class="kpi"><b>' + (c.dessert % S.need) + "/" + S.need + "</b><span>Dee'sert card</span></div>" +
+      '<div class="kpi"><b>' + (levelOf(c).cur ? levelOf(c).cur[2] : "–") + " " + levelOf(c).total + "</b><span>cards finished</span></div></div>";
+    ["burger", "dessert"].forEach(function (k) { var f = freeOf(c, k); if (f) h += '<button type="button" class="btn red" data-redeem="' + k + '">GIVE FREE ' + k.toUpperCase() + (f > 1 ? " · " + f + " WAITING" : "") + "</button>"; });
     h += "</div>";
     if (welcomeP) h += '<div class="panel" style="background:var(--butter);color:var(--carbon);border-color:var(--butter)"><div class="lbl" style="color:var(--carbon)">🎁 First visit · welcome surprise</div>' +
       (welcomeP.kind === "dessert"
@@ -276,6 +352,13 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       kpi(avg("food"), "food quality, " + revs.length + " reviews") + kpi(avg("vibe"), "atmosphere") + kpi(freeB, "free burgers given") + kpi(O.redeems.length - freeB, "free desserts given") +
       kpi(O.customers.filter(function (c) { return c.surprise && c.surprise.indexOf("dessert:") === 0; }).length, "welcome desserts (giveaways)") +
       kpi(O.customers.filter(function (c) { return c.surprise === "discount10"; }).length, "welcome 10% discounts") + "</div></div>";
+    if (lb) {
+      h += '<div class="panel"><div class="lbl">🏆 Prize · free meal for the month\'s #1 (min. ' + lb.prizeMin + " cards)</div>" +
+        (lb.leader ? '<p class="note">Leading ' + monthName(lb.month) + ": <b>" + esc(lb.leader.name) + "</b> · " + esc(fmtPhone(lb.leader.phone)) + " · " + lb.leader.n + " cards</p>"
+          : '<p class="note">Nobody has ' + lb.prizeMin + " cards yet in " + monthName(lb.month) + ".</p>") +
+        (lb.lastWinner ? '<p class="note">🥇 ' + monthName(lb.lastWinner.month) + " winner: <b>" + esc(lb.lastWinner.name) + "</b> · " + esc(fmtPhone(lb.lastWinner.phone)) + " · " + lb.lastWinner.n + " cards. Give them their free meal.</p>" : "") +
+        "</div>" + boardHtml(lb, null);
+    }
     if (Object.keys(items).length) h += '<div class="panel"><div class="lbl">What people buy</div><div class="tw"><table><thead><tr><th>ITEM</th><th class="r">BOUGHT</th></tr></thead><tbody>' +
       O.menu.filter(function (m) { return items[m.id]; }).sort(function (a, b) { return items[b.id] - items[a.id]; }).map(function (m) { return "<tr><td>" + esc(m.name) + '</td><td class="r">' + items[m.id] + "</td></tr>"; }).join("") + "</tbody></table></div></div>";
     var cms = revs.filter(function (v) { return v.comment; });
@@ -309,7 +392,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
         var cur = (r.name === "truck" || r.name === "scan") && l[0] === "/pass/truck" || r.name === "owner" && l[0] === "/pass/owner";
         return '<a href="' + l[0] + '" data-nav' + (cur ? ' aria-current="page"' : "") + ">" + l[1] + "</a>"; }).join("") +
         '<button type="button" class="linkbtn" id="st-out">LOG OUT</button>';
-    } else bar.hidden = true;
+    } else { bar.hidden = true; bar.innerHTML = ""; }
     if (r.name === "card") app.innerHTML = viewCard();
     else if (r.name === "owner") app.innerHTML = viewOwner();
     else if (r.name === "scan" && !S.staff) app.innerHTML = '<div class="panel"><div class="lbl">A Pass Card</div><p class="note">This is a customer\'s Pass Card code. Show it at the Smash &amp; Pass window to collect stamps.</p><a class="btn pri" href="/pass" data-nav style="text-align:center;text-decoration:none">OPEN MY OWN CARD</a></div>';
@@ -329,9 +412,10 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       }
       if (r.name === "owner" && S.staff) {
         owner = null; render();
-        return api("/api/pass/owner").then(function (o) { owner = o.ok ? o : null; render(); });
+        return Promise.all([api("/api/pass/owner"), api("/api/pass/board")]).then(function (o) { owner = o[0].ok ? o[0] : null; lb = o[1].ok ? o[1] : null; render(); });
       }
       render();
+      if (r.name === "card" && S.customer) api("/api/pass/board").then(function (b) { if (b.ok) { lb = b; if (route().name === "card") keepText(); } });
     });
   }
 
@@ -345,6 +429,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     else if (t.id === "to-crew") { screen = "crew"; render(); }
     else if (t.id === "go-review") { screen = "review"; render(); }
     else if (t.id === "r-back") { screen = "home"; render(); }
+    else if (t.id === "lb-hide" && S.customer) { t.disabled = true; api("/api/pass/board/hide", { hide: !S.customer.boardHide }).then(function (r) {
+      if (r.ok) { S.customer = Object.assign(S.customer, r.customer); } return api("/api/pass/board"); }).then(function (b) { lb = b && b.ok ? b : lb; render(); }); }
     else if (t.id === "logout") api("/api/pass/logout", {}).then(function () { S.customer = null; screen = "home"; render(); });
     else if (t.hasAttribute("data-rate")) { rv[t.getAttribute("data-rate")] = +t.getAttribute("data-v"); keepText(); }
     else if (t.hasAttribute("data-card")) { rv.card = t.getAttribute("data-card"); keepText(); }
@@ -356,7 +442,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
         if (!res.ok) { t.disabled = false; toast(res.error || "Couldn't stamp. Try again."); return; }
         found = res.customer; basket = {}; welcomeP = null; render();
         toast(res.welcome ? "Stamped. Welcome surprise: " + res.welcome.label + (res.welcome.kind === "dessert" ? " (logged as a giveaway)" : "")
-          : "Stamped: +" + res.added.burger + " burger, +" + res.added.dessert + " dessert");
+          : (res.completed && res.completed.length ? "🎉 Card complete! Free " + res.completed.join(" + ") + " banked, new card started"
+            : "Stamped: +" + res.added.burger + " burger, +" + res.added.dessert + " dessert"));
       });
     }
     else if (t.hasAttribute("data-redeem")) { redeemFor = t.getAttribute("data-redeem"); render(); }
@@ -379,13 +466,71 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   });
   function keepText() { var ta = document.getElementById("r-text"), v = ta ? ta.value : ""; render(); var n = document.getElementById("r-text"); if (n) n.value = v; }
 
+  /* country code box: type a code (or a name) and the list narrows; a full code picks itself */
+  function pickCountry(id, iso, focusNumber) {
+    var c = country(iso), cc = document.getElementById(id + "-cc"), inp = document.getElementById(id);
+    phoneField.iso = c[0]; cc.setAttribute("data-iso", c[0]); cc.value = "+" + c[2];
+    document.getElementById(id + "-flag").textContent = flag(c[0]);
+    inp.setAttribute("data-max", c[4]); inp.placeholder = c[0] === "AE" ? "561234567" : ""; inp.value = inp.value.slice(0, c[4]);
+    document.getElementById(id + "-hint").textContent = lenText(c) + " after +" + c[2] + ", without the first 0";
+    ccList(id, null); if (focusNumber) inp.focus();
+  }
+  function ccList(id, q) {
+    var box = document.getElementById(id + "-list"), cc = document.getElementById(id + "-cc");
+    if (q == null) { box.hidden = true; cc.setAttribute("aria-expanded", "false"); return; }
+    var dig = q.replace(/\D/g, ""), word = q.replace(/[^a-z ]/gi, "").trim().toLowerCase();
+    var hits = (S.countries || []).filter(function (x) {
+      return word ? x[1].toLowerCase().indexOf(word) >= 0 : !dig || x[2].indexOf(dig) === 0; });
+    box.innerHTML = hits.length ? hits.map(function (x) {
+      return '<button type="button" role="option" data-cc="' + id + '" data-iso="' + x[0] + '"><span>' + flag(x[0]) + '</span><b>+' + x[2] + "</b>" + esc(x[1]) + "</button>"; }).join("")
+      : '<p class="note" style="margin:8px">No country with that code.</p>';
+    box.hidden = false; cc.setAttribute("aria-expanded", "true");
+  }
+  document.addEventListener("focusin", function (e) {
+    var t = e.target; if (t.id && /-cc$/.test(t.id)) { t.select(); ccList(t.id.slice(0, -3), ""); }
+  });
+  document.addEventListener("mousedown", function (e) {
+    var o = e.target.closest("[data-cc]");
+    if (o) { e.preventDefault(); pickCountry(o.getAttribute("data-cc"), o.getAttribute("data-iso"), true); return; }
+    if (!e.target.closest(".cc")) document.querySelectorAll(".cc-list").forEach(function (l) { l.hidden = true; });
+  });
+  document.addEventListener("focusout", function (e) {
+    var t = e.target; if (!t.id || !/-cc$/.test(t.id)) return;
+    var id = t.id.slice(0, -3);
+    setTimeout(function () { var cc = document.getElementById(id + "-cc"); if (!cc || document.activeElement === cc) return;
+      ccList(id, null); var iso = cc.getAttribute("data-iso"); if (iso) pickCountry(id, iso, false); }, 150);
+  });
+  document.addEventListener("input", function (e) {
+    var t = e.target;
+    if (t.id && /-cc$/.test(t.id)) {
+      var id = t.id.slice(0, -3), dig = t.value.replace(/\D/g, "");
+      var exact = /[a-z]/i.test(t.value) ? null : (S.countries || []).filter(function (x) { return x[2] === dig; })[0];
+      if (exact) return pickCountry(id, exact[0], true);
+      t.setAttribute("data-iso", ""); document.getElementById(id + "-flag").textContent = "🌐";
+      return ccList(id, t.value);
+    }
+    if (!t.id || !document.getElementById(t.id + "-cc")) return;
+    /* a full number pasted or autofilled (+966…, 00966…) moves its code to the country box */
+    var raw = t.value.trim(), dd = raw.replace(/\D/g, "");
+    if (raw.charAt(0) === "+" || dd.indexOf("00") === 0) {
+      if (dd.indexOf("00") === 0) dd = dd.slice(2);
+      var hit = (S.countries || []).filter(function (x) { return dd.indexOf(x[2]) === 0; })[0];
+      if (hit) { t.value = dd.slice(hit[2].length); pickCountry(t.id, hit[0], false); }
+    }
+    var v = t.value.replace(/\D/g, "").replace(/^0/, "").slice(0, +t.getAttribute("data-max") || 15); if (v !== t.value) t.value = v;
+  });
   document.addEventListener("submit", function (e) {
     e.preventDefault();
     var f = e.target, val = function (id) { var el = document.getElementById(id); return el ? el.value.trim() : ""; };
     var btn = f.querySelector('button[type="submit"]'); if (btn) btn.disabled = true;
     var done = function () { if (btn) btn.disabled = false; };
-    if (f.id === "f-login") api("/api/pass/login", { phone: val("l-phone"), pin: val("l-pin") }).then(function (r) { done(); if (!r.ok) return showErr("l-err", r.error); load(); });
-    if (f.id === "f-join") api("/api/pass/join", { first: val("j-first"), last: val("j-last"), phone: val("j-phone"), email: val("j-email"), pin: val("j-pin"),
+    if (f.id === "f-login" || f.id === "f-join") {
+      var ph = readPhone(f.id === "f-login" ? "l-phone" : "j-phone", f.id === "f-login" ? "l-err" : "j-err");
+      if (!ph) return done();
+      if (f.id === "f-join" && !val("j-email")) { showErr("j-err", "Add your email."); return done(); }
+    }
+    if (f.id === "f-login") api("/api/pass/login", { phone: ph, pin: val("l-pin") }).then(function (r) { done(); if (!r.ok) return showErr("l-err", r.error); load(); });
+    if (f.id === "f-join") api("/api/pass/join", { first: val("j-first"), last: val("j-last"), phone: ph, email: val("j-email"), pin: val("j-pin"),
       consent: document.getElementById("j-ok").checked, offers: document.getElementById("j-offers").checked }).then(function (r) { done(); if (!r.ok) return showErr("j-err", r.error); screen = "home"; load(); toast("Your Pass Card is ready"); });
     if (f.id === "f-review") {
       if (!rv.food || !rv.vibe) { done(); return showErr("r-err", "Pick a number for both food and atmosphere."); }

@@ -48,21 +48,66 @@ async function ensureTables(env) {
       "CREATE TABLE IF NOT EXISTS pass_redeems (id INTEGER PRIMARY KEY AUTOINCREMENT, phone TEXT NOT NULL," +
       " at TEXT NOT NULL, card TEXT NOT NULL, item TEXT NOT NULL, by TEXT, stock TEXT)"
     ),
-    env.DB.prepare("CREATE TABLE IF NOT EXISTS pass_scans (day TEXT NOT NULL, src TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, src))")
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS pass_scans (day TEXT NOT NULL, src TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, src))"),
+    /* one row each time a card fills up (9 stamps); feeds the counter, the fan level and Top Smashers */
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS pass_completions (id INTEGER PRIMARY KEY AUTOINCREMENT, phone TEXT NOT NULL," +
+      " card TEXT NOT NULL, at TEXT NOT NULL, month TEXT NOT NULL)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS pass_completions_month ON pass_completions (month, phone)")
   ]);
+  /* added after launch: lets a customer keep their name off Top Smashers */
+  try { await env.DB.prepare("ALTER TABLE pass_customers ADD COLUMN board_hide INTEGER NOT NULL DEFAULT 0").run(); } catch (e) { /* already there */ }
   readyDone = true;
 }
 
+/* Countries the sign-up picker offers: [ISO, name, dial code, min, max digits after the code].
+   Dial codes are prefix-free, so a full number always splits one way. UAE first. */
+export const COUNTRIES = [
+  ["AE", "UAE", "971", 9, 9], ["SA", "Saudi Arabia", "966", 9, 9], ["KW", "Kuwait", "965", 8, 8],
+  ["QA", "Qatar", "974", 8, 8], ["BH", "Bahrain", "973", 8, 8], ["OM", "Oman", "968", 8, 8],
+  ["EG", "Egypt", "20", 10, 10], ["JO", "Jordan", "962", 9, 9], ["LB", "Lebanon", "961", 7, 8],
+  ["SY", "Syria", "963", 9, 9], ["IQ", "Iraq", "964", 10, 10], ["PS", "Palestine", "970", 9, 9],
+  ["YE", "Yemen", "967", 9, 9], ["SD", "Sudan", "249", 9, 9], ["MA", "Morocco", "212", 9, 9],
+  ["DZ", "Algeria", "213", 9, 9], ["TN", "Tunisia", "216", 8, 8], ["LY", "Libya", "218", 9, 9],
+  ["IN", "India", "91", 10, 10], ["PK", "Pakistan", "92", 10, 10], ["BD", "Bangladesh", "880", 10, 10],
+  ["LK", "Sri Lanka", "94", 9, 9], ["NP", "Nepal", "977", 10, 10], ["PH", "Philippines", "63", 10, 10],
+  ["ID", "Indonesia", "62", 9, 12], ["CN", "China", "86", 11, 11], ["IR", "Iran", "98", 10, 10],
+  ["TR", "Turkey", "90", 10, 10], ["RU", "Russia", "7", 10, 10], ["GB", "United Kingdom", "44", 10, 10],
+  ["US", "USA / Canada", "1", 10, 10], ["FR", "France", "33", 9, 9], ["DE", "Germany", "49", 10, 11],
+  ["IT", "Italy", "39", 9, 10], ["ES", "Spain", "34", 9, 9], ["NL", "Netherlands", "31", 9, 9],
+  ["AU", "Australia", "61", 9, 9], ["ZA", "South Africa", "27", 9, 9], ["NG", "Nigeria", "234", 10, 10],
+  ["KE", "Kenya", "254", 9, 9], ["ET", "Ethiopia", "251", 9, 9]
+];
+/* Stored key: UAE stays "05XXXXXXXX" (the cards made before the picker), every
+   other country is "00" + dial code + number. Accepts +971…, 00971…, 971…, 05… */
 export function normPhone(s) {
-  let d = String(s || "").replace(/\D/g, "");
-  if (d.startsWith("00971")) d = "0" + d.slice(5);
-  else if (d.startsWith("971")) d = "0" + d.slice(3);
-  else if (d.length === 9 && d.startsWith("5")) d = "0" + d;
-  return d;
+  const raw = String(s || "").trim();
+  let d = raw.replace(/\D/g, "");
+  let intl = raw.startsWith("+") || d.startsWith("00");
+  if (d.startsWith("00")) d = d.slice(2);
+  if (!intl && d.startsWith("971") && d.length >= 11) intl = true;
+  if (!intl) return d.length === 9 && d.startsWith("5") ? "0" + d : d;
+  const c = COUNTRIES.find((x) => d.startsWith(x[2]));
+  if (!c) return "00" + d;
+  const nat = d.slice(c[2].length).replace(/^0/, "");
+  return c[2] === "971" ? "0" + nat : "00" + c[2] + nat;
 }
-const validPhone = (p) => /^05\d{8}$/.test(p);
+const validPhone = (p) => {
+  if (/^05\d{8}$/.test(p)) return true;
+  const m = /^00(\d+)$/.exec(p); if (!m) return false;
+  const c = COUNTRIES.find((x) => m[1].startsWith(x[2]));
+  const n = c ? m[1].length - c[2].length : 0;
+  return !!c && c[2] !== "971" && n >= c[3] && n <= c[4];
+};
 const clean = (s, n) => String(s == null ? "" : s).replace(/[\u0000-\u001f]/g, " ").trim().slice(0, n);
 const dubaiDay = () => new Date(Date.now() + 4 * 3600e3).toISOString().slice(0, 10);
+const dubaiMonth = (offset = 0) => { const t = new Date(Date.now() + 4 * 3600e3); t.setUTCDate(1); t.setUTCMonth(t.getUTCMonth() + offset); return t.toISOString().slice(0, 7); };
+export const PRIZE_MIN = 3;   // Top Smashers: #1 needs at least this many cards finished in the month
+/* A card's count is a running balance: it keeps going past 9 and a free item takes 9 off,
+   so stamps carry over and a full card starts a new one straight away. */
+function filled(card, phone, before, added) {
+  const n = Math.floor((before + added) / NEED) - Math.floor(before / NEED);
+  return Array.from({ length: Math.max(0, n) }, () => [phone, card]);
+}
 
 /** Everything the Pass Card needs from the stock worker, passed in to avoid a circular import. */
 export async function handlePass(request, env, path, d) {
@@ -71,7 +116,7 @@ export async function handlePass(request, env, path, d) {
   const pinOf = (phone, pin) => d.hmac(secret, "pin:" + phone + ":" + pin);
   const cardCode = async (phone) => phone + "-" + (await d.hmac(secret, "card:" + phone)).slice(0, 10);
   const fromCode = async (code) => {
-    const m = /^(05\d{8})-([0-9a-f]{10})$/.exec(String(code || "").trim());
+    const m = /^(05\d{8}|00\d{8,16})-([0-9a-f]{10})$/.exec(String(code || "").trim());
     if (!m) return null;
     return d.sameString(m[2], (await d.hmac(secret, "card:" + m[1])).slice(0, 10)) ? m[1] : null;
   };
@@ -95,6 +140,26 @@ export async function handlePass(request, env, path, d) {
   const body = async () => (request.method === "POST" ? await request.json().catch(() => ({})) : {});
   const pub = (c) => c && ({ phone: c.phone, first: c.first, last: c.last, email: c.email || "", offers: !!c.offers,
     burger: c.burger, dessert: c.dessert, bonus: !!c.bonus, joined: c.joined, surprise: c.surprise || null });
+  const completion = (phone, card) => env.DB.prepare("INSERT INTO pass_completions (phone, card, at, month) VALUES (?, ?, ?, ?)")
+    .bind(phone, card, new Date().toISOString(), dubaiMonth());
+  /* the card plus its counters: cards finished ever (fan level) and this month (Top Smashers) */
+  const withStats = async (c) => {
+    if (!c) return c;
+    const r = await env.DB.prepare("SELECT card, month, COUNT(*) AS n FROM pass_completions WHERE phone = ? GROUP BY card, month").bind(c.phone).all();
+    const done = { burger: 0, dessert: 0 }; let month = 0;
+    (r.results || []).forEach((x) => { done[x.card] = (done[x.card] || 0) + x.n; if (x.month === dubaiMonth()) month += x.n; });
+    return { ...pub(c), done, doneMonth: month, boardHide: !!c.board_hide };
+  };
+  /* Top Smashers: cards finished this month, ties go to whoever got there first.
+     Public rows carry first name + last initial only. */
+  const board = async (month, limit) => {
+    const r = await env.DB.prepare(
+      "SELECT p.phone, c.first, c.last, COUNT(*) AS n, MAX(p.at) AS reached FROM pass_completions p" +
+      " JOIN pass_customers c ON c.phone = p.phone WHERE p.month = ? AND c.board_hide = 0" +
+      " GROUP BY p.phone ORDER BY n DESC, reached ASC LIMIT ?").bind(month, limit).all();
+    return r.results || [];
+  };
+  const shortName = (x) => x.first + " " + String(x.last || "").charAt(0).toUpperCase() + ".";
   const fail = (error, status = 400) => d.json({ ok: false, error }, status);
   const ok = (x, headers) => d.json({ ok: true, ...x }, 200, headers);
 
@@ -114,11 +179,11 @@ export async function handlePass(request, env, path, d) {
     if (c) {
       const visits = (await env.DB.prepare("SELECT id, at, items, burger, dessert, food, vibe FROM pass_visits WHERE phone = ? ORDER BY at DESC LIMIT 30")
         .bind(c.phone).all()).results || [];
-      card = { ...pub(c), code: await cardCode(c.phone),
+      card = { ...(await withStats(c)), code: await cardCode(c.phone),
         visits: visits.map((v) => ({ ...v, items: JSON.parse(v.items || "{}") })),
         pending: visits[0] && visits[0].food == null ? visits[0] : null };   /* only the latest visit asks for a review */
     }
-    return ok({ customer: card, staff: s ? { name: s.name, role: s.role } : null, need: NEED, menu: PASS_MENU });
+    return ok({ customer: card, staff: s ? { name: s.name, role: s.role } : null, need: NEED, menu: PASS_MENU, countries: COUNTRIES });
   }
 
   if (path === "/api/pass/qr.svg" && request.method === "GET") {
@@ -138,8 +203,9 @@ export async function handlePass(request, env, path, d) {
     const phone = normPhone(b.phone), first = clean(b.first, 40), last = clean(b.last, 40),
       email = clean(b.email, 120), pin = String(b.pin || "");
     if (!first || !last) return fail("Add your first and last name.");
-    if (!validPhone(phone)) return fail("Enter a UAE mobile number, like 050 123 4567.");
-    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail("That email doesn't look right.");
+    if (!validPhone(phone)) return fail("Check your mobile number: pick the country, then the number without the first 0.");
+    if (!email) return fail("Add your email.");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail("That email doesn't look right.");
     if (!/^\d{4}$/.test(pin)) return fail("Your PIN needs exactly 4 digits.");
     if (b.consent !== true) return fail("Tick the box to agree, so we can keep your stamps.");
     if (await get(phone)) return fail("This number already has a Pass Card. Log in instead.", 409);
@@ -187,6 +253,7 @@ export async function handlePass(request, env, path, d) {
     if (!c.bonus) {
       bonus = b.card === "dessert" ? "dessert" : "burger";
       stmts.push(env.DB.prepare("UPDATE pass_customers SET bonus = 1, " + bonus + " = " + bonus + " + 1 WHERE phone = ? AND bonus = 0").bind(phone));
+      filled(bonus, phone, c[bonus], 1).forEach(([p, k]) => stmts.push(completion(p, k)));
     }
     await env.DB.batch(stmts);
     return ok({ bonus });
@@ -207,6 +274,29 @@ export async function handlePass(request, env, path, d) {
   }
 
   /* ---------------- staff (the stock app's own logins) ---------------- */
+  if (path === "/api/pass/board" && request.method === "GET") {
+    const phone = await customerId(), s = await staff();
+    if (!phone && !s) return fail("signed_out", 401);
+    const month = dubaiMonth(), rows = await board(month, 50);
+    const top = rows.slice(0, 10).map((x, i) => ({ rank: i + 1, name: shortName(x), n: x.n, you: x.phone === phone }));
+    const mine = phone ? rows.findIndex((x) => x.phone === phone) : -1;
+    const out = { month, prizeMin: PRIZE_MIN, top, me: mine >= 0 ? { rank: mine + 1, n: rows[mine].n } : null };
+    if (s) {   /* the crew needs to know who to reward: last month's #1, with a number to call */
+      const last = (await board(dubaiMonth(-1), 1))[0];
+      out.lastWinner = last && last.n >= PRIZE_MIN ? { month: dubaiMonth(-1), name: last.first + " " + last.last, phone: last.phone, n: last.n } : null;
+      out.leader = rows[0] && rows[0].n >= PRIZE_MIN ? { name: rows[0].first + " " + rows[0].last, phone: rows[0].phone, n: rows[0].n } : null;
+    }
+    return ok(out);
+  }
+
+  if (path === "/api/pass/board/hide" && request.method === "POST") {
+    const phone = await customerId();
+    if (!phone) return fail("signed_out", 401);
+    const b = await body();
+    await env.DB.prepare("UPDATE pass_customers SET board_hide = ? WHERE phone = ?").bind(b.hide === true ? 1 : 0, phone).run();
+    return ok({ customer: await withStats(await get(phone)) });
+  }
+
   if (path.startsWith("/api/pass/staff/") || path === "/api/pass/owner") {
     const me = await staff();
     if (!me) return fail("staff_only", 401);
@@ -218,7 +308,7 @@ export async function handlePass(request, env, path, d) {
       if (!c) return fail("No Pass Card with that number. Ask them to sign up with the QR on the truck.", 404);
       const last = await env.DB.prepare("SELECT at FROM pass_visits WHERE phone = ? ORDER BY at DESC LIMIT 1").bind(phone).first();
       const welcome = !last && !c.surprise ? await pickSurprise(env, d) : null;
-      return ok({ customer: pub(c), lastVisit: last ? last.at : null, welcome });
+      return ok({ customer: await withStats(c), lastVisit: last ? last.at : null, welcome });
     }
 
     if (path === "/api/pass/staff/stamp" && request.method === "POST") {
@@ -247,12 +337,14 @@ export async function handlePass(request, env, path, d) {
         await env.DB.prepare("UPDATE pass_customers SET surprise = ?, surprise_at = ? WHERE phone = ? AND surprise IS NULL")
           .bind(tag, new Date().toISOString(), phone).run();
       }
+      const done = [...filled("burger", phone, c.burger, burger), ...filled("dessert", phone, c.dessert, dessert)];
       await env.DB.batch([
+        ...done.map(([p, k]) => completion(p, k)),
         env.DB.prepare("UPDATE pass_customers SET burger = burger + ?, dessert = dessert + ? WHERE phone = ?").bind(burger, dessert, phone),
         env.DB.prepare("INSERT INTO pass_visits (phone, at, items, by, burger, dessert) VALUES (?, ?, ?, ?, ?, ?)")
           .bind(phone, new Date().toISOString(), JSON.stringify(items), me.id, burger, dessert)
       ]);
-      return ok({ customer: pub(await get(phone)), added: { burger, dessert }, welcome });
+      return ok({ customer: await withStats(await get(phone)), added: { burger, dessert }, welcome, completed: done.map((x) => x[1]) });
     }
 
     if (path === "/api/pass/staff/redeem" && request.method === "POST") {
@@ -267,7 +359,7 @@ export async function handlePass(request, env, path, d) {
       if (m.stock) stock = (await giftFromStock(env, d, m.stock, me)) ? "logged" : "not_found";
       await env.DB.prepare("INSERT INTO pass_redeems (phone, at, card, item, by, stock) VALUES (?, ?, ?, ?, ?, ?)")
         .bind(phone, new Date().toISOString(), card, m.id, me.id, stock).run();
-      return ok({ customer: pub(await get(phone)), stock });
+      return ok({ customer: await withStats(await get(phone)), stock });
     }
 
     if (path === "/api/pass/staff/resetpin" && request.method === "POST") {
