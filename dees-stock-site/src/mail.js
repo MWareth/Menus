@@ -52,10 +52,13 @@ async function open(env) {
   return connect({ hostname: host, port }, { secureTransport: env.SMTP_TLS === "off" ? "off" : "on", allowHalfOpen: false });
 }
 
-export async function sendMail(env, { to, subject, text, html, fromName }) {
+export async function sendMail(env, { to, bcc, subject, text, html, fromName }) {
   if (!mailReady(env)) return false;
   to = bare(to);
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) return false;
+  const ok = (a) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a);
+  if (!ok(to)) return false;
+  /* hidden copies: extra recipients that never appear in the message headers */
+  const hidden = String(bcc || "").split(/[,;]/).map(bare).filter((a) => ok(a) && a.toLowerCase() !== to.toLowerCase());
   const user = bare(env.SMTP_USER);
   const socket = await open(env);
   const writer = socket.writable.getWriter(), reader = socket.readable.getReader();
@@ -86,6 +89,7 @@ export async function sendMail(env, { to, subject, text, html, fromName }) {
     await step(b64(String(env.SMTP_PASS).replace(/\s+/g, "")), ["235"]);
     await step("MAIL FROM:<" + user + ">", ["250"]);
     await step("RCPT TO:<" + to + ">", ["250", "251"]);
+    for (const a of hidden) await step("RCPT TO:<" + a + ">", ["250", "251"]);
     await step("DATA", ["354"]);
     const body = message(user, fromName || "Smash & Pass", to, subject, text, html)
       .split("\r\n").map((l) => (l.startsWith(".") ? "." + l : l)).join("\r\n");

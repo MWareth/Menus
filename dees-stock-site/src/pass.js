@@ -544,7 +544,7 @@ export async function handlePass(request, env, path, d) {
           items: Object.entries(items).map(([k, n]) => n + "× " + MENU_BY_ID.get(k).name).join(", "),
           link: origin + "/pass", unsub: origin + "/api/pass/unsub?p=" + encodeURIComponent(phone) + "&t=" + (await d.hmac(secret, "unsub:" + phone)).slice(0, 24)
         });
-        d.later(sendMail(env, { to: c.email, fromName: "Smash & Pass", ...mail }));
+        d.later(sendMail(env, { to: c.email, bcc: env.ALERT_TO, fromName: "Smash & Pass", ...mail }));
       }
       return ok({ customer: after, added: { burger, dessert }, welcome, completed: done.map((x) => x[1]),
         points: (burger + dessert) * POINTS_PER_STAMP, achievements: earned });
