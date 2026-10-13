@@ -387,7 +387,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       '<div class="row"><div class="field" style="flex:2 1 180px"><label for="s-q">Mobile number</label><input id="s-q" inputmode="tel" placeholder="05X XXX XXXX or +966…"></div>' +
       '<button class="btn pri" type="submit" style="align-self:flex-end;flex:1 1 90px">FIND</button></div>' +
       '<p class="note">Faster: open the phone camera and scan the customer\'s QR. It opens their card here.</p><p class="err" id="s-err" hidden></p></form>';
-    if (!found) return h;
+    if (!found) return h + practiceHtml();
     var c = found;
     if (c.offline) {
       h += '<div class="panel"><div class="hello"><h2>' + esc(fmtPhone(c.phone)) + '</h2><span class="note">offline</span></div>' +
@@ -451,7 +451,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     var freeB = O.redeems.filter(function (r) { return r.card === "burger"; }).length;
     var kpi = function (v, l) { return '<div class="kpi"><b>' + v + "</b><span>" + esc(l) + "</span></div>"; };
     var h = (S.staff.role === "admin" ? '<div class="panel"><div class="lbl">🛟 Backup</div><p class="note">A copy of everything (customers, stamps, points and the stock) is saved automatically every night at 2am. You can also download one any time and keep it on your phone or Google Drive.</p>' +
-      '<a class="btn ghost" href="/api/pass/backup" download style="text-align:center;text-decoration:none">DOWNLOAD BACKUP</a></div>' : "") +
+      '<a class="btn ghost" href="/api/pass/backup" download style="text-align:center;text-decoration:none">DOWNLOAD BACKUP</a></div>' : "") + practiceHtml() +
       '<div class="panel"><div class="lbl">The truck QR</div><div class="kpis">' + kpi(scanTotal, "scans of the truck QR") + kpi(scanToday, "scans today") +
       kpi(O.customers.length, "signed up") + kpi(conv, "of scans signed up") + "</div></div>";
     h += '<div class="panel"><div class="lbl">Customers and reviews</div><div class="kpis">' + kpi(back, "came back more than once") + kpi(O.visits.length, "stamped orders") +
@@ -597,6 +597,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       });
     }
     else if (t.hasAttribute("data-game")) openGame(t.getAttribute("data-game"));
+    else if (t.hasAttribute("data-practice") && S.staff) openGame(t.getAttribute("data-practice"), true);
     else if (t.id === "qr-open" && S.customer) {
       var qb = document.getElementById("qrbig");
       qb.innerHTML = '<div class="qrbig-in"><p class="lbl" style="color:var(--carbon)">Show this at the window</p>' +
@@ -689,8 +690,14 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   }
 
   /* ---- the games: each one ends with a score from 0 to 100 ---- */
-  function openGame(id) {
-    api("/api/pass/game/start", { game: id }).then(function (r) {
+  /* practice = the crew/owner trying a game: no order used, nothing saved, no points */
+  function practiceHtml() {
+    return '<div class="panel"><div class="lbl">🎮 Test the games</div><p class="note">Practice mode for the crew. No order needed and no points: scores don\'t count.</p><div class="games">' +
+      (S.games || Object.keys(GAME_INFO)).map(function (g) { var i = GAME_INFO[g]; return '<button type="button" data-practice="' + g + '"><span>' + i[0] + "</span><b>" + i[1] + "</b><small>" + i[2] + "</small></button>"; }).join("") +
+      "</div></div>";
+  }
+  function openGame(id, practice) {
+    (practice ? Promise.resolve({ ok: true, play: null }) : api("/api/pass/game/start", { game: id })).then(function (r) {
       if (!r.ok && r.net) { toast("No internet right now. Your game is still waiting, try again in a moment."); return; }
       if (!r.ok) { toast(r.error); return; }
       var ov = document.getElementById("game"), info = GAME_INFO[id];
@@ -703,14 +710,14 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       var hud = document.getElementById("g-hud");
       var finish = function (score) {
         score = Math.max(0, Math.min(100, Math.round(score)));
-        api("/api/pass/game/finish", { play: r.play, score: score }).then(function (f) {
+        (practice ? Promise.resolve({ ok: true, score: score, practice: true }) : api("/api/pass/game/finish", { play: r.play, score: score })).then(function (f) {
           /* no internet at the end: keep the score on the phone and send it later */
           if (!f.ok && f.net) { store("pc_finish", { play: r.play, score: score }); f = { ok: true, score: score, saved: true }; }
           ov.innerHTML = '<div class="g-end"><p class="big">' + (f.ok ? (f.score >= 90 ? "🔥 LEGENDARY" : f.score >= 60 ? "😎 NICE" : "👊 GOOD TRY") : "Game over") + "</p>" +
             '<p class="g-score">' + (f.ok ? f.score : score) + "<small>/100</small></p>" +
-            '<p class="note">' + (f.saved ? "No internet. Your score is saved and your points are added as soon as you're back online."
+            '<p class="note">' + (f.practice ? "Practice round: no points counted." : f.saved ? "No internet. Your score is saved and your points are added as soon as you're back online."
               : f.ok ? "+" + f.points + " Smash Points" : esc(f.error || "")) + "</p>" +
-            '<button type="button" class="btn pri" id="g-close">BACK TO MY CARD</button></div>';
+            '<button type="button" class="btn pri" id="g-close">' + (practice ? "BACK" : "BACK TO MY CARD") + "</button></div>";
           if (f.ok && f.customer) { S.customer = Object.assign(S.customer, f.customer); celebrate(f); }
         });
       };
