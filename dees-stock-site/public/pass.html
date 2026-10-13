@@ -47,6 +47,29 @@ button{cursor:pointer}
 .lb .rk{width:26px;text-align:center;font-weight:900}
 .lb b{font-family:'Lilita One',sans-serif;font-size:18px;color:var(--butter)}
 .linkbtn{background:none;border:0;color:var(--muted);font:inherit;font-size:12px;font-weight:900;letter-spacing:.06em;cursor:pointer;padding:8px 0}
+.pts-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.pts-n{font-family:'Lilita One',sans-serif;font-size:44px;line-height:1;color:var(--butter);margin:4px 0 0}
+.rw{margin-top:12px}.rw-h{display:flex;justify-content:space-between;gap:8px;font-size:14px}.rw-h span{color:var(--muted);font-size:12px;font-weight:800}
+.bar{height:10px;background:var(--carbon);border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--butter);border-radius:999px}
+.rw small{color:var(--muted);font-size:11px}
+.scratch{position:relative;width:100%;max-width:300px;aspect-ratio:300/140;margin:10px auto 0;border-radius:14px;overflow:hidden;background:var(--butter)}
+.scr-prize{position:absolute;inset:0;display:grid;place-items:center;align-content:center;font-family:'Lilita One',sans-serif;font-size:46px;color:var(--carbon)}
+.scr-prize small{display:block;font-size:14px;letter-spacing:.1em;text-align:center}
+.scratch canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+.games{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.games button{background:var(--carbon);border:1px solid var(--line);border-radius:14px;color:var(--paper);padding:12px 10px;text-align:left;font:inherit;cursor:pointer;display:flex;flex-direction:column;gap:3px}
+.games button span{font-size:26px}.games button b{font-family:'Lilita One',sans-serif;font-weight:400;font-size:16px}.games button small{color:var(--muted);font-size:11.5px;line-height:1.3}
+.games button:active{border-color:var(--butter)}
+.ach{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.ach .a{background:var(--carbon);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:2px;opacity:.55}
+.ach .a.on{opacity:1;border-color:var(--butter)}.ach span{font-size:22px}.ach b{font-size:13px}.ach small{color:var(--muted);font-size:11px;line-height:1.3}
+.game{position:fixed;inset:0;z-index:50;background:#101010;display:flex;flex-direction:column;align-items:center;padding:14px 12px;gap:10px}
+.g-top{width:100%;max-width:420px;display:flex;justify-content:space-between;align-items:center;font-family:'Lilita One',sans-serif;font-size:18px;color:var(--butter)}
+.g-top span{color:var(--paper);font-family:inherit}
+.game canvas{border-radius:16px;touch-action:none;background:#1E1E1E}
+.g-help{color:var(--muted);font-size:13px;text-align:center;max-width:380px;margin:0}
+.g-end{margin:auto;text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center;width:100%;max-width:340px}
+.g-score{font-family:'Lilita One',sans-serif;font-size:72px;line-height:1;color:var(--butter);margin:0}.g-score small{font-size:24px;color:var(--muted)}
 .crewlink{display:block;margin:10px auto 0;background:none;border:0;color:var(--line);font:inherit;font-size:11px;letter-spacing:.08em;cursor:pointer;padding:4px 10px}
 .staffbar .linkbtn{margin-left:auto;background:none;border:0;color:var(--muted);font:inherit;font-weight:900;letter-spacing:.06em;cursor:pointer;padding:6px 4px}
 .staffbar a[aria-current="page"]{background:var(--butter);color:var(--carbon);border-color:var(--butter)}
@@ -125,6 +148,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   <nav class="staffbar" id="staffbar" hidden></nav>
   <main id="app" class="wrap" aria-live="polite"><div class="panel"><p class="note">Loading your card…</p></div></main>
 </div>
+<div id="game" class="game" hidden role="dialog" aria-label="Game"></div>
 <div id="toast" class="toast" hidden></div>
 <script>
 (function () {
@@ -232,17 +256,16 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     if (c.surprise) {
       var sp = c.surprise.indexOf("dessert:") === 0 ? "a free " + (MENU[c.surprise.slice(8)] ? MENU[c.surprise.slice(8)].name.replace(/ \(.*\)$/, "") : "dessert") : "10% off your first order";
       if (c.visits.length <= 1) h += '<div class="panel" style="border-color:var(--butter)"><div class="lbl" style="color:var(--butter)">🎁 Your welcome surprise</div><p class="big">' + esc(sp) + '</p><p class="note">Thanks for joining the Pass Card.</p></div>';
-    } else if (!c.visits.length) {
-      h += '<div class="panel" style="border-color:var(--butter)"><div class="lbl" style="color:var(--butter)">🎁 A surprise is waiting</div><p class="note">Show your code with your first order and see what you get. A free dessert or 10% off the whole order.</p></div>';
     }
+    h += pointsHtml(c);
     var lv = levelOf(c);
     h += '<div class="panel level"><div><span class="lvl-badge">' + (lv.cur ? lv.cur[2] + " " + lv.cur[1].toUpperCase() : "NEW ON THE CARD") + "</span></div>" +
       '<p class="note"><b>' + lv.total + "</b> card" + (lv.total === 1 ? "" : "s") + " finished" + (c.doneMonth ? " · <b>" + c.doneMonth + "</b> this month" : "") +
       (lv.next ? " · " + (lv.next[0] - lv.total) + " more to " + lv.next[2] + " " + lv.next[1] : " · top level") + "</p></div>";
     h += cardHtml(c, "burger") + cardHtml(c, "dessert");
-    h += boardHtml(lb, c);
-    h += '<div class="panel"><div class="lbl">Show this at the window</div><div class="qrbox"><div class="qr"><img src="/api/pass/qr.svg" alt="Your Pass Card QR code"></div>' +
-      '<div style="flex:1 1 160px"><p class="big">' + esc(fmtPhone(c.phone)) + '</p><p class="note">This code is yours only. The truck scans it to add your stamps. Every burger and dessert is a stamp; a Brownie Bag counts as 2.</p></div></div></div>';
+    h += boardHtml(lb, c) + achHtml(c);
+    h += '<div class="panel"><div class="lbl">Show your QR code</div><div class="qrbox"><div class="qr"><img src="/api/pass/qr.svg" alt="Your Pass Card QR code"></div>' +
+      '<div style="flex:1 1 160px"><p class="big">' + esc(fmtPhone(c.phone)) + '</p><p class="note">A unique QR code made for your phone number. The truck scans it to add your stamps. Every burger and dessert is a stamp; a Brownie Bag counts as 2.</p></div></div></div>';
     if (c.visits.length) {
       h += '<div class="panel"><div class="lbl">Your visits</div>';
       c.visits.forEach(function (v) { h += '<div class="bl"><span>' + niceDate(v.at) + " · " + esc(itemsText(v.items)) + '</span><span style="color:var(--muted);flex:none">' + (v.food ? "★ " + v.food + "/" + v.vibe : "") + "</span></div>"; });
@@ -303,6 +326,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       '<div class="kpis"><div class="kpi"><b>' + (c.burger % S.need) + "/" + S.need + '</b><span>Burger card</span></div><div class="kpi"><b>' + (c.dessert % S.need) + "/" + S.need + "</b><span>Dee'sert card</span></div>" +
       '<div class="kpi"><b>' + (levelOf(c).cur ? levelOf(c).cur[2] : "–") + " " + levelOf(c).total + "</b><span>cards finished</span></div></div>";
     ["burger", "dessert"].forEach(function (k) { var f = freeOf(c, k); if (f) h += '<button type="button" class="btn red" data-redeem="' + k + '">GIVE FREE ' + k.toUpperCase() + (f > 1 ? " · " + f + " WAITING" : "") + "</button>"; });
+    h += '<p class="note" style="margin-top:10px">⚡ <b style="color:var(--butter)">' + (c.points || 0) + "</b> Smash Points</p>";
+    (S.rewards || []).forEach(function (rw) { if ((c.points || 0) >= rw.cost) h += '<button type="button" class="btn ghost" data-redeem="pts:' + rw.id + '">SPEND ' + rw.cost + " PTS · " + esc(rw.name).toUpperCase() + "</button>"; });
     h += "</div>";
     if (welcomeP) h += '<div class="panel" style="background:var(--butter);color:var(--carbon);border-color:var(--butter)"><div class="lbl" style="color:var(--carbon)">🎁 First visit · welcome surprise</div>' +
       (welcomeP.kind === "dessert"
@@ -324,6 +349,13 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   }
   function redeemPanel() {
     var k = redeemFor;
+    if (k.indexOf("pts:") === 0) {
+      var rw = (S.rewards || []).filter(function (x) { return x.id === k.slice(4); })[0];
+      return '<div class="panel"><div class="lbl">' + esc(rw.name) + " for " + esc(found.first) + " · " + rw.cost + ' points</div><p class="note">Which one are they taking?' +
+        (rw.card === "dessert" ? " It comes off the stock as a giveaway automatically." : "") + '</p><div class="items">' +
+        S.menu.filter(function (m) { return m.card === rw.card; }).map(function (m) { return '<button type="button" data-reward="' + rw.id + '" data-item="' + m.id + '"><b>' + esc(m.name) + "</b><small>" + rw.cost + " pts</small></button>"; }).join("") +
+        '</div><button type="button" class="btn ghost" id="free-cancel">CANCEL</button></div>';
+    }
     return '<div class="panel"><div class="lbl">Free ' + k + " for " + esc(found.first) + '</div><p class="note">Which one are they taking?' +
       (k === "dessert" ? " It comes off the stock as a giveaway automatically." : "") + '</p><div class="items">' +
       S.menu.filter(function (m) { return m.card === k; }).map(function (m) { return '<button type="button" data-free="' + m.id + '"><b>' + esc(m.name) + "</b><small>free</small></button>"; }).join("") +
@@ -352,6 +384,15 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       kpi(avg("food"), "food quality, " + revs.length + " reviews") + kpi(avg("vibe"), "atmosphere") + kpi(freeB, "free burgers given") + kpi(O.redeems.length - freeB, "free desserts given") +
       kpi(O.customers.filter(function (c) { return c.surprise && c.surprise.indexOf("dessert:") === 0; }).length, "welcome desserts (giveaways)") +
       kpi(O.customers.filter(function (c) { return c.surprise === "discount10"; }).length, "welcome 10% discounts") + "</div></div>";
+    if (O.points) {
+      var pk = {}; O.points.forEach(function (p) { var k = p.kind.indexOf("ach:") === 0 ? "ach" : p.kind; pk[k] = pk[k] || { n: 0, pts: 0 }; pk[k].n += p.n; pk[k].pts += p.pts; });
+      var gp = {}; (O.plays || []).forEach(function (p) { gp[p.kind === "scratch" ? "scratch" : p.game] = p; });
+      var g = function (k) { return pk[k] || { n: 0, pts: 0 }; };
+      h += '<div class="panel"><div class="lbl">⚡ Smash Points & games</div><div class="kpis">' +
+        kpi(g("order").pts + g("game").pts + g("scratch").pts + g("ach").pts, "points given") + kpi(-g("reward").pts, "points spent") + kpi(g("reward").n, "rewards taken") +
+        kpi((gp.scratch || { n: 0 }).n, "scratch cards") + Object.keys(GAME_INFO).map(function (k) { var p = gp[k] || { n: 0, avg: 0 };
+          return kpi(p.n, GAME_INFO[k][1] + " plays" + (p.n ? " · avg " + Math.round(p.avg) : "")); }).join("") + "</div></div>";
+    }
     if (lb) {
       h += '<div class="panel"><div class="lbl">🏆 Prize · free meal for the month\'s #1 (min. ' + lb.prizeMin + " cards)</div>" +
         (lb.leader ? '<p class="note">Leading ' + monthName(lb.month) + ": <b>" + esc(lb.leader.name) + "</b> · " + esc(fmtPhone(lb.leader.phone)) + " · " + lb.leader.n + " cards</p>"
@@ -397,6 +438,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     else if (r.name === "owner") app.innerHTML = viewOwner();
     else if (r.name === "scan" && !S.staff) app.innerHTML = '<div class="panel"><div class="lbl">A Pass Card</div><p class="note">This is a customer\'s Pass Card code. Show it at the Smash &amp; Pass window to collect stamps.</p><a class="btn pri" href="/pass" data-nav style="text-align:center;text-decoration:none">OPEN MY OWN CARD</a></div>';
     else app.innerHTML = viewTruck();
+    initScratch();
   }
   function load() {
     var r = route();
@@ -448,6 +490,16 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     }
     else if (t.hasAttribute("data-redeem")) { redeemFor = t.getAttribute("data-redeem"); render(); }
     else if (t.id === "free-cancel") { redeemFor = null; render(); }
+    else if (t.hasAttribute("data-reward")) {
+      t.disabled = true;
+      api("/api/pass/staff/reward", { phone: found.phone, reward: t.getAttribute("data-reward"), item: t.getAttribute("data-item") }).then(function (res) {
+        if (!res.ok) { t.disabled = false; toast(res.error || "Couldn't spend the points."); return; }
+        found = res.customer; redeemFor = null; render();
+        toast("Points spent. " + (res.stock === "not_found" ? "Not found in stock: log it as GAVE AWAY by hand." : "Enjoy!"));
+      });
+    }
+    else if (t.hasAttribute("data-game")) openGame(t.getAttribute("data-game"));
+    else if (t.id === "g-close") { var ov = document.getElementById("game"); ov.hidden = true; ov.innerHTML = ""; document.body.style.overflow = ""; load(); }
     else if (t.hasAttribute("data-free")) {
       t.disabled = true;
       var item = t.getAttribute("data-free");
@@ -464,6 +516,198 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       (navigator.clipboard ? navigator.clipboard.writeText(csv) : Promise.reject()).then(function () { toast("Copied. Paste into Excel."); }, function () { toast("Couldn't copy on this phone."); });
     }
   });
+  /* ---------------- Smash Points + game zone ---------------- */
+  var GAME_INFO = {
+    stack: ["🍔", "Burger Stack", "Tap to drop each layer. Stack it tall and straight."],
+    "catch": ["🍰", "Catch the Dee'sert", "Slide the tray. Catch desserts, dodge the ketchup bombs."],
+    crack: ["🔨", "Crack the Brûlée", "Tap the ramekin as fast as you can. 10 seconds."],
+    smash: ["🥩", "Perfect Smash", "Hit SMASH when the marker is in the middle. 5 rounds."]
+  };
+  function pointsHtml(c) {
+    var h = '<div class="panel pts"><div class="pts-top"><div><div class="lbl">⚡ Smash Points</div><p class="pts-n">' + (c.points || 0) + "</p></div>" +
+      '<p class="note" style="text-align:right">' + (S.pointsPerStamp || 10) + " points for every stamp.<br>Spend them at the window.</p></div>";
+    (S.rewards || []).forEach(function (r) {
+      var pc = Math.min(100, Math.round((c.points || 0) / r.cost * 100));
+      h += '<div class="rw"><div class="rw-h"><b>' + esc(r.name) + "</b><span>" + (c.points >= r.cost ? "READY · show your card" : r.cost - (c.points || 0) + " to go") + "</span></div>" +
+        '<div class="bar"><i style="width:' + pc + '%"></i></div><small>' + r.cost + " points</small></div>";
+    });
+    h += "</div>";
+    h += '<div class="panel"><div class="lbl">🎮 Game zone</div>';
+    if (c.scratchLeft) h += '<p class="note">You\'ve got a <b style="color:var(--butter)">scratch card</b> from your order. Scratch it!</p>' +
+      '<div class="scratch"><div class="scr-prize" id="scr-prize">?</div><canvas id="scr" width="300" height="140" aria-label="Scratch card"></canvas></div>';
+    if (c.gamesLeft) {
+      h += '<p class="note">' + c.gamesLeft + " game" + (c.gamesLeft > 1 ? "s" : "") + " to play. Up to " + (S.gameMax || 25) + " points each.</p><div class=\"games\">";
+      (S.games || []).forEach(function (g) { var i = GAME_INFO[g]; h += '<button type="button" data-game="' + g + '"><span>' + i[0] + "</span><b>" + i[1] + "</b><small>" + i[2] + "</small></button>"; });
+      h += "</div>";
+    } else if (!c.scratchLeft) h += '<p class="note">Every order unlocks a game and a scratch card. Show your card at the window, then play while you wait.</p>';
+    h += "</div>";
+    return h;
+  }
+  function achHtml(c) {
+    var got = c.achievements || [];
+    return '<div class="panel"><div class="lbl">🏅 Achievements · ' + got.length + " / " + (S.achievements || []).length + '</div><div class="ach">' +
+      (S.achievements || []).map(function (a) { var on = got.indexOf(a.id) >= 0;
+        return '<div class="a' + (on ? " on" : "") + '"><span>' + (on ? a.icon : "🔒") + "</span><b>" + esc(a.name) + "</b><small>" + esc(a.how) + " · +" + a.pts + "</small></div>"; }).join("") +
+      "</div></div>";
+  }
+  function celebrate(r) {
+    var names = (r.achievements || []).map(function (id) { var a = (S.achievements || []).filter(function (x) { return x.id === id; })[0]; return a ? a.icon + " " + a.name : id; });
+    if (names.length) setTimeout(function () { toast("Achievement unlocked: " + names.join(", ")); }, 1600);
+  }
+
+  /* scratch card: the prize is drawn on the server the moment you start scratching */
+  function initScratch() {
+    var cv = document.getElementById("scr"); if (!cv || cv.dataset.on) return; cv.dataset.on = "1";
+    var x = cv.getContext("2d"), started = false, done = false, cells = {}, W = cv.width, H = cv.height;
+    var g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, "#C9C3B6"); g.addColorStop(.5, "#EDE8DC"); g.addColorStop(1, "#B5AFA2");
+    x.fillStyle = g; x.fillRect(0, 0, W, H);
+    x.fillStyle = "#6B665C"; x.font = "bold 20px sans-serif"; x.textAlign = "center"; x.fillText("SCRATCH HERE ✨", W / 2, H / 2 + 7);
+    function at(e) { var r = cv.getBoundingClientRect(), p = e.touches ? e.touches[0] : e; return [(p.clientX - r.left) * W / r.width, (p.clientY - r.top) * H / r.height]; }
+    function rub(e) {
+      if (done) return; e.preventDefault();
+      var p = at(e);
+      if (!started) { started = true; api("/api/pass/scratch", {}).then(function (r) {
+        if (!r.ok) { done = true; toast(r.error); return; }
+        document.getElementById("scr-prize").innerHTML = "+" + r.points + "<small>POINTS</small>";
+        cv.dataset.pts = r.points; S.customer = Object.assign(S.customer, r.customer); }); }
+      x.globalCompositeOperation = "destination-out"; x.beginPath(); x.arc(p[0], p[1], 20, 0, 7); x.fill();
+      cells[Math.floor(p[0] / 30) + "," + Math.floor(p[1] / 28)] = 1;
+      if (Object.keys(cells).length > 22 && cv.dataset.pts) { done = true; cv.style.transition = "opacity .5s"; cv.style.opacity = 0;
+        toast("+" + cv.dataset.pts + " Smash Points!"); setTimeout(function () { keepText(); }, 1800); }
+    }
+    var down = false;
+    cv.addEventListener("pointerdown", function (e) { down = true; cv.setPointerCapture(e.pointerId); rub(e); });
+    cv.addEventListener("pointermove", function (e) { if (down) rub(e); });
+    cv.addEventListener("pointerup", function () { down = false; });
+  }
+
+  /* ---- the games: each one ends with a score from 0 to 100 ---- */
+  function openGame(id) {
+    api("/api/pass/game/start", { game: id }).then(function (r) {
+      if (!r.ok) { toast(r.error); return; }
+      var ov = document.getElementById("game"), info = GAME_INFO[id];
+      ov.hidden = false; document.body.style.overflow = "hidden";
+      ov.innerHTML = '<div class="g-top"><b>' + info[0] + " " + info[1] + '</b><span id="g-hud"></span></div><canvas id="g-cv"></canvas><p class="g-help">' + info[2] + "</p>";
+      var cv = document.getElementById("g-cv"), dpr = Math.min(2, window.devicePixelRatio || 1);
+      var W = Math.min(window.innerWidth - 24, 420), H = Math.min(window.innerHeight - 170, 560);
+      cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + "px"; cv.style.height = H + "px";
+      var ctx = cv.getContext("2d"); ctx.scale(dpr, dpr);
+      var hud = document.getElementById("g-hud");
+      var finish = function (score) {
+        score = Math.max(0, Math.min(100, Math.round(score)));
+        api("/api/pass/game/finish", { play: r.play, score: score }).then(function (f) {
+          ov.innerHTML = '<div class="g-end"><p class="big">' + (f.ok ? (f.score >= 90 ? "🔥 LEGENDARY" : f.score >= 60 ? "😎 NICE" : "👊 GOOD TRY") : "Game over") + "</p>" +
+            '<p class="g-score">' + (f.ok ? f.score : score) + "<small>/100</small></p>" +
+            '<p class="note">' + (f.ok ? "+" + f.points + " Smash Points" : esc(f.error || "")) + "</p>" +
+            '<button type="button" class="btn pri" id="g-close">BACK TO MY CARD</button></div>';
+          if (f.ok) { S.customer = Object.assign(S.customer, f.customer); celebrate(f); }
+        });
+      };
+      GAME[id](ctx, W, H, cv, hud, finish);
+    });
+  }
+  function ptr(cv, e) { var r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  function rr(ctx, x, y, w, h, rad, fill) { ctx.fillStyle = fill; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, rad); else ctx.rect(x, y, w, h); ctx.fill(); }
+  var GAME = {
+    /* Burger Stack: a layer slides across; tap to drop it. Whatever hangs over is cut off. */
+    stack: function (ctx, W, H, cv, hud, finish) {
+      var LAY = [["#E9A23B", "bun"], ["#6B3218", "patty"], ["#FFC21A", "cheese"], ["#4CB548", "lettuce"], ["#E5432D", "tomato"], ["#6B3218", "patty"], ["#FFC21A", "cheese"],
+        ["#4CB548", "lettuce"], ["#6B3218", "patty"], ["#FFC21A", "cheese"], ["#E5432D", "tomato"], ["#E9A23B", "bun"]];
+      var LH = 26, base = { x: W / 2 - 80, w: 160 }, stack = [base], cur = 1, x = 0, dir = 1, speed = 2.2, over = false, fits = [], perfect = 0;
+      function draw() {
+        ctx.clearRect(0, 0, W, H); ctx.fillStyle = "#1E1E1E"; ctx.fillRect(0, 0, W, H);
+        var off = Math.max(0, (stack.length + 2) * LH - (H - 60));
+        rr(ctx, W / 2 - 110, H - 18 + off, 220, 10, 5, "#3A3A3A");
+        stack.forEach(function (s, i) { var y = H - 30 - i * LH + off; rr(ctx, s.x, y - LH + 4, s.w, LH - 4, i === 0 || i === LAY.length - 1 ? 12 : 5, LAY[i][0]); });
+        if (!over && cur < LAY.length) { var y2 = H - 30 - cur * LH + off; rr(ctx, x, y2 - LH + 4, stack[cur - 1].w, LH - 4, cur === LAY.length - 1 ? 12 : 5, LAY[cur][0]); }
+        hud.textContent = (cur - 1) + " / " + (LAY.length - 1);
+      }
+      function loop() { if (over) return; var w = stack[cur - 1].w; x += dir * speed; if (x < 0 || x + w > W) { dir *= -1; x = Math.max(0, Math.min(W - w, x)); } draw(); requestAnimationFrame(loop); }
+      function drop() {
+        if (over) return;
+        var prev = stack[cur - 1], w = prev.w, l = Math.max(x, prev.x), r = Math.min(x + w, prev.x + prev.w);
+        if (Math.abs(x - prev.x) < 4) { l = prev.x; r = prev.x + prev.w; perfect++; }
+        if (r - l <= 6) { over = true; draw(); return setTimeout(function () { finish(scoreOf()); }, 700); }
+        stack.push({ x: l, w: r - l }); fits.push((r - l) / w); cur++; speed += 0.35; x = dir > 0 ? 0 : W - (r - l);
+        if (cur >= LAY.length) { over = true; draw(); setTimeout(function () { finish(scoreOf()); }, 800); }
+      }
+      function scoreOf() { var placed = fits.length, avg = placed ? fits.reduce(function (a, b) { return a + b; }, 0) / placed : 0;
+        return placed / (LAY.length - 1) * 70 + avg * 25 + Math.min(5, perfect); }
+      cv.addEventListener("pointerdown", drop); loop();
+    },
+    /* Catch the Dee'sert: 20 seconds, desserts +1, ketchup bombs -2 */
+    "catch": function (ctx, W, H, cv, hud, finish) {
+      var trayX = W / 2, items = [], t0 = performance.now(), last = 0, score = 0, over = false, GOOD = ["🍰", "🍮", "🍫"];
+      cv.addEventListener("pointermove", function (e) { trayX = ptr(cv, e)[0]; });
+      cv.addEventListener("pointerdown", function (e) { trayX = ptr(cv, e)[0]; });
+      function loop(now) {
+        if (over) return;
+        var el = (now - t0) / 1000, left = Math.max(0, 20 - el);
+        if (now - last > Math.max(320, 700 - el * 18)) { last = now; var bad = Math.random() < 0.22;
+          items.push({ x: 20 + Math.random() * (W - 40), y: -20, v: 2.2 + el * 0.12 + Math.random(), e: bad ? "💥" : GOOD[Math.floor(Math.random() * 3)], bad: bad }); }
+        ctx.fillStyle = "#1E1E1E"; ctx.fillRect(0, 0, W, H);
+        ctx.font = "30px sans-serif"; ctx.textAlign = "center";
+        items.forEach(function (it) { it.y += it.v; ctx.fillText(it.e, it.x, it.y);
+          if (!it.gone && it.y > H - 46 && it.y < H - 14 && Math.abs(it.x - trayX) < 46) { it.gone = true; score += it.bad ? -2 : 1; if (navigator.vibrate) navigator.vibrate(it.bad ? 80 : 15); } });
+        items = items.filter(function (it) { return !it.gone && it.y < H + 30; });
+        rr(ctx, trayX - 46, H - 30, 92, 14, 7, "#FFD21C");
+        hud.textContent = "🍰 " + Math.max(0, score) + " · ⏱ " + Math.ceil(left);
+        if (left <= 0) { over = true; return finish(Math.max(0, score) * 4); }
+        requestAnimationFrame(loop);
+      }
+      requestAnimationFrame(loop);
+    },
+    /* Crack the Brûlée: taps in 10 seconds, 70 taps = 100 */
+    crack: function (ctx, W, H, cv, hud, finish) {
+      var taps = 0, t0 = null, over = false, cracks = [];
+      function draw() {
+        ctx.fillStyle = "#1E1E1E"; ctx.fillRect(0, 0, W, H);
+        var cx = W / 2, cy = H / 2, R = Math.min(W, H) * 0.36;
+        rr(ctx, cx - R, cy, R * 2, R * 0.75, 18, "#FFF9EE");
+        ctx.fillStyle = "#FFF9EE"; ctx.beginPath(); ctx.ellipse(cx, cy, R, R * 0.32, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = "#E3A23B"; ctx.beginPath(); ctx.ellipse(cx, cy, R * 0.86, R * 0.25, 0, 0, 7); ctx.fill();
+        ctx.strokeStyle = "#5A2E0E"; ctx.lineWidth = 2;
+        cracks.forEach(function (c) { ctx.beginPath(); ctx.moveTo(cx + c[0], cy + c[1]); ctx.lineTo(cx + c[2], cy + c[3]); ctx.stroke(); });
+        ctx.fillStyle = "#FFD21C"; ctx.font = "bold 22px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText(t0 ? taps + " CRACKS" : "TAP TO START", cx, cy + R * 0.75 + 46);
+      }
+      cv.addEventListener("pointerdown", function () {
+        if (over) return; if (!t0) { t0 = performance.now(); tick(); }
+        taps++; var R = Math.min(W, H) * 0.3, a = Math.random() * 7;
+        cracks.push([Math.cos(a) * R * 0.2, Math.sin(a) * R * 0.06, Math.cos(a) * R * (0.4 + Math.random() * 0.5), Math.sin(a) * R * 0.2]); draw();
+        if (navigator.vibrate) navigator.vibrate(8);
+      });
+      function tick() { if (over) return; var left = 10 - (performance.now() - t0) / 1000; hud.textContent = "⏱ " + Math.max(0, left).toFixed(1);
+        if (left <= 0) { over = true; return finish(taps / 70 * 100); } requestAnimationFrame(tick); }
+      draw(); hud.textContent = "⏱ 10.0";
+    },
+    /* Perfect Smash: 5 rounds, hit near the middle of the bar */
+    smash: function (ctx, W, H, cv, hud, finish) {
+      var round = 0, total = 0, t0 = performance.now(), over = false, msg = "", msgT = 0, speed = 1.6;
+      function pos(now) { return (Math.sin((now - t0) / 1000 * speed * 2.2) + 1) / 2; }
+      function loop(now) {
+        if (over) return;
+        ctx.fillStyle = "#1E1E1E"; ctx.fillRect(0, 0, W, H);
+        var bx = 24, bw = W - 48, by = H / 2 - 16;
+        rr(ctx, bx, by, bw, 32, 16, "#3A3A3A"); rr(ctx, bx + bw * 0.42, by, bw * 0.16, 32, 6, "#4CB548"); rr(ctx, bx + bw * 0.47, by, bw * 0.06, 32, 4, "#FFD21C");
+        var p = pos(now); rr(ctx, bx + bw * p - 5, by - 14, 10, 60, 5, "#FFF9EE");
+        ctx.font = "60px sans-serif"; ctx.textAlign = "center"; ctx.fillText("🥩", W / 2, by - 50);
+        ctx.fillStyle = "#FFD21C"; ctx.font = "bold 26px sans-serif";
+        if (now - msgT < 700) ctx.fillText(msg, W / 2, by + 100);
+        ctx.fillStyle = "#B3AEA3"; ctx.font = "bold 16px sans-serif"; ctx.fillText("TAP ANYWHERE TO SMASH", W / 2, H - 30);
+        hud.textContent = "Round " + Math.min(5, round + 1) + " / 5 · " + Math.round(total);
+        requestAnimationFrame(loop);
+      }
+      cv.addEventListener("pointerdown", function () {
+        if (over) return; var d = Math.abs(pos(performance.now()) - 0.5), pts = Math.max(0, 20 * (1 - d * 3.2));
+        total += pts; round++; msg = d < 0.03 ? "PERFECT!" : d < 0.08 ? "GREAT" : d < 0.15 ? "OK" : "MISS"; msgT = performance.now(); speed += 0.35;
+        if (navigator.vibrate) navigator.vibrate(40);
+        if (round >= 5) { over = true; setTimeout(function () { finish(total); }, 600); }
+      });
+      requestAnimationFrame(loop);
+    }
+  };
+
   function keepText() { var ta = document.getElementById("r-text"), v = ta ? ta.value : ""; render(); var n = document.getElementById("r-text"); if (n) n.value = v; }
 
   /* country code box: type a code (or a name) and the list narrows; a full code picks itself */

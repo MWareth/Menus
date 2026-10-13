@@ -25,6 +25,27 @@ export const PASS_MENU = [
   { id: "pav", name: "Mini Pavlova", card: "dessert", stamps: 1, stock: "Mini Pavlova" }
 ];
 const MENU_BY_ID = new Map(PASS_MENU.map((m) => [m.id, m]));
+
+/* ---- Smash Points: earned from orders, the game zone, scratch cards and achievements,
+   spent at the window on rewards. Every stamped order unlocks 1 game + 1 scratch card
+   (for 48 hours), so nobody can farm points from home. ---- */
+export const POINTS_PER_STAMP = 10;
+export const GAMES = ["stack", "catch", "crack", "smash"];
+const GAME_MAX = 25;                         // points for a perfect game
+const TOKEN_HOURS = 48;
+const SCRATCH = [[10, 35], [15, 30], [25, 20], [50, 12], [100, 3]];   // [points, chance %]
+export const REWARDS = [
+  { id: "dessert", name: "Free dessert", card: "dessert", cost: 400 },
+  { id: "burger", name: "Free burger", card: "burger", cost: 900 }
+];
+export const ACHIEVEMENTS = [
+  { id: "first_order", name: "First order", icon: "🎉", pts: 20, how: "Your first stamped order" },
+  { id: "first_review", name: "Critic", icon: "⭐", pts: 20, how: "Rate a visit" },
+  { id: "first_card", name: "Card complete", icon: "✅", pts: 30, how: "Finish a card" },
+  { id: "all_desserts", name: "Dessert explorer", icon: "🍰", pts: 50, how: "Try San Sebastian, Brownie Bag and Crème Brûlée" },
+  { id: "regular_month", name: "Regular", icon: "📅", pts: 50, how: "5 visits in one month" },
+  { id: "high_score", name: "Pro gamer", icon: "🎮", pts: 30, how: "Score 90+ in a game" }
+];
 const PC_DAYS = 180;
 const MAX_FAILS = 5;
 const LOCK_MIN = 15;
@@ -52,7 +73,13 @@ async function ensureTables(env) {
     /* one row each time a card fills up (9 stamps); feeds the counter, the fan level and Top Smashers */
     env.DB.prepare("CREATE TABLE IF NOT EXISTS pass_completions (id INTEGER PRIMARY KEY AUTOINCREMENT, phone TEXT NOT NULL," +
       " card TEXT NOT NULL, at TEXT NOT NULL, month TEXT NOT NULL)"),
-    env.DB.prepare("CREATE INDEX IF NOT EXISTS pass_completions_month ON pass_completions (month, phone)")
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS pass_completions_month ON pass_completions (month, phone)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS pass_points (id INTEGER PRIMARY KEY AUTOINCREMENT, phone TEXT NOT NULL," +
+      " at TEXT NOT NULL, delta INTEGER NOT NULL, kind TEXT NOT NULL, note TEXT)"),
+    env.DB.prepare("CREATE INDEX IF NOT EXISTS pass_points_phone ON pass_points (phone, kind)"),
+    /* one row per game play or scratch card; each one uses up one stamped order */
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS pass_plays (id TEXT PRIMARY KEY, phone TEXT NOT NULL, visit_id INTEGER NOT NULL," +
+      " kind TEXT NOT NULL, game TEXT, started TEXT NOT NULL, finished TEXT, score INTEGER, points INTEGER, UNIQUE (visit_id, kind))")
   ]);
   /* added after launch: lets a customer keep their name off Top Smashers */
   try { await env.DB.prepare("ALTER TABLE pass_customers ADD COLUMN board_hide INTEGER NOT NULL DEFAULT 0").run(); } catch (e) { /* already there */ }
@@ -142,13 +169,42 @@ export async function handlePass(request, env, path, d) {
     burger: c.burger, dessert: c.dessert, bonus: !!c.bonus, joined: c.joined, surprise: c.surprise || null });
   const completion = (phone, card) => env.DB.prepare("INSERT INTO pass_completions (phone, card, at, month) VALUES (?, ?, ?, ?)")
     .bind(phone, card, new Date().toISOString(), dubaiMonth());
+  const pointsRow = (phone, delta, kind, note) => env.DB.prepare("INSERT INTO pass_points (phone, at, delta, kind, note) VALUES (?, ?, ?, ?, ?)")
+    .bind(phone, new Date().toISOString(), delta, kind, note || null);
+  const balance = async (phone) => ((await env.DB.prepare("SELECT COALESCE(SUM(delta), 0) AS n FROM pass_points WHERE phone = ?").bind(phone).first()) || {}).n || 0;
+  /* stamped orders from the last 48h that haven't been used for this kind of play yet, oldest first */
+  const tokens = async (phone, kind) => ((await env.DB.prepare(
+    "SELECT v.id FROM pass_visits v LEFT JOIN pass_plays p ON p.visit_id = v.id AND p.kind = ?" +
+    " WHERE v.phone = ? AND v.at >= ? AND p.id IS NULL ORDER BY v.at ASC")
+    .bind(kind, phone, new Date(Date.now() - TOKEN_HOURS * 3600e3).toISOString()).all()).results || []).map((x) => x.id);
+  const playId = () => [...crypto.getRandomValues(new Uint8Array(12))].map((x) => x.toString(16).padStart(2, "0")).join("");
+  /* achievements: each pays out once, recorded as a points row "ach:<id>" */
+  const award = async (phone, ids) => {
+    const got = new Set(((await env.DB.prepare("SELECT kind FROM pass_points WHERE phone = ? AND kind LIKE 'ach:%'").bind(phone).all()).results || []).map((x) => x.kind.slice(4)));
+    const fresh = ACHIEVEMENTS.filter((a) => ids.includes(a.id) && !got.has(a.id));
+    if (fresh.length) await env.DB.batch(fresh.map((a) => pointsRow(phone, a.pts, "ach:" + a.id, a.name)));
+    return fresh.map((a) => a.id);
+  };
+  const checkOrderAchievements = async (phone) => {
+    const vs = ((await env.DB.prepare("SELECT at, items FROM pass_visits WHERE phone = ?").bind(phone).all()).results || []);
+    const ids = [];
+    if (vs.length) ids.push("first_order");
+    const tried = new Set(); vs.forEach((v) => Object.keys(JSON.parse(v.items || "{}")).forEach((k) => tried.add(k)));
+    if (["ss", "brownie", "cb"].every((k) => tried.has(k))) ids.push("all_desserts");
+    const month = dubaiMonth();
+    if (vs.filter((v) => new Date(Date.parse(v.at) + 4 * 3600e3).toISOString().slice(0, 7) === month).length >= 5) ids.push("regular_month");
+    if (await env.DB.prepare("SELECT 1 AS x FROM pass_completions WHERE phone = ? LIMIT 1").bind(phone).first()) ids.push("first_card");
+    return award(phone, ids);
+  };
   /* the card plus its counters: cards finished ever (fan level) and this month (Top Smashers) */
   const withStats = async (c) => {
     if (!c) return c;
     const r = await env.DB.prepare("SELECT card, month, COUNT(*) AS n FROM pass_completions WHERE phone = ? GROUP BY card, month").bind(c.phone).all();
     const done = { burger: 0, dessert: 0 }; let month = 0;
     (r.results || []).forEach((x) => { done[x.card] = (done[x.card] || 0) + x.n; if (x.month === dubaiMonth()) month += x.n; });
-    return { ...pub(c), done, doneMonth: month, boardHide: !!c.board_hide };
+    const ach = ((await env.DB.prepare("SELECT kind FROM pass_points WHERE phone = ? AND kind LIKE 'ach:%'").bind(c.phone).all()).results || []).map((x) => x.kind.slice(4));
+    return { ...pub(c), done, doneMonth: month, boardHide: !!c.board_hide, points: await balance(c.phone),
+      gamesLeft: (await tokens(c.phone, "game")).length, scratchLeft: (await tokens(c.phone, "scratch")).length, achievements: ach };
   };
   /* Top Smashers: cards finished this month, ties go to whoever got there first.
      Public rows carry first name + last initial only. */
@@ -183,7 +239,8 @@ export async function handlePass(request, env, path, d) {
         visits: visits.map((v) => ({ ...v, items: JSON.parse(v.items || "{}") })),
         pending: visits[0] && visits[0].food == null ? visits[0] : null };   /* only the latest visit asks for a review */
     }
-    return ok({ customer: card, staff: s ? { name: s.name, role: s.role } : null, need: NEED, menu: PASS_MENU, countries: COUNTRIES });
+    return ok({ customer: card, staff: s ? { name: s.name, role: s.role } : null, need: NEED, menu: PASS_MENU, countries: COUNTRIES,
+      rewards: REWARDS, achievements: ACHIEVEMENTS, games: GAMES, gameMax: GAME_MAX, pointsPerStamp: POINTS_PER_STAMP });
   }
 
   if (path === "/api/pass/qr.svg" && request.method === "GET") {
@@ -256,7 +313,9 @@ export async function handlePass(request, env, path, d) {
       filled(bonus, phone, c[bonus], 1).forEach(([p, k]) => stmts.push(completion(p, k)));
     }
     await env.DB.batch(stmts);
-    return ok({ bonus });
+    const earned = await award(phone, ["first_review"].concat(c.bonus ? [] : []));
+    await checkOrderAchievements(phone);   /* the bonus stamp can finish a card */
+    return ok({ bonus, achievements: earned });
   }
 
   if (path === "/api/pass/delete" && request.method === "POST") {
@@ -287,6 +346,54 @@ export async function handlePass(request, env, path, d) {
       out.leader = rows[0] && rows[0].n >= PRIZE_MIN ? { name: rows[0].first + " " + rows[0].last, phone: rows[0].phone, n: rows[0].n } : null;
     }
     return ok(out);
+  }
+
+  if (path === "/api/pass/game/start" && request.method === "POST") {
+    const phone = await customerId();
+    if (!phone) return fail("signed_out", 401);
+    const b = await body();
+    if (!GAMES.includes(b.game)) return fail("Pick a game.");
+    const t = (await tokens(phone, "game"))[0];
+    if (!t) return fail("Your next order unlocks a game.", 409);
+    const id = playId();
+    await env.DB.prepare("INSERT INTO pass_plays (id, phone, visit_id, kind, game, started) VALUES (?, ?, ?, 'game', ?, ?)")
+      .bind(id, phone, t, b.game, new Date().toISOString()).run();
+    return ok({ play: id });
+  }
+
+  if (path === "/api/pass/game/finish" && request.method === "POST") {
+    const phone = await customerId();
+    if (!phone) return fail("signed_out", 401);
+    const b = await body();
+    const p = await env.DB.prepare("SELECT * FROM pass_plays WHERE id = ? AND phone = ? AND kind = 'game' AND finished IS NULL").bind(String(b.play || ""), phone).first();
+    if (!p) return fail("That game is already over.", 409);
+    /* every game lasts at least ~8 seconds; a faster finish is a replayed request, not a game */
+    const quick = Date.now() - Date.parse(p.started) < 6000;
+    const score = quick ? 0 : Math.max(0, Math.min(100, Math.round(Number(b.score) || 0)));
+    const pts = Math.round(score / 100 * GAME_MAX);
+    const now = new Date().toISOString();
+    const res = await env.DB.prepare("UPDATE pass_plays SET finished = ?, score = ?, points = ? WHERE id = ? AND finished IS NULL").bind(now, score, pts, p.id).run();
+    if (!(res.meta && res.meta.changes)) return fail("That game is already over.", 409);
+    if (pts) await pointsRow(phone, pts, "game", p.game + " " + score).run();
+    const earned = score >= 90 ? await award(phone, ["high_score"]) : [];
+    return ok({ score, points: pts, achievements: earned, customer: await withStats(await get(phone)) });
+  }
+
+  if (path === "/api/pass/scratch" && request.method === "POST") {
+    const phone = await customerId();
+    if (!phone) return fail("signed_out", 401);
+    const t = (await tokens(phone, "scratch"))[0];
+    if (!t) return fail("Your next order brings a new scratch card.", 409);
+    let roll = crypto.getRandomValues(new Uint32Array(1))[0] % 100, pts = SCRATCH[0][0];
+    for (const [p, w] of SCRATCH) { if (roll < w) { pts = p; break; } roll -= w; }
+    const now = new Date().toISOString();
+    try {
+      await env.DB.batch([
+        env.DB.prepare("INSERT INTO pass_plays (id, phone, visit_id, kind, started, finished, points) VALUES (?, ?, ?, 'scratch', ?, ?, ?)").bind(playId(), phone, t, now, now, pts),
+        pointsRow(phone, pts, "scratch", null)
+      ]);
+    } catch (e) { return fail("That scratch card is already used.", 409); }
+    return ok({ points: pts, customer: await withStats(await get(phone)) });
   }
 
   if (path === "/api/pass/board/hide" && request.method === "POST") {
@@ -340,11 +447,14 @@ export async function handlePass(request, env, path, d) {
       const done = [...filled("burger", phone, c.burger, burger), ...filled("dessert", phone, c.dessert, dessert)];
       await env.DB.batch([
         ...done.map(([p, k]) => completion(p, k)),
+        pointsRow(phone, (burger + dessert) * POINTS_PER_STAMP, "order", Object.entries(items).map(([k, n]) => n + "x " + k).join(", ")),
         env.DB.prepare("UPDATE pass_customers SET burger = burger + ?, dessert = dessert + ? WHERE phone = ?").bind(burger, dessert, phone),
         env.DB.prepare("INSERT INTO pass_visits (phone, at, items, by, burger, dessert) VALUES (?, ?, ?, ?, ?, ?)")
           .bind(phone, new Date().toISOString(), JSON.stringify(items), me.id, burger, dessert)
       ]);
-      return ok({ customer: await withStats(await get(phone)), added: { burger, dessert }, welcome, completed: done.map((x) => x[1]) });
+      const earned = await checkOrderAchievements(phone);
+      return ok({ customer: await withStats(await get(phone)), added: { burger, dessert }, welcome, completed: done.map((x) => x[1]),
+        points: (burger + dessert) * POINTS_PER_STAMP, achievements: earned });
     }
 
     if (path === "/api/pass/staff/redeem" && request.method === "POST") {
@@ -359,6 +469,24 @@ export async function handlePass(request, env, path, d) {
       if (m.stock) stock = (await giftFromStock(env, d, m.stock, me)) ? "logged" : "not_found";
       await env.DB.prepare("INSERT INTO pass_redeems (phone, at, card, item, by, stock) VALUES (?, ?, ?, ?, ?, ?)")
         .bind(phone, new Date().toISOString(), card, m.id, me.id, stock).run();
+      return ok({ customer: await withStats(await get(phone)), stock });
+    }
+
+    if (path === "/api/pass/staff/reward" && request.method === "POST") {
+      const b = await body();
+      const phone = normPhone(b.phone), r = REWARDS.find((x) => x.id === b.reward), m = MENU_BY_ID.get(b.item);
+      if (!r || !m || m.card !== r.card) return fail("Pick the item they're taking.");
+      const c = validPhone(phone) ? await get(phone) : null;
+      if (!c) return fail("Customer not found.", 404);
+      /* spend only if the balance covers it (checked in the same statement, so two taps can't both go through) */
+      const res = await env.DB.prepare("INSERT INTO pass_points (phone, at, delta, kind, note) SELECT ?, ?, ?, 'reward', ?" +
+        " WHERE (SELECT COALESCE(SUM(delta), 0) FROM pass_points WHERE phone = ?) >= ?")
+        .bind(phone, new Date().toISOString(), -r.cost, r.id + ":" + m.id, phone, r.cost).run();
+      if (!(res.meta && res.meta.changes)) return fail("Not enough points yet.", 409);
+      let stock = null;
+      if (m.stock) stock = (await giftFromStock(env, d, m.stock, me, { ch: "Pass Card points" })) ? "logged" : "not_found";
+      await env.DB.prepare("INSERT INTO pass_redeems (phone, at, card, item, by, stock) VALUES (?, ?, ?, ?, ?, ?)")
+        .bind(phone, new Date().toISOString(), "points", m.id, me.id, stock).run();
       return ok({ customer: await withStats(await get(phone)), stock });
     }
 
@@ -378,7 +506,9 @@ export async function handlePass(request, env, path, d) {
         .map((v) => ({ ...v, items: JSON.parse(v.items || "{}") }));
       const redeems = await all("SELECT phone, at, card, item, stock FROM pass_redeems ORDER BY at DESC LIMIT 1000");
       const scans = await all("SELECT day, src, n FROM pass_scans ORDER BY day DESC LIMIT 400");
-      return ok({ customers, visits, redeems, scans, menu: PASS_MENU, need: NEED });
+      const pts = (await all("SELECT kind, COUNT(*) AS n, SUM(delta) AS pts FROM pass_points GROUP BY kind"));
+      const plays = await all("SELECT kind, game, COUNT(*) AS n, AVG(score) AS avg FROM pass_plays WHERE finished IS NOT NULL GROUP BY kind, game");
+      return ok({ customers, visits, redeems, scans, menu: PASS_MENU, need: NEED, points: pts, plays, rewards: REWARDS });
     }
   }
   return fail("not_found", 404);
