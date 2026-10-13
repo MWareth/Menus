@@ -641,7 +641,9 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     var freeB = O.redeems.filter(function (r) { return r.card === "burger"; }).length;
     var kpi = function (v, l) { return '<div class="kpi"><b>' + v + "</b><span>" + esc(l) + "</span></div>"; };
     var h = (S.staff.role === "admin" ? '<div class="panel"><div class="lbl">🛟 Backup</div><p class="note">A copy of everything (customers, stamps, points and the stock) is saved automatically every night at 2am. You can also download one any time and keep it on your phone or Google Drive.</p>' +
-      '<a class="btn ghost" href="/api/pass/backup" download style="text-align:center;text-decoration:none">DOWNLOAD BACKUP</a></div>' : "") + practiceHtml() +
+      '<a class="btn ghost" href="/api/pass/backup" download style="text-align:center;text-decoration:none">DOWNLOAD BACKUP</a></div>' +
+      '<div class="panel"><div class="lbl">✉️ Email</div><p class="note">Sends one test email to your alert address (ALERT_TO) and shows what Gmail answered.</p>' +
+      '<button class="btn ghost" type="button" data-mailtest>SEND TEST EMAIL</button><p class="note" id="mailtest-out"></p></div>' : "") + practiceHtml() +
       '<div class="panel"><div class="lbl">The truck QR</div><div class="kpis">' + kpi(scanTotal, "scans of the truck QR") + kpi(scanToday, "scans today") +
       kpi(O.customers.length, "signed up") + kpi(conv, "of scans signed up") + "</div></div>";
     h += '<div class="panel"><div class="lbl">Customers and reviews</div><div class="kpis">' + kpi(back, "came back more than once") + kpi(O.visits.length, "stamped orders") +
@@ -781,6 +783,13 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     }
     else if (t.hasAttribute("data-redeem")) { redeemFor = t.getAttribute("data-redeem"); render(); }
     else if (t.id === "free-cancel") { redeemFor = null; render(); }
+    else if (t.hasAttribute("data-mailtest")) {
+      var mo = document.getElementById("mailtest-out"); t.disabled = true; mo.textContent = "Sending…";
+      api("/api/pass/staff/mailtest", {}).then(function (r) {
+        t.disabled = false;
+        mo.textContent = r.ok ? "✅ Sent to " + r.to + ". Check the inbox (and Spam)." : "❌ " + (r.net ? "No internet." : r.error);
+      });
+    }
     else if (t.hasAttribute("data-reward")) {
       t.disabled = true;
       api("/api/pass/staff/reward", { phone: found.phone, reward: t.getAttribute("data-reward"), item: t.getAttribute("data-item") }).then(function (res) {

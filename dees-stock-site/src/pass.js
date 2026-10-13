@@ -597,6 +597,21 @@ export async function handlePass(request, env, path, d) {
     }
 
     /* admin only: remove a customer completely (card, stamps, visits, free items, points, games, records) */
+    /* admin: send one test email to ALERT_TO now and report exactly what Gmail answered */
+    if (path === "/api/pass/staff/mailtest" && request.method === "POST") {
+      if (me.role !== "admin") return fail("Only the admin can send a test email.", 403);
+      const has = { SMTP_USER: !!env.SMTP_USER, SMTP_PASS: !!env.SMTP_PASS, ALERT_TO: !!env.ALERT_TO };
+      if (!has.SMTP_USER || !has.SMTP_PASS || !has.ALERT_TO)
+        return fail("Missing in Cloudflare: " + Object.keys(has).filter((k) => !has[k]).join(", ") + ". Add it as a Secret and deploy.");
+      try {
+        const sent = await sendMail(env, { to: String(env.ALERT_TO).split(/[,;]/)[0], fromName: "Smash & Pass", ...alertEmail({
+          title: "✅ Test email from the Pass Card", lines: ["If you can read this, Gmail is connected.", "Sent " + dubaiTime() + " by " + me.name] }) });
+        return sent ? ok({ to: String(env.ALERT_TO).split(/[,;]/)[0] }) : fail("ALERT_TO doesn't look like an email address.");
+      } catch (e) {
+        return fail("Gmail said: " + String(e && e.message || e).slice(0, 300));
+      }
+    }
+
     if (path === "/api/pass/staff/delete" && request.method === "POST") {
       if (me.role !== "admin") return fail("Only the admin can delete a Pass Card.", 403);
       const b = await body();
