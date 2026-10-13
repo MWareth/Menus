@@ -14,17 +14,19 @@
 import qrcode from "qrcode-generator";
 
 export const NEED = 9;
+/* `off` = not sold right now: kept so past visits still read right, hidden from the truck */
 export const PASS_MENU = [
-  { id: "smash", name: "Smashed burger", card: "burger", stamps: 1 },
-  { id: "double", name: "Double smash", card: "burger", stamps: 1 },
-  { id: "chicken", name: "Chicken burger", card: "burger", stamps: 1 },
+  { id: "burger", name: "Burger", card: "burger", stamps: 1 },
   { id: "ss", name: "San Sebastian", card: "dessert", stamps: 1, stock: "San Sebastian" },
-  { id: "brownie", name: "Brownie Bag (2 pcs)", card: "dessert", stamps: 2, stock: "Brownie Bag" },
+  { id: "brownie", name: "Brownie Bag (2 pcs)", card: "dessert", stamps: 1, stock: "Brownie Bag" },
   { id: "cb", name: "Crème Brûlée", card: "dessert", stamps: 1, stock: "Crème Brûlée" },
-  { id: "lazy", name: "Lazy Cake", card: "dessert", stamps: 1, stock: "Lazy Cake" },
-  { id: "pav", name: "Mini Pavlova", card: "dessert", stamps: 1, stock: "Mini Pavlova" }
+  { id: "lazy", name: "Lazy Cake", card: "dessert", stamps: 1, stock: "Lazy Cake", off: true },
+  { id: "pav", name: "Mini Pavlova", card: "dessert", stamps: 1, stock: "Mini Pavlova", off: true },
+  { id: "smash", name: "Smashed burger", card: "burger", stamps: 1, off: true },
+  { id: "double", name: "Double smash", card: "burger", stamps: 1, off: true },
+  { id: "chicken", name: "Chicken burger", card: "burger", stamps: 1, off: true }
 ];
-const MENU_BY_ID = new Map(PASS_MENU.map((m) => [m.id, m]));
+const MENU_BY_ID = new Map(PASS_MENU.filter((m) => !m.off).map((m) => [m.id, m]));   /* only what's on sale can be stamped or given */
 
 /* ---- Smash Points: earned from orders, the game zone, scratch cards and achievements,
    spent at the window on rewards. Every stamped order unlocks 1 game + 1 scratch card
@@ -191,7 +193,9 @@ export async function handlePass(request, env, path, d) {
   /* stamped orders from the last 48h that haven't been used for this kind of play yet, oldest first */
   const tokens = async (phone, kind) => ((await env.DB.prepare(
     "SELECT v.id FROM pass_visits v LEFT JOIN pass_plays p ON p.visit_id = v.id AND p.kind = ?" +
-    " WHERE v.phone = ? AND v.at >= ? AND p.id IS NULL ORDER BY v.at ASC")
+    " WHERE v.phone = ? AND v.at >= ? AND p.id IS NULL" +
+    /* scratch cards start from the second order: the first order already brings the welcome surprise */
+    (kind === "scratch" ? " AND v.id != (SELECT MIN(id) FROM pass_visits WHERE phone = v.phone)" : "") + " ORDER BY v.at ASC")
     .bind(kind, phone, new Date(Date.now() - TOKEN_HOURS * 3600e3).toISOString()).all()).results || []).map((x) => x.id);
   const OPEN_HOURS = 2;
   const openPlay = (phone) => env.DB.prepare("SELECT id FROM pass_plays WHERE phone = ? AND kind LIKE 'game%' AND finished IS NULL AND started >= ? ORDER BY started DESC LIMIT 1")
@@ -469,8 +473,9 @@ export async function handlePass(request, env, path, d) {
         const m = MENU_BY_ID.get(id), q = Math.floor(Number(n));
         if (!m || !(q >= 1 && q <= 20)) return;
         items[id] = q;
-        if (m.card === "burger") burger += q * m.stamps; else dessert += q * m.stamps;
+        if (m.card === "burger") burger = 1; else dessert = 1;
       });
+      /* one stamp per card per order: any burgers = 1 burger stamp, any desserts = 1 dessert stamp */
       if (!burger && !dessert) return fail("Pick at least one item.");
       /* an offline stamp may be sent twice (retry after a dropped reply): its id makes the second one a no-op */
       const qid = typeof b.qid === "string" && /^[a-z0-9-]{8,40}$/.test(b.qid) ? b.qid : null;
@@ -639,7 +644,7 @@ async function pickSurprise(env, d) {
   const st = (await d.loadBoard(env)).state;
   const closed = new Set((st.weeks || []).map((w) => w.start));
   const left = (b) => (+b.qty || 0) - (b.sales || []).reduce((a, s) => a + (+s.qty || 0), 0);
-  const menuByStock = new Map(PASS_MENU.filter((m) => m.stock).map((m) => [m.stock, m]));
+  const menuByStock = new Map(PASS_MENU.filter((m) => m.stock && !m.off).map((m) => [m.stock, m]));
   const items = new Map((st.items || []).map((i) => [i.id, i]));
   const best = (st.batches || [])
     .map((b) => ({ b, it: items.get(b.itemId), exp: addDays(b.madeOn, b.shelf) }))

@@ -76,6 +76,19 @@ button{cursor:pointer}
 .g-end .btn{width:100%}
 .gboards{display:grid;grid-template-columns:1fr;gap:10px;margin-top:8px}
 .gb>b{font-size:14px}.gb .lb{margin-top:6px}.gb .lb li{padding:7px 10px}.gb .lb b{font-size:16px}
+.brand{position:relative}
+.lang{position:absolute;top:0;inset-inline-end:0;background:transparent;border:1px solid var(--line);color:var(--paper);border-radius:999px;padding:6px 14px;font:inherit;font-weight:800;font-size:14px;cursor:pointer}
+.howto{border-color:var(--butter)}.howto p{margin:0;font-size:15px;line-height:1.45}
+.howto-h{display:flex;justify-content:space-between;align-items:center}
+.howto-x{background:none;border:0;color:var(--muted);font-size:20px;cursor:pointer;padding:4px 8px}
+details.more{margin:4px 0 12px;display:flex;flex-direction:column;gap:12px}
+details.more>summary{list-style:none;cursor:pointer;text-align:center;font-weight:900;letter-spacing:.06em;font-size:13px;color:var(--paper);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 14px;margin-bottom:12px}
+details.more>summary::-webkit-details-marker{display:none}
+details.more>summary::after{content:" ▾"}details.more[open]>summary::after{content:" ▴"}
+details.more>.panel{margin-bottom:12px}
+.rec{color:var(--butter);font-family:inherit;font-size:12px}
+.pts-side{text-align:end}
+[dir=rtl] .lb li span:nth-child(2),[dir=rtl] .note,[dir=rtl] .lbl{text-align:right}
 .crewlink{display:block;margin:10px auto 0;background:none;border:0;color:var(--line);font:inherit;font-size:11px;letter-spacing:.08em;cursor:pointer;padding:4px 10px}
 .staffbar .linkbtn{margin-left:auto;background:none;border:0;color:var(--muted);font:inherit;font-weight:900;letter-spacing:.06em;cursor:pointer;padding:6px 4px}
 .staffbar a[aria-current="page"]{background:var(--butter);color:var(--carbon);border-color:var(--butter)}
@@ -177,11 +190,135 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   var S = { customer: null, staff: null, need: 9, menu: [] };
   var welcomeP = null, lb = null;
   var screen = "home", basket = {}, found = null, rv = { food: 0, vibe: 0, card: "burger" }, redeemFor = null, owner = null;
-  var MENU = {};
+  var MENU = {}, moreOpen = false;
+  /* ---------------- English / عربي (customer pages only; the crew screens stay English) ---------------- */
+  var AR = {
+    "Buy 9, the 10th is on us. Burgers and dee'serts.": "اشترِ 9 والعاشرة علينا. برجر وحلويات.",
+    "Hey {n}": "أهلاً {n}", "LOG OUT": "خروج",
+    "Show my QR code full screen": "اعرض رمز QR بملء الشاشة",
+    "Show your QR code": "اعرض رمز QR الخاص بك",
+    "A unique QR code made for your phone number. Tap to make it big.": "رمز QR خاص برقم هاتفك فقط. اضغط لتكبيره.",
+    "Show this at the window": "اعرضه عند النافذة", "DONE": "تم",
+    "The truck scans it to add your stamps. Each order earns 1 burger stamp if it has burgers and 1 dessert stamp if it has desserts.":
+      "يمسحه فريق الشاحنة لإضافة أختامك. كل طلب يحصل على ختم برجر واحد إذا فيه برجر، وختم حلويات واحد إذا فيه حلويات.",
+    "📴 <b>No internet.</b> This is your saved card, and your QR still works at the window. Stamps and points update when you're back online.":
+      "📴 <b>لا يوجد إنترنت.</b> هذه بطاقتك المحفوظة، ورمز QR يعمل عند النافذة. الأختام والنقاط تتحدّث عند عودة الإنترنت.",
+    "How it works": "كيف تعمل", "Close": "إغلاق",
+    "🍔🍰 <b>Stamps:</b> every order gets 1 burger stamp and/or 1 dessert stamp. 9 stamps = a free one.":
+      "🍔🍰 <b>الأختام:</b> كل طلب يحصل على ختم برجر و/أو ختم حلويات. 9 أختام = واحدة مجاناً.",
+    "⚡ <b>Points:</b> earned from orders and games. Spend them at the window on free food.":
+      "⚡ <b>النقاط:</b> تكسبها من الطلبات والألعاب. استبدلها عند النافذة بأكل مجاني.",
+    "❤️ <b>Lives:</b> every order gives you 5 games to play while you wait.":
+      "❤️ <b>المحاولات:</b> كل طلب يعطيك 5 ألعاب تلعبها وأنت تنتظر.",
+    "How was your visit on {d}?": "كيف كانت زيارتك يوم {d}؟",
+    "Two quick ratings and an optional comment.": "تقييمان سريعان وتعليق اختياري.",
+    "Your first review earns a <b>bonus stamp</b>.": "أول تقييم لك يمنحك <b>ختماً إضافياً</b>.",
+    "RATE MY VISIT": "قيّم زيارتي",
+    "a free {item}": "{item} مجاناً", "dessert": "حلوى", "10% off your first order": "خصم 10% على طلبك الأول",
+    "🎁 Your welcome surprise": "🎁 مفاجأة الترحيب", "Thanks for joining the Pass Card.": "شكراً لانضمامك إلى بطاقة باس.",
+    "NEW ON THE CARD": "جديد في البطاقة", "<b>1</b> card finished": "أكملت <b>1</b> بطاقة", "<b>{n}</b> cards finished": "أكملت <b>{n}</b> بطاقات",
+    "<b>{n}</b> this month": "<b>{n}</b> هذا الشهر", "{n} more to {lvl}": "باقي {n} للوصول إلى {lvl}", "top level": "أعلى مستوى",
+    "Smash Legend": "أسطورة سماش", "Loyal Fan": "معجب وفي", "Regular": "زبون دائم", "Smasher": "سماشر",
+    "Your visits": "زياراتك", "ℹ️ HOW IT WORKS": "ℹ️ كيف تعمل",
+    "More: your level, leaderboards, achievements & visits": "المزيد: مستواك، المتصدرون، الإنجازات والزيارات",
+    "Want your Pass Card and data deleted? Email {e} from the email on your card.": "تريد حذف بطاقتك وبياناتك؟ راسلنا على {e} من البريد المسجّل في بطاقتك.",
+    "Log in": "تسجيل الدخول", "Mobile number": "رقم الجوال", "4-digit PIN": "الرمز السري (4 أرقام)", "OPEN MY CARD": "افتح بطاقتي",
+    "NEW HERE? GET A PASS CARD": "جديد؟ احصل على بطاقة باس",
+    "Forgot your PIN? Ask at the truck window and they'll reset it.": "نسيت الرمز السري؟ اطلب من فريق الشاحنة إعادة تعيينه.",
+    "Get your Pass Card": "احصل على بطاقة باس", "First name": "الاسم الأول", "Last name": "اسم العائلة", "Email": "البريد الإلكتروني",
+    "Choose a 4-digit PIN": "اختر رمزاً سرياً من 4 أرقام",
+    "I agree that Smash &amp; Pass keeps my name, number, email, what I buy and my reviews to run the Pass Card. To delete my card, I email smashandpassdxb@gmail.com.":
+      "أوافق على أن تحتفظ سماش آند باس باسمي ورقمي وبريدي ومشترياتي وتقييماتي لتشغيل بطاقة باس. لحذف بطاقتي أراسل smashandpassdxb@gmail.com.",
+    "Send me offers on WhatsApp or email (optional).": "أرسلوا لي العروض عبر واتساب أو البريد (اختياري).",
+    "CREATE MY CARD": "أنشئ بطاقتي", "I ALREADY HAVE ONE": "لدي بطاقة بالفعل",
+    "Your visit · {d}": "زيارتك · {d}", "Food quality": "جودة الأكل", "The atmosphere": "الأجواء",
+    "Anything else? Ideas, wishes, complaints": "شيء آخر؟ أفكار، أمنيات، ملاحظات",
+    "Your bonus stamp goes on": "ضع ختمك الإضافي على", "🍔 Burgers": "🍔 البرجر", "🍰 Dee'serts": "🍰 الحلويات",
+    "SEND REVIEW": "أرسل التقييم", "LATER": "لاحقاً",
+    "Burgers": "البرجر", "Dee'serts": "الحلويات",
+    "FREE BURGERS WAITING: {n} · SHOW YOUR CARD": "برجر مجاني بانتظارك: {n} · اعرض بطاقتك",
+    "FREE DESSERTS WAITING: {n} · ANY ONE YOU LIKE": "حلوى مجانية بانتظارك: {n} · اختر ما تحب",
+    "1 more stamp and your next burger is free.": "ختم واحد ويصبح البرجر القادم مجاناً.",
+    "{n} more stamps and your next burger is free.": "باقي {n} أختام ويصبح البرجر القادم مجاناً.",
+    "1 more stamp and your next dessert is free.": "ختم واحد وتصبح الحلوى القادمة مجاناً.",
+    "{n} more stamps and your next dessert is free.": "باقي {n} أختام وتصبح الحلوى القادمة مجاناً.",
+    "1 card done": "اكتملت بطاقة واحدة", "{n} cards done": "اكتملت {n} بطاقات",
+    "🏆 Top Smashers": "🏆 أبطال سماش", "Loading…": "جارٍ التحميل…", "(you)": "(أنت)",
+    "🏆 Top Smashers · {m}": "🏆 أبطال سماش · {m}",
+    "Most cards finished this month. <b>#1 wins a free meal on us</b> (at least {n} cards to qualify).": "الأكثر إكمالاً للبطاقات هذا الشهر. <b>المركز الأول يربح وجبة مجانية</b> (بشرط {n} بطاقات على الأقل).",
+    "Nobody has finished a card this month yet. Be the first.": "لم يكمل أحد بطاقة هذا الشهر بعد. كن الأول.",
+    "🎮 Game leaderboards · {m}": "🎮 متصدرو الألعاب · {m}", "No scores yet. Be first.": "لا نتائج بعد. كن الأول.",
+    "You're hidden from Top Smashers.": "اسمك مخفي من أبطال سماش.", "You're #{r} with {n} this month.": "ترتيبك #{r} بعدد {n} هذا الشهر.",
+    "SHOW ME ON TOP SMASHERS": "أظهر اسمي في أبطال سماش", "HIDE MY NAME FROM TOP SMASHERS": "أخفِ اسمي من أبطال سماش",
+    "Burger Stack": "برج البرجر", "Catch the Dee'sert": "التقط الحلوى", "Crack the Brûlée": "اكسر الكريم بروليه", "Perfect Smash": "السماش المثالي",
+    "Tap to drop each layer. Stack it tall and straight.": "اضغط لإسقاط كل طبقة. ابنِه عالياً ومستقيماً.",
+    "Slide the tray. Catch desserts, dodge the ketchup bombs.": "حرّك الصينية. التقط الحلويات وتجنّب قنابل الكاتشب.",
+    "3 rounds of 15 seconds. Tap fast, score out of 1000. Beat your record.": "3 جولات كل منها 15 ثانية. اضغط بسرعة، النتيجة من 1000. حطّم رقمك.",
+    "Hit SMASH when the marker is in the middle. 5 rounds.": "اضغط عندما يكون المؤشر في المنتصف. 5 جولات.",
+    "1 life left": "باقي محاولة واحدة", "{n} lives left": "باقي {n} محاولات", "No lives left": "لا توجد محاولات",
+    "⚡ Smash Points": "⚡ نقاط سماش", "{n} points for every stamp.<br>Spend them at the window.": "{n} نقاط لكل ختم.<br>استبدلها عند النافذة.",
+    "Free dessert": "حلوى مجانية", "Free burger": "برجر مجاني", "READY · show your card": "جاهزة · اعرض بطاقتك",
+    "{n} to go": "باقي {n}", "{n} points": "{n} نقطة",
+    "🎮 Game zone": "🎮 منطقة الألعاب", "🏆 Your Crack the Brûlée record: <b>{n} / 1000</b>": "🏆 رقمك في الكريم بروليه: <b>{n} / 1000</b>",
+    "You've got a <b>scratch card</b> from your order. Scratch it!": "لديك <b>بطاقة خدش</b> من طلبك. اخدشها!", "Scratch card": "بطاقة خدش",
+    "Every order gives you {n} lives: retry a game or switch. <b>Every game = +{p} Smash Points.</b> Your best scores go on the game leaderboards.":
+      "كل طلب يعطيك {n} محاولات: أعد اللعبة أو غيّرها. <b>كل لعبة = +{p} نقاط سماش.</b> أفضل نتائجك تظهر في لوحة المتصدرين.",
+    "🏆 Your record: {n}": "🏆 رقمك: {n}",
+    "Every order gives you 5 lives, and from your second order a scratch card too. Show your card at the window, then play while you wait.":
+      "كل طلب يعطيك 5 محاولات، ومن طلبك الثاني بطاقة خدش أيضاً. اعرض بطاقتك عند النافذة والعب وأنت تنتظر.",
+    "🏅 Achievements · {a} / {b}": "🏅 الإنجازات · {a} / {b}", "Achievement unlocked: {x}": "إنجاز جديد: {x}",
+    "First order": "أول طلب", "Critic": "الناقد", "Card complete": "بطاقة مكتملة", "Dessert explorer": "مستكشف الحلويات", "Pro gamer": "لاعب محترف",
+    "Your first stamped order": "أول طلب مختوم", "Rate a visit": "قيّم زيارة", "Finish a card": "أكمل بطاقة",
+    "Try San Sebastian, Brownie Bag and Crème Brûlée": "جرّب سان سيباستيان وكيس البراوني والكريم بروليه",
+    "5 visits in one month": "5 زيارات في شهر واحد", "Score 90+ in a game": "سجّل 90+ في لعبة",
+    "SCRATCH HERE ✨": "اخدش هنا ✨", "POINTS": "نقطة", "+{n} Smash Points!": "+{n} نقاط سماش!",
+    "No internet right now. Your game is still waiting, try again in a moment.": "لا يوجد إنترنت الآن. لعبتك ما زالت بانتظارك، حاول بعد قليل.",
+    "1 life left after this game": "تبقى محاولة واحدة بعد هذه اللعبة", "{n} lives left after this game": "تبقى {n} محاولات بعد هذه اللعبة",
+    "Rounds: {r}": "الجولات: {r}", "🏆 NEW RECORD!": "🏆 رقم قياسي جديد!", "Your record: <b>{n}</b>": "رقمك: <b>{n}</b>",
+    "🔥 LEGENDARY": "🔥 أسطوري", "😎 NICE": "😎 رائع", "👊 GOOD TRY": "👊 محاولة جيدة", "Game over": "انتهت اللعبة",
+    "No internet. Your score is saved and your points are added as soon as you're back online.": "لا يوجد إنترنت. نتيجتك محفوظة وستُضاف نقاطك عند عودة الإنترنت.",
+    "+{n} Smash Points · your score goes on the game leaderboard": "+{n} نقاط سماش · نتيجتك تدخل لوحة المتصدرين",
+    "That finished too fast to count.": "انتهت بسرعة كبيرة ولم تُحتسب.",
+    "No lives left · your next order brings 5 more": "لا توجد محاولات · طلبك القادم يعطيك 5 أخرى",
+    "🔁 PLAY AGAIN": "🔁 العب مرة أخرى", "🎮 CHANGE GAME": "🎮 غيّر اللعبة", "BACK TO MY CARD": "العودة إلى بطاقتي", "Pick a game": "اختر لعبة",
+    "ROUND {r} OF {t}": "الجولة {r} من {t}", "TAP THE RAMEKIN TO START": "اضغط على الطبق للبدء", "ROUND {r}: {s} / 1000": "الجولة {r}: {s} / 1000",
+    "TAP FOR ROUND {r}": "اضغط للجولة {r}", "YOUR RECORD {n}": "رقمك {n}", "NO RECORD YET": "لا يوجد رقم بعد", "BEST TODAY {n}": "الأفضل اليوم {n}",
+    "TAP ANYWHERE TO SMASH": "اضغط في أي مكان", "PERFECT!": "مثالي!", "GREAT": "ممتاز", "OK": "جيد", "MISS": "فاتتك",
+    "{n} digits": "{n} أرقام", "{a} to {b} digits": "من {a} إلى {b} أرقام", "{len} after +{cc}, without the first 0": "{len} بعد ‎+{cc}، بدون الصفر الأول",
+    "{country} numbers are {len} after +{cc}.": "أرقام {country} تتكون من {len} بعد ‎+{cc}.", "Pick your country code from the list.": "اختر رمز دولتك من القائمة.",
+    "No country with that code.": "لا توجد دولة بهذا الرمز.", "Country code": "رمز الدولة",
+    "Your Pass Card is ready": "بطاقة باس جاهزة", "Thanks for the review": "شكراً على تقييمك",
+    "Thanks! Bonus stamp added to your burger card": "شكراً! أُضيف ختم إضافي إلى بطاقة البرجر", "Thanks! Bonus stamp added to your dessert card": "شكراً! أُضيف ختم إضافي إلى بطاقة الحلويات",
+    "+{n} Smash Points added from your last game": "+{n} نقاط سماش من لعبتك الأخيرة",
+    "✅ Stamped! Your card is updated.": "✅ تم الختم! بطاقتك محدّثة.",
+    "Couldn't load the Pass Card. ": "تعذّر تحميل بطاقة باس. ", "No internet right now. ": "لا يوجد إنترنت الآن. ", "Pull down to refresh.": "اسحب للأسفل للتحديث.",
+    "Something went wrong. Try again.": "حدث خطأ. حاول مرة أخرى.", "No connection. Check your internet and try again.": "لا يوجد اتصال. تحقق من الإنترنت وحاول مرة أخرى.",
+    "Add your first and last name.": "أضف اسمك الأول واسم العائلة.",
+    "Check your mobile number: pick the country, then the number without the first 0.": "تحقق من رقم جوالك: اختر الدولة ثم الرقم بدون الصفر الأول.",
+    "Add your email.": "أضف بريدك الإلكتروني.", "That email doesn't look right.": "البريد الإلكتروني غير صحيح.",
+    "Your PIN needs exactly 4 digits.": "الرمز السري يجب أن يكون 4 أرقام.", "Tick the box to agree, so we can keep your stamps.": "ضع علامة على المربع للموافقة حتى نحفظ أختامك.",
+    "This number already has a Pass Card. Log in instead.": "هذا الرقم لديه بطاقة باس بالفعل. سجّل الدخول.",
+    "This email already has a Pass Card. Log in with that card's number, or use another email.": "هذا البريد لديه بطاقة باس بالفعل. سجّل الدخول برقم تلك البطاقة أو استخدم بريداً آخر.",
+    "That number and PIN don't match. Check both and try again.": "الرقم والرمز السري غير متطابقين. تحقق منهما وحاول مرة أخرى.",
+    "Too many wrong PINs. Try again in 15 minutes, or ask the truck to reset it.": "محاولات خاطئة كثيرة. حاول بعد 15 دقيقة أو اطلب من الشاحنة إعادة تعيينه.",
+    "Pick a number for both food and atmosphere.": "اختر رقماً للأكل والأجواء.", "There's no visit waiting for a review.": "لا توجد زيارة بانتظار التقييم.",
+    "Your next order unlocks 5 more lives.": "طلبك القادم يفتح 5 محاولات أخرى.", "Tap the game again.": "اضغط على اللعبة مرة أخرى.",
+    "That game is already over.": "هذه اللعبة انتهت بالفعل.", "Your next order brings a new scratch card.": "طلبك القادم يعطيك بطاقة خدش جديدة.",
+    "That scratch card is already used.": "بطاقة الخدش هذه مستخدمة.", "Pick a game.": "اختر لعبة.", "FREE": "مجاناً", "San Sebastian": "سان سيباستيان", "Brownie Bag": "كيس البراوني", "Crème Brûlée": "كريم بروليه"
+  };
+  var LANG = (function () { var s = recall("pc_lang"); return s === "ar" || s === "en" ? s : (String(navigator.language || "").toLowerCase().indexOf("ar") === 0 ? "ar" : "en"); })();
+  function crewView() { var r = route(); return r.name === "truck" || r.name === "owner" || (r.name === "scan" && !!(S && S.staff)); }
+  function arOn() { return LANG === "ar" && !crewView(); }
+  function L(s, v) {
+    var t = (arOn() && AR[s]) || s;
+    if (v) t = t.replace(/\{(\w+)\}/g, function (m, k) { return v[k] != null ? v[k] : m; });
+    return t;
+  }
+  function loc() { return arOn() ? "ar" : "en-GB"; }
 
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
-  function toast(t) { var el = document.getElementById("toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { el.hidden = true; }, 2800); }
-  function niceDate(iso) { return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short" }); }
+  function toast(t) { var el = document.getElementById("toast"); el.textContent = L(t); el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { el.hidden = true; }, 2800); }
+  function niceDate(iso) { return new Date(iso).toLocaleDateString(loc(), { day: "numeric", month: "short" }); }
   function fmtPhone(p) {
     p = String(p || "");
     if (p.indexOf("00") === 0) { var c = (S.countries || []).filter(function (x) { return p.slice(2).indexOf(x[2]) === 0; })[0];
@@ -191,21 +328,22 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   /* Phone = country picker (flag + dial code) + the number after it, exact length per country */
   function flag(iso) { return iso.replace(/./g, function (ch) { return String.fromCodePoint(127397 + ch.charCodeAt(0)); }); }
   function country(iso) { var l = S.countries || []; return l.filter(function (x) { return x[0] === iso; })[0] || l[0] || ["AE", "UAE", "971", 9, 9]; }
-  function lenText(c) { return c[3] === c[4] ? c[3] + " digits" : c[3] + " to " + c[4] + " digits"; }
+  function lenText(c) { return c[3] === c[4] ? L("{n} digits", { n: c[3] }) : L("{a} to {b} digits", { a: c[3], b: c[4] }); }
+  function hintText(c) { return L("{len} after +{cc}, without the first 0", { len: lenText(c), cc: c[2] }); }
   function phoneField(id, label) {
     var c = country(phoneField.iso || "AE");
     return '<div class="field"><label for="' + id + '">' + label + '</label><div class="tel">' +
       '<div class="cc"><span class="cc-flag" id="' + id + '-flag">' + flag(c[0]) + '</span>' +
-      '<input id="' + id + '-cc" data-iso="' + c[0] + '" value="+' + c[2] + '" inputmode="tel" autocomplete="off" aria-label="Country code" role="combobox" aria-expanded="false" aria-controls="' + id + '-list">' +
+      '<input id="' + id + '-cc" data-iso="' + c[0] + '" value="+' + c[2] + '" inputmode="tel" autocomplete="off" aria-label="' + L("Country code") + '" role="combobox" dir="ltr" aria-expanded="false" aria-controls="' + id + '-list">' +
       '<div class="cc-list" id="' + id + '-list" role="listbox" hidden></div></div>' +
-      '<input id="' + id + '" inputmode="numeric" autocomplete="tel-national" data-max="' + c[4] + '" placeholder="' + (c[0] === "AE" ? "561234567" : "") + '"></div>' +
-      '<p class="note" id="' + id + '-hint">' + lenText(c) + " after +" + c[2] + ", without the first 0</p></div>";
+      '<input id="' + id + '" inputmode="numeric" dir="ltr" autocomplete="tel-national" data-max="' + c[4] + '" placeholder="' + (c[0] === "AE" ? "561234567" : "") + '"></div>' +
+      '<p class="note" id="' + id + '-hint">' + hintText(c) + "</p></div>";
   }
   function readPhone(id, errId) {
     var ccEl = document.getElementById(id + "-cc");
     if (!ccEl.getAttribute("data-iso")) { showErr(errId, "Pick your country code from the list."); return null; }
     var c = country(ccEl.getAttribute("data-iso")), n = document.getElementById(id).value.replace(/\D/g, "").replace(/^0/, "");
-    if (n.length < c[3] || n.length > c[4]) { showErr(errId, c[1] + " numbers are " + lenText(c) + " after +" + c[2] + "."); return null; }
+    if (n.length < c[3] || n.length > c[4]) { showErr(errId, L("{country} numbers are {len} after +{cc}.", { country: c[1], len: lenText(c), cc: c[2] })); return null; }
     return "+" + c[2] + n;
   }
   /* net: true = the internet or the server failed (not a "no" from the server) */
@@ -252,7 +390,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     api("/api/pass/game/finish", p).then(function (f) {
       if (f.net) return;
       store("pc_finish", null);
-      if (f.ok) { toast("+" + f.points + " Smash Points added from your last game"); if (S.customer && f.customer) { S.customer = Object.assign(S.customer, f.customer); keepText(); } }
+      if (f.ok) { toast(L("+{n} Smash Points added from your last game", { n: f.points })); if (S.customer && f.customer) { S.customer = Object.assign(S.customer, f.customer); keepText(); } }
     });
   }
   setInterval(syncFinish, 20000);
@@ -274,17 +412,18 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   function stamps(n) {
     var h = '<div class="stamps" aria-label="' + Math.min(n, S.need) + " of " + S.need + ' stamps">';
     for (var i = 0; i < S.need; i++) h += '<div class="st' + (i < n ? " on" : "") + '">' + (i < n ? "✓" : i + 1) + "</div>";
-    return h + '<div class="st free' + (n >= S.need ? " ready" : "") + '">FREE</div></div>';
+    return h + '<div class="st free' + (n >= S.need ? " ready" : "") + '">' + L("FREE") + "</div></div>";
   }
   /* a full card renews by itself: the free item is banked and a fresh card starts */
   function freeOf(c, k) { return Math.floor((c[k] || 0) / S.need); }
   function cardHtml(c, k) {
-    var n = (c[k] || 0) % S.need, free = freeOf(c, k), left = S.need - n, word = k === "burger" ? "burger" : "dessert";
+    var n = (c[k] || 0) % S.need, free = freeOf(c, k), left = S.need - n, b = k === "burger";
     var done = c.done ? c.done[k] : 0;
-    return '<section class="card ' + k + '"><div class="card-h"><h3>' + (k === "burger" ? "Burgers" : "Dee'serts") + "</h3><b>" + n + " / " + S.need + "</b></div>" + stamps(n) +
-      (free ? '<div class="ready-banner">' + (k === "burger" ? "🍔 " : "🍰 ") + free + " FREE " + word.toUpperCase() + (free > 1 ? "S" : "") + " WAITING · ANY ONE YOU LIKE</div>" : "") +
-      '<div class="meta">' + left + " more " + (left === 1 ? "stamp" : "stamps") + " and " + (free ? "another" : "your next") + " " + word + " is free." +
-      (done ? " · <b>" + done + "</b> card" + (done > 1 ? "s" : "") + " done" : "") + "</div></section>";
+    return '<section class="card ' + k + '"><div class="card-h"><h3>' + L(b ? "Burgers" : "Dee'serts") + "</h3><b dir=\"ltr\">" + n + " / " + S.need + "</b></div>" + stamps(n) +
+      (free ? '<div class="ready-banner">' + (b ? "🍔 " : "🍰 ") + L(b ? "FREE BURGERS WAITING: {n} · SHOW YOUR CARD" : "FREE DESSERTS WAITING: {n} · ANY ONE YOU LIKE", { n: free }) + "</div>" : "") +
+      '<div class="meta">' + L(b ? (left === 1 ? "1 more stamp and your next burger is free." : "{n} more stamps and your next burger is free.")
+        : (left === 1 ? "1 more stamp and your next dessert is free." : "{n} more stamps and your next dessert is free."), { n: left }) +
+      (done ? " · " + L(done === 1 ? "1 card done" : "{n} cards done", { n: done }) : "") + "</div></section>";
   }
   /* fan level from every card ever finished (both cards together) */
   var LEVELS = [[10, "Smash Legend", "👑"], [5, "Loyal Fan", "🔥"], [3, "Regular", "⭐"], [1, "Smasher", "🍔"]];
@@ -294,93 +433,103 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     for (var i = LEVELS.length - 1; i >= 0; i--) if (t < LEVELS[i][0]) { next = LEVELS[i]; break; }
     return { total: t, cur: cur, next: next };
   }
-  function monthName(m) { return new Date(m + "-15T12:00:00Z").toLocaleDateString("en-GB", { month: "long" }); }
+  function monthName(m) { return new Date(m + "-15T12:00:00Z").toLocaleDateString(loc(), { month: "long" }); }
   function boardHtml(B, mine) {
-    if (!B) return '<div class="panel"><div class="lbl">🏆 Top Smashers</div><p class="note">Loading…</p></div>';
-    var h = '<div class="panel board"><div class="lbl">🏆 Top Smashers · ' + monthName(B.month) + "</div>" +
-      '<p class="note">Most cards finished this month. <b style="color:var(--butter)">#1 wins a free meal on us</b> (at least ' + B.prizeMin + " cards to qualify).</p>";
+    if (!B) return '<div class="panel"><div class="lbl">' + L("🏆 Top Smashers") + '</div><p class="note">' + L("Loading…") + "</p></div>";
+    var you = function (r) { return r.you ? " " + L("(you)") : ""; };
+    var h = '<div class="panel board"><div class="lbl">' + L("🏆 Top Smashers · {m}", { m: monthName(B.month) }) + "</div>" +
+      '<p class="note">' + L("Most cards finished this month. <b>#1 wins a free meal on us</b> (at least {n} cards to qualify).", { n: B.prizeMin }) + "</p>";
     h += B.top.length ? '<ol class="lb">' + B.top.map(function (r) {
-      return '<li' + (r.you ? ' class="you"' : "") + '><span class="rk">' + (r.rank === 1 ? "🥇" : r.rank === 2 ? "🥈" : r.rank === 3 ? "🥉" : r.rank) + "</span><span>" + esc(r.name) + (r.you ? " (you)" : "") +
-        '</span><b>' + r.n + "</b></li>"; }).join("") + "</ol>" : '<p class="note">Nobody has finished a card this month yet. Be the first.</p>';
+      return '<li' + (r.you ? ' class="you"' : "") + '><span class="rk">' + (r.rank === 1 ? "🥇" : r.rank === 2 ? "🥈" : r.rank === 3 ? "🥉" : r.rank) + "</span><span>" + esc(r.name) + you(r) +
+        '</span><b>' + r.n + "</b></li>"; }).join("") + "</ol>" : '<p class="note">' + L("Nobody has finished a card this month yet. Be the first.") + "</p>";
     if (B.games) {
-      h += '<div class="lbl" style="margin-top:14px">🎮 Game leaderboards · ' + monthName(B.month) + '</div><div class="gboards">' +
+      h += '<div class="lbl" style="margin-top:14px">' + L("🎮 Game leaderboards · {m}", { m: monthName(B.month) }) + '</div><div class="gboards">' +
         Object.keys(GAME_INFO).map(function (g) { var rows = B.games[g] || [], i = GAME_INFO[g];
-          return '<div class="gb"><b>' + i[0] + " " + i[1] + "</b>" + (rows.length ? '<ol class="lb">' + rows.slice(0, 3).map(function (r) {
-            return '<li' + (r.you ? ' class="you"' : "") + '><span class="rk">' + (r.rank === 1 ? "🥇" : r.rank === 2 ? "🥈" : "🥉") + "</span><span>" + esc(r.name) + (r.you ? " (you)" : "") + "</span><b>" + r.score + "</b></li>"; }).join("") + "</ol>"
-            : '<p class="note">No scores yet. Be first.</p>') + "</div>"; }).join("") + "</div>";
+          return '<div class="gb"><b>' + i[0] + " " + L(i[1]) + "</b>" + (rows.length ? '<ol class="lb">' + rows.slice(0, 3).map(function (r) {
+            return '<li' + (r.you ? ' class="you"' : "") + '><span class="rk">' + (r.rank === 1 ? "🥇" : r.rank === 2 ? "🥈" : "🥉") + "</span><span>" + esc(r.name) + you(r) + "</span><b>" + r.score + "</b></li>"; }).join("") + "</ol>"
+            : '<p class="note">' + L("No scores yet. Be first.") + "</p>") + "</div>"; }).join("") + "</div>";
     }
     if (mine) {
-      if (mine.boardHide) h += '<p class="note">You\'re hidden from Top Smashers.</p>';
-      else if (B.me && B.me.rank > 10) h += '<p class="note">You\'re #' + B.me.rank + " with " + B.me.n + " this month.</p>";
-      h += '<button type="button" class="linkbtn" id="lb-hide">' + (mine.boardHide ? "SHOW ME ON TOP SMASHERS" : "HIDE MY NAME FROM TOP SMASHERS") + "</button>";
+      if (mine.boardHide) h += '<p class="note">' + L("You're hidden from Top Smashers.") + "</p>";
+      else if (B.me && B.me.rank > 10) h += '<p class="note">' + L("You're #{r} with {n} this month.", { r: B.me.rank, n: B.me.n }) + "</p>";
+      h += '<button type="button" class="linkbtn" id="lb-hide">' + L(mine.boardHide ? "SHOW ME ON TOP SMASHERS" : "HIDE MY NAME FROM TOP SMASHERS") + "</button>";
     }
     return h + "</div>";
   }
   function itemsText(items) { return Object.keys(items || {}).map(function (k) { return items[k] + "× " + (MENU[k] ? MENU[k].name : k); }).join(", "); }
-  function showErr(id, t) { var el = document.getElementById(id); if (el) { el.textContent = t; el.hidden = false; } }
+  function showErr(id, t) { var el = document.getElementById(id); if (el) { el.textContent = L(t); el.hidden = false; } }
 
   /* ---------------- customer ---------------- */
   function viewCard() {
     var c = S.customer;
     if (!c) return screen === "join" ? joinForm() : screen === "crew" ? needStaff() + '<button class="btn ghost" type="button" id="to-login">BACK</button>' : loginForm();
     if (screen === "review" && c.pending) return reviewForm(c);
-    var h = '<div class="hello"><h2>Hey ' + esc(c.first) + '</h2><button type="button" class="btn ghost" id="logout" style="flex:none;padding:8px 12px">LOG OUT</button></div>';
-    if (offline) h += '<div class="panel" style="border-color:var(--butter)"><p class="note" style="margin:0">📴 <b>No internet.</b> This is your saved card, and your QR still works at the window. Stamps and points update when you\'re back online.</p></div>';
+    var h = '<div class="hello"><h2>' + L("Hey {n}", { n: esc(c.first) }) + '</h2><button type="button" class="btn ghost" id="logout" style="flex:none;padding:8px 12px">' + L("LOG OUT") + "</button></div>";
+    if (offline) h += '<div class="panel" style="border-color:var(--butter)"><p class="note" style="margin:0">' + L("📴 <b>No internet.</b> This is your saved card, and your QR still works at the window. Stamps and points update when you're back online.") + "</p></div>";
     /* the QR sits on top as a thumbnail; tapping it fills the screen for the truck to scan */
-    h += '<button type="button" class="panel qr-top" id="qr-open" aria-label="Show my QR code full screen">' +
+    h += '<button type="button" class="panel qr-top" id="qr-open" aria-label="' + L("Show my QR code full screen") + '">' +
       '<span class="qr-thumb"><img src="' + qrSrc() + '" alt=""></span>' +
-      '<span class="qr-txt"><span class="lbl">Show your QR code</span><b>' + esc(fmtPhone(c.phone)) + "</b>" +
-      '<small>A unique QR code made for your phone number. Tap to make it big.</small></span><span class="qr-go" aria-hidden="true">⤢</span></button>';
-    if (c.pending) h += '<div class="panel"><div class="lbl">How was your visit on ' + niceDate(c.pending.at) + "?</div>" +
-      '<p class="note">Two quick ratings and an optional comment.' + (c.bonus ? "" : ' Your first review earns a <b style="color:var(--butter)">bonus stamp</b>.') + "</p>" +
-      '<button type="button" class="btn pri" id="go-review">RATE MY VISIT</button></div>';
+      '<span class="qr-txt"><span class="lbl">' + L("Show your QR code") + "</span><b dir=\"ltr\">" + esc(fmtPhone(c.phone)) + "</b>" +
+      "<small>" + L("A unique QR code made for your phone number. Tap to make it big.") + '</small></span><span class="qr-go" aria-hidden="true">⤢</span></button>';
+    /* first time only: what stamps, points and lives mean */
+    if (!recall("pc_howto")) h += '<div class="panel howto"><div class="howto-h"><div class="lbl" style="color:var(--butter)">' + L("How it works") + '</div>' +
+      '<button type="button" class="howto-x" id="howto-x" aria-label="' + L("Close") + '">✕</button></div>' +
+      '<p>' + L("🍔🍰 <b>Stamps:</b> every order gets 1 burger stamp and/or 1 dessert stamp. 9 stamps = a free one.") + "</p>" +
+      '<p>' + L("⚡ <b>Points:</b> earned from orders and games. Spend them at the window on free food.") + "</p>" +
+      '<p>' + L("❤️ <b>Lives:</b> every order gives you 5 games to play while you wait.") + "</p></div>";
+    if (c.pending) h += '<div class="panel"><div class="lbl">' + L("How was your visit on {d}?", { d: niceDate(c.pending.at) }) + "</div>" +
+      '<p class="note">' + L("Two quick ratings and an optional comment.") + (c.bonus ? "" : " " + L("Your first review earns a <b>bonus stamp</b>.")) + "</p>" +
+      '<button type="button" class="btn pri" id="go-review">' + L("RATE MY VISIT") + "</button></div>";
     if (c.surprise) {
-      var sp = c.surprise.indexOf("dessert:") === 0 ? "a free " + (MENU[c.surprise.slice(8)] ? MENU[c.surprise.slice(8)].name.replace(/ \(.*\)$/, "") : "dessert") : "10% off your first order";
-      if (c.visits.length <= 1) h += '<div class="panel" style="border-color:var(--butter)"><div class="lbl" style="color:var(--butter)">🎁 Your welcome surprise</div><p class="big">' + esc(sp) + '</p><p class="note">Thanks for joining the Pass Card.</p></div>';
+      var sp = c.surprise.indexOf("dessert:") === 0 ? L("a free {item}", { item: L(MENU[c.surprise.slice(8)] ? MENU[c.surprise.slice(8)].name.replace(/ \(.*\)$/, "") : "dessert") }) : L("10% off your first order");
+      if (c.visits.length <= 1) h += '<div class="panel" style="border-color:var(--butter)"><div class="lbl" style="color:var(--butter)">' + L("🎁 Your welcome surprise") + '</div><p class="big">' + esc(sp) + '</p><p class="note">' + L("Thanks for joining the Pass Card.") + "</p></div>";
     }
-    h += pointsHtml(c);
-    var lv = levelOf(c);
-    h += '<div class="panel level"><div><span class="lvl-badge">' + (lv.cur ? lv.cur[2] + " " + lv.cur[1].toUpperCase() : "NEW ON THE CARD") + "</span></div>" +
-      '<p class="note"><b>' + lv.total + "</b> card" + (lv.total === 1 ? "" : "s") + " finished" + (c.doneMonth ? " · <b>" + c.doneMonth + "</b> this month" : "") +
-      (lv.next ? " · " + (lv.next[0] - lv.total) + " more to " + lv.next[2] + " " + lv.next[1] : " · top level") + "</p></div>";
+    /* what people use every visit first: cards, games, points; the rest folds under More */
     h += cardHtml(c, "burger") + cardHtml(c, "dessert");
-    h += boardHtml(lb, c) + achHtml(c);
+    h += gameZoneHtml(c) + pointsHtml(c);
+    var lv = levelOf(c), more = '<div class="panel level"><div><span class="lvl-badge">' + (lv.cur ? lv.cur[2] + " " + L(lv.cur[1]).toUpperCase() : L("NEW ON THE CARD")) + "</span></div>" +
+      '<p class="note">' + L(lv.total === 1 ? "<b>1</b> card finished" : "<b>{n}</b> cards finished", { n: lv.total }) + (c.doneMonth ? " · " + L("<b>{n}</b> this month", { n: c.doneMonth }) : "") +
+      (lv.next ? " · " + L("{n} more to {lvl}", { n: lv.next[0] - lv.total, lvl: lv.next[2] + " " + L(lv.next[1]) }) : " · " + L("top level")) + "</p></div>";
+    more += boardHtml(lb, c) + achHtml(c);
     if (c.visits.length) {
-      h += '<div class="panel"><div class="lbl">Your visits</div>';
-      c.visits.forEach(function (v) { h += '<div class="bl"><span>' + niceDate(v.at) + " · " + esc(itemsText(v.items)) + '</span><span style="color:var(--muted);flex:none">' + (v.food ? "★ " + v.food + "/" + v.vibe : "") + "</span></div>"; });
-      h += "</div>";
+      more += '<div class="panel"><div class="lbl">' + L("Your visits") + "</div>";
+      c.visits.forEach(function (v) { more += '<div class="bl"><span>' + niceDate(v.at) + " · " + esc(itemsText(v.items)) + '</span><span style="color:var(--muted);flex:none">' + (v.food ? "★ " + v.food + "/" + v.vibe : "") + "</span></div>"; });
+      more += "</div>";
     }
-    h += '<p class="note" style="text-align:center;margin:4px 0 12px">Want your Pass Card and data deleted? Email <a href="mailto:smashandpassdxb@gmail.com?subject=Delete%20my%20Pass%20Card" style="color:var(--butter)">smashandpassdxb@gmail.com</a> from the email on your card.</p>';
+    more += '<button type="button" class="linkbtn" id="howto-open">' + L("ℹ️ HOW IT WORKS") + "</button>";
+    h += '<details class="more" id="more"' + (moreOpen ? " open" : "") + "><summary>" + L("More: your level, leaderboards, achievements & visits") + "</summary>" + more + "</details>";
+    h += '<p class="note" style="text-align:center;margin:4px 0 12px">' + L("Want your Pass Card and data deleted? Email {e} from the email on your card.",
+      { e: '<a href="mailto:smashandpassdxb@gmail.com?subject=Delete%20my%20Pass%20Card" style="color:var(--butter)">smashandpassdxb@gmail.com</a>' }) + "</p>";
     return h;
   }
   function loginForm() {
-    return '<form class="panel" id="f-login" novalidate><div class="lbl">Log in</div>' +
-      phoneField("l-phone", "Mobile number") +
-      '<div class="field"><label for="l-pin">4-digit PIN</label><input id="l-pin" inputmode="numeric" maxlength="4" type="password" autocomplete="current-password"></div>' +
-      '<p class="err" id="l-err" hidden></p><button class="btn pri" type="submit">OPEN MY CARD</button>' +
-      '<button class="btn ghost" type="button" id="to-join">NEW HERE? GET A PASS CARD</button>' +
-      '<p class="note">Forgot your PIN? Ask at the truck window and they\'ll reset it.</p>' +
+    return '<form class="panel" id="f-login" novalidate><div class="lbl">' + L("Log in") + "</div>" +
+      phoneField("l-phone", L("Mobile number")) +
+      '<div class="field"><label for="l-pin">' + L("4-digit PIN") + '</label><input id="l-pin" inputmode="numeric" maxlength="4" type="password" autocomplete="current-password"></div>' +
+      '<p class="err" id="l-err" hidden></p><button class="btn pri" type="submit">' + L("OPEN MY CARD") + "</button>" +
+      '<button class="btn ghost" type="button" id="to-join">' + L("NEW HERE? GET A PASS CARD") + "</button>" +
+      '<p class="note">' + L("Forgot your PIN? Ask at the truck window and they'll reset it.") + "</p>" +
       '<button type="button" class="crewlink" id="to-crew">crew</button></form>';
   }
   function joinForm() {
-    return '<form class="panel" id="f-join" novalidate><div class="lbl">Get your Pass Card</div>' +
-      '<div class="row"><div class="field"><label for="j-first">First name</label><input id="j-first" autocomplete="given-name"></div>' +
-      '<div class="field"><label for="j-last">Last name</label><input id="j-last" autocomplete="family-name"></div></div>' +
-      phoneField("j-phone", "Mobile number") +
-      '<div class="field"><label for="j-email">Email</label><input id="j-email" type="email" autocomplete="email" required></div>' +
-      '<div class="field"><label for="j-pin">Choose a 4-digit PIN</label><input id="j-pin" inputmode="numeric" maxlength="4" type="password" autocomplete="new-password"></div>' +
-      '<label class="check"><input type="checkbox" id="j-ok"><span>I agree that Smash &amp; Pass keeps my name, number, email, what I buy and my reviews to run the Pass Card. To delete my card, I email smashandpassdxb@gmail.com.</span></label>' +
-      '<label class="check"><input type="checkbox" id="j-offers"><span>Send me offers on WhatsApp or email (optional).</span></label>' +
-      '<p class="err" id="j-err" hidden></p><button class="btn pri" type="submit">CREATE MY CARD</button>' +
-      '<button class="btn ghost" type="button" id="to-login">I ALREADY HAVE ONE</button></form>';
+    return '<form class="panel" id="f-join" novalidate><div class="lbl">' + L("Get your Pass Card") + "</div>" +
+      '<div class="row"><div class="field"><label for="j-first">' + L("First name") + '</label><input id="j-first" autocomplete="given-name"></div>' +
+      '<div class="field"><label for="j-last">' + L("Last name") + '</label><input id="j-last" autocomplete="family-name"></div></div>' +
+      phoneField("j-phone", L("Mobile number")) +
+      '<div class="field"><label for="j-email">' + L("Email") + '</label><input id="j-email" type="email" autocomplete="email" required></div>' +
+      '<div class="field"><label for="j-pin">' + L("Choose a 4-digit PIN") + '</label><input id="j-pin" inputmode="numeric" maxlength="4" type="password" autocomplete="new-password"></div>' +
+      '<label class="check"><input type="checkbox" id="j-ok"><span>' + L("I agree that Smash &amp; Pass keeps my name, number, email, what I buy and my reviews to run the Pass Card. To delete my card, I email smashandpassdxb@gmail.com.") + "</span></label>" +
+      '<label class="check"><input type="checkbox" id="j-offers"><span>' + L("Send me offers on WhatsApp or email (optional).") + "</span></label>" +
+      '<p class="err" id="j-err" hidden></p><button class="btn pri" type="submit">' + L("CREATE MY CARD") + "</button>" +
+      '<button class="btn ghost" type="button" id="to-login">' + L("I ALREADY HAVE ONE") + "</button></form>";
   }
   function reviewForm(c) {
     var dots = function (k) { var h = '<div class="dots" role="group">'; for (var i = 1; i <= 5; i++) h += '<button type="button" data-rate="' + k + '" data-v="' + i + '" aria-pressed="' + (rv[k] === i) + '">' + i + "</button>"; return h + "</div>"; };
-    return '<form class="panel" id="f-review" novalidate><div class="lbl">Your visit · ' + niceDate(c.pending.at) + "</div>" +
-      "<b>Food quality</b>" + dots("food") + "<b>The atmosphere</b>" + dots("vibe") +
-      '<div class="field"><label for="r-text">Anything else? Ideas, wishes, complaints</label><textarea id="r-text" maxlength="500"></textarea></div>' +
-      (c.bonus ? "" : '<div class="lbl">Your bonus stamp goes on</div><div class="pick"><button type="button" data-card="burger" aria-pressed="' + (rv.card === "burger") + '">🍔 Burgers</button><button type="button" data-card="dessert" aria-pressed="' + (rv.card === "dessert") + '">🍰 Dee\'serts</button></div>') +
-      '<p class="err" id="r-err" hidden></p><button class="btn pri" type="submit">SEND REVIEW</button><button class="btn ghost" type="button" id="r-back">LATER</button></form>';
+    return '<form class="panel" id="f-review" novalidate><div class="lbl">' + L("Your visit · {d}", { d: niceDate(c.pending.at) }) + "</div>" +
+      "<b>" + L("Food quality") + "</b>" + dots("food") + "<b>" + L("The atmosphere") + "</b>" + dots("vibe") +
+      '<div class="field"><label for="r-text">' + L("Anything else? Ideas, wishes, complaints") + '</label><textarea id="r-text" maxlength="500"></textarea></div>' +
+      (c.bonus ? "" : '<div class="lbl">' + L("Your bonus stamp goes on") + '</div><div class="pick"><button type="button" data-card="burger" aria-pressed="' + (rv.card === "burger") + '">' + L("🍔 Burgers") + '</button><button type="button" data-card="dessert" aria-pressed="' + (rv.card === "dessert") + '">' + L("🍰 Dee'serts") + "</button></div>") +
+      '<p class="err" id="r-err" hidden></p><button class="btn pri" type="submit">' + L("SEND REVIEW") + '</button><button class="btn ghost" type="button" id="r-back">' + L("LATER") + "</button></form>";
   }
 
   /* ---------------- truck ---------------- */
@@ -415,10 +564,10 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       (welcomeP.kind === "dessert"
         ? '<p class="big" style="color:var(--carbon)">Give a free ' + esc(welcomeP.stock) + '</p><p style="margin:0;font-weight:700">Take it from the lot that expires ' + esc(niceDate(welcomeP.expires + "T12:00:00Z")) + '. It comes off the stock as a giveaway when you stamp the order.</p>'
         : '<p class="big" style="color:var(--carbon)">10% off the whole order</p><p style="margin:0;font-weight:700">Take 10% off the total before they pay, then stamp the order.</p>') + "</div>";
-    var btn = function (m) { return '<button type="button" data-add="' + m.id + '"><b>' + esc(m.name) + "</b><small>+" + m.stamps + " stamp" + (m.stamps > 1 ? "s" : "") + (basket[m.id] ? " · " + basket[m.id] + " added" : "") + "</small></button>"; };
-    h += '<div class="panel"><div class="lbl">What did they buy?</div><div class="lbl" style="color:var(--butter)">Burgers</div><div class="items">' +
-      S.menu.filter(function (m) { return m.card === "burger"; }).map(btn).join("") + '</div><div class="lbl" style="color:var(--bad)">Dee\'serts</div><div class="items">' +
-      S.menu.filter(function (m) { return m.card === "dessert"; }).map(btn).join("") + "</div>";
+    var btn = function (m) { return '<button type="button" data-add="' + m.id + '"><b>' + esc(m.name) + "</b><small>" + (basket[m.id] ? basket[m.id] + " added" : "tap to add") + "</small></button>"; };
+    h += '<div class="panel"><div class="lbl">What did they buy?</div><p class="note">Tap everything in the order. It still earns just 1 stamp per card: 1 if it has burgers, 1 if it has desserts.</p><div class="lbl" style="color:var(--butter)">Burgers</div><div class="items">' +
+      S.menu.filter(function (m) { return m.card === "burger" && !m.off; }).map(btn).join("") + '</div><div class="lbl" style="color:var(--bad)">Dee\'serts</div><div class="items">' +
+      S.menu.filter(function (m) { return m.card === "dessert" && !m.off; }).map(btn).join("") + "</div>";
     var keys = Object.keys(basket);
     if (keys.length) {
       h += keys.map(function (k) { return '<div class="bl"><span>' + basket[k] + "× " + esc(MENU[k].name) + '</span><button type="button" data-less="' + k + '">remove one</button></div>'; }).join("") +
@@ -439,12 +588,12 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       var rw = (S.rewards || []).filter(function (x) { return x.id === k.slice(4); })[0];
       return '<div class="panel"><div class="lbl">' + esc(rw.name) + " for " + esc(found.first) + " · " + rw.cost + ' points</div><p class="note">Which one are they taking?' +
         (rw.card === "dessert" ? " It comes off the stock as a giveaway automatically." : "") + '</p><div class="items">' +
-        S.menu.filter(function (m) { return m.card === rw.card; }).map(function (m) { return '<button type="button" data-reward="' + rw.id + '" data-item="' + m.id + '"><b>' + esc(m.name) + "</b><small>" + rw.cost + " pts</small></button>"; }).join("") +
+        S.menu.filter(function (m) { return m.card === rw.card && !m.off; }).map(function (m) { return '<button type="button" data-reward="' + rw.id + '" data-item="' + m.id + '"><b>' + esc(m.name) + "</b><small>" + rw.cost + " pts</small></button>"; }).join("") +
         '</div><button type="button" class="btn ghost" id="free-cancel">CANCEL</button></div>';
     }
     return '<div class="panel"><div class="lbl">Free ' + k + " for " + esc(found.first) + '</div><p class="note">Which one are they taking?' +
       (k === "dessert" ? " It comes off the stock as a giveaway automatically." : "") + '</p><div class="items">' +
-      S.menu.filter(function (m) { return m.card === k; }).map(function (m) { return '<button type="button" data-free="' + m.id + '"><b>' + esc(m.name) + "</b><small>free</small></button>"; }).join("") +
+      S.menu.filter(function (m) { return m.card === k && !m.off; }).map(function (m) { return '<button type="button" data-free="' + m.id + '"><b>' + esc(m.name) + "</b><small>free</small></button>"; }).join("") +
       '</div><button type="button" class="btn ghost" id="free-cancel">CANCEL</button></div>';
   }
 
@@ -513,7 +662,9 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     var crew = r.name === "truck" || r.name === "owner" || r.name === "scan" && S.staff;
     document.getElementById("brand").innerHTML = crew
       ? "<h1><span>SMASH &amp; PASS</span>TRUCK CREW</h1><p>Staff only. Stamp orders and see the numbers.</p>"
-      : "<h1><span>SMASH &amp; PASS</span>THE PASS CARD</h1><p>Buy 9, the 10th is on us. Pass the payment this time.</p>";
+      : "<h1><span>SMASH &amp; PASS</span>THE PASS CARD</h1><p>" + L("Buy 9, the 10th is on us. Burgers and dee'serts.") + "</p>" +
+        '<button type="button" class="lang" id="lang" lang="' + (LANG === "ar" ? "en" : "ar") + '">' + (LANG === "ar" ? "English" : "عربي") + "</button>";
+    document.documentElement.lang = arOn() ? "ar" : "en"; document.documentElement.dir = arOn() ? "rtl" : "ltr";
     document.title = crew ? "Truck crew · Pass Card" : "The Pass Card · Smash & Pass";
     if (crew && S.staff) {
       bar.hidden = false;
@@ -542,7 +693,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
         if (res.net && r.name === "card" && cardSaved) {
           S = cardSaved; MENU = {}; (S.menu || []).forEach(function (m) { MENU[m.id] = m; }); offline = true; return render();
         }
-        app.innerHTML = '<div class="panel"><p class="err">Couldn\'t load the Pass Card. ' + (res.net ? "No internet right now. " : "") + 'Pull down to refresh.</p></div>'; return;
+        app.innerHTML = '<div class="panel"><p class="err">' + L("Couldn't load the Pass Card. ") + (res.net ? L("No internet right now. ") : "") + L("Pull down to refresh.") + "</p></div>"; return;
       }
       offline = false; paintQueue();
       S = res; MENU = {}; (res.menu || []).forEach(function (m) { MENU[m.id] = m; });
@@ -614,17 +765,20 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     else if (t.hasAttribute("data-practice") && S.staff) openGame(t.getAttribute("data-practice"), true);
     else if (t.id === "qr-open" && S.customer) {
       var qb = document.getElementById("qrbig");
-      qb.innerHTML = '<div class="qrbig-in"><p class="lbl" style="color:var(--carbon)">Show this at the window</p>' +
+      qb.innerHTML = '<div class="qrbig-in"><p class="lbl" style="color:var(--carbon)">' + L("Show this at the window") + "</p>" +
         '<img src="' + qrSrc() + '" alt="Your Pass Card QR code"><p class="qrbig-name">' + esc(S.customer.first + " " + S.customer.last) + "</p>" +
-        '<p class="qrbig-num">' + esc(fmtPhone(S.customer.phone)) + '</p><p class="note" style="color:#555">The truck scans it to add your stamps. Every burger and dessert is a stamp; a Brownie Bag counts as 2.</p>' +
-        '<button type="button" class="btn pri" id="qr-close">DONE</button></div>';
+        '<p class="qrbig-num" dir="ltr">' + esc(fmtPhone(S.customer.phone)) + '</p><p class="note" style="color:#555">' + L("The truck scans it to add your stamps. Each order earns 1 burger stamp if it has burgers and 1 dessert stamp if it has desserts.") + "</p>" +
+        '<button type="button" class="btn pri" id="qr-close">' + L("DONE") + "</button></div>";
       qb.hidden = false; document.body.style.overflow = "hidden"; document.getElementById("qr-close").focus();
     }
+    else if (t.id === "lang") { LANG = LANG === "ar" ? "en" : "ar"; store("pc_lang", LANG); render(); }
+    else if (t.id === "howto-x") { store("pc_howto", 1); render(); }
+    else if (t.id === "howto-open") { store("pc_howto", null); render(); window.scrollTo(0, 0); }
     else if (t.id === "qr-close") { document.getElementById("qrbig").hidden = true; document.body.style.overflow = ""; var o = document.getElementById("qr-open"); if (o) o.focus(); }
     else if (t.id === "g-switch") {
       var pm = !!(t.closest(".g-end") && t.closest(".g-end").getAttribute("data-practice-mode"));
       var ov2 = document.getElementById("game");
-      ov2.innerHTML = '<div class="g-end"><p class="big">Pick a game</p>' + (pm ? "" : '<p class="lives">' + hearts(S.customer ? S.customer.gamesLeft : 0) + " <b>" + (S.customer ? S.customer.gamesLeft : 0) + " lives left</b></p>") +
+      ov2.innerHTML = '<div class="g-end"><p class="big">' + (pm ? "Pick a game" : L("Pick a game")) + "</p>" + (pm ? "" : '<p class="lives">' + hearts(S.customer ? S.customer.gamesLeft : 0) + " <b>" + livesText(S.customer ? S.customer.gamesLeft : 0) + "</b></p>") +
         pickerHtml(pm) + '<button type="button" class="btn ghost" id="g-close">' + (pm ? "BACK" : "BACK TO MY CARD") + "</button></div>";
     }
     else if (t.id === "g-close") { var ov = document.getElementById("game"); ov.hidden = true; ov.innerHTML = ""; document.body.style.overflow = ""; load(); }
@@ -652,63 +806,66 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     smash: ["🥩", "Perfect Smash", "Hit SMASH when the marker is in the middle. 5 rounds."]
   };
   function hearts(n) { return n > 0 ? "❤️".repeat(Math.min(n, 5)) + (n > 5 ? " +" + (n - 5) : "") : "🖤"; }
+  function livesText(n) { return n ? L(n === 1 ? "1 life left" : "{n} lives left", { n: n }) : L("No lives left"); }
   function pickerHtml(practice) {
     return '<div class="games" style="width:100%">' + (S.games || Object.keys(GAME_INFO)).map(function (g) { var i = GAME_INFO[g];
-      return '<button type="button" data-' + (practice ? "practice" : "game") + '="' + g + '"><span>' + i[0] + "</span><b>" + i[1] + "</b></button>"; }).join("") + "</div>";
+      return '<button type="button" data-' + (practice ? "practice" : "game") + '="' + g + '"><span>' + i[0] + "</span><b>" + L(i[1]) + "</b></button>"; }).join("") + "</div>";
   }
   function pointsHtml(c) {
-    var h = '<div class="panel pts"><div class="pts-top"><div><div class="lbl">⚡ Smash Points</div><p class="pts-n">' + (c.points || 0) + "</p></div>" +
-      '<p class="note" style="text-align:right">' + (S.pointsPerStamp || 10) + " points for every stamp.<br>Spend them at the window.</p></div>";
+    var h = '<div class="panel pts"><div class="pts-top"><div><div class="lbl">' + L("⚡ Smash Points") + '</div><p class="pts-n">' + (c.points || 0) + "</p></div>" +
+      '<p class="note pts-side">' + L("{n} points for every stamp.<br>Spend them at the window.", { n: S.pointsPerStamp || 10 }) + "</p></div>";
     (S.rewards || []).forEach(function (r) {
       var pc = Math.min(100, Math.round((c.points || 0) / r.cost * 100));
-      h += '<div class="rw"><div class="rw-h"><b>' + esc(r.name) + "</b><span>" + (c.points >= r.cost ? "READY · show your card" : r.cost - (c.points || 0) + " to go") + "</span></div>" +
-        '<div class="bar"><i style="width:' + pc + '%"></i></div><small>' + r.cost + " points</small></div>";
+      h += '<div class="rw"><div class="rw-h"><b>' + esc(L(r.name)) + "</b><span>" + (c.points >= r.cost ? L("READY · show your card") : L("{n} to go", { n: r.cost - (c.points || 0) })) + "</span></div>" +
+        '<div class="bar"><i style="width:' + pc + '%"></i></div><small>' + L("{n} points", { n: r.cost }) + "</small></div>";
     });
-    h += "</div>";
-    h += '<div class="panel"><div class="lbl">🎮 Game zone</div>' + (c.records && c.records.crack ? '<p class="note">🏆 Your Crack the Brûlée record: <b style="color:var(--butter)">' + c.records.crack + " / 1000</b></p>" : "");
-    if (c.scratchLeft) h += '<p class="note">You\'ve got a <b style="color:var(--butter)">scratch card</b> from your order. Scratch it!</p>' +
-      '<div class="scratch"><div class="scr-prize" id="scr-prize">?</div><canvas id="scr" width="300" height="140" aria-label="Scratch card"></canvas></div>';
+    return h + "</div>";
+  }
+  function gameZoneHtml(c) {
+    var h = '<div class="panel"><div class="lbl">' + L("🎮 Game zone") + "</div>" + (c.records && c.records.crack ? '<p class="note">' + L("🏆 Your Crack the Brûlée record: <b>{n} / 1000</b>", { n: c.records.crack }) + "</p>" : "");
+    if (c.scratchLeft) h += '<p class="note">' + L("You've got a <b>scratch card</b> from your order. Scratch it!") + "</p>" +
+      '<div class="scratch"><div class="scr-prize" id="scr-prize">?</div><canvas id="scr" width="300" height="140" aria-label="' + L("Scratch card") + '"></canvas></div>';
     if (c.gamesLeft) {
-      h += '<p class="lives">' + hearts(c.gamesLeft) + " <b>" + c.gamesLeft + " " + (c.gamesLeft === 1 ? "life" : "lives") + " left</b></p>" +
-        '<p class="note">Every order gives you ' + (c.lives || 5) + " lives: retry a game or switch. <b style=\"color:var(--butter)\">Every game = +" + (S.gameMax || 2) + ' Smash Points.</b> Your best scores go on the game leaderboards.</p><div class="games">';
+      h += '<p class="lives">' + hearts(c.gamesLeft) + " <b>" + livesText(c.gamesLeft) + "</b></p>" +
+        '<p class="note">' + L("Every order gives you {n} lives: retry a game or switch. <b>Every game = +{p} Smash Points.</b> Your best scores go on the game leaderboards.", { n: c.lives || 5, p: S.gameMax || 2 }) + '</p><div class="games">';
       (S.games || []).forEach(function (g) { var i = GAME_INFO[g], rc = c.records && c.records[g];
-        h += '<button type="button" data-game="' + g + '"><span>' + i[0] + "</span><b>" + i[1] + "</b><small>" + i[2] + (rc ? '<br><b style="color:var(--butter);font-family:inherit;font-size:12px">🏆 Your record: ' + rc + "</b>" : "") + "</small></button>"; });
+        h += '<button type="button" data-game="' + g + '"><span>' + i[0] + "</span><b>" + L(i[1]) + "</b><small>" + L(i[2]) + (rc ? '<br><b class="rec">' + L("🏆 Your record: {n}", { n: rc }) + "</b>" : "") + "</small></button>"; });
       h += "</div>";
-    } else if (!c.scratchLeft) h += '<p class="lives">🖤 <b>No lives left</b></p><p class="note">Every order gives you 5 lives and a scratch card. Show your card at the window, then play while you wait.</p>';
-    h += "</div>";
-    return h;
+    } else if (!c.scratchLeft) h += '<p class="lives">🖤 <b>' + L("No lives left") + '</b></p><p class="note">' + L("Every order gives you 5 lives, and from your second order a scratch card too. Show your card at the window, then play while you wait.") + "</p>";
+    return h + "</div>";
   }
   function achHtml(c) {
     var got = c.achievements || [];
-    return '<div class="panel"><div class="lbl">🏅 Achievements · ' + got.length + " / " + (S.achievements || []).length + '</div><div class="ach">' +
+    return '<div class="panel"><div class="lbl">' + L("🏅 Achievements · {a} / {b}", { a: got.length, b: (S.achievements || []).length }) + '</div><div class="ach">' +
       (S.achievements || []).map(function (a) { var on = got.indexOf(a.id) >= 0;
-        return '<div class="a' + (on ? " on" : "") + '"><span>' + (on ? a.icon : "🔒") + "</span><b>" + esc(a.name) + "</b><small>" + esc(a.how) + " · +" + a.pts + "</small></div>"; }).join("") +
+        return '<div class="a' + (on ? " on" : "") + '"><span>' + (on ? a.icon : "🔒") + "</span><b>" + esc(L(a.name)) + "</b><small>" + esc(L(a.how)) + " · +" + a.pts + "</small></div>"; }).join("") +
       "</div></div>";
   }
   function celebrate(r) {
-    var names = (r.achievements || []).map(function (id) { var a = (S.achievements || []).filter(function (x) { return x.id === id; })[0]; return a ? a.icon + " " + a.name : id; });
-    if (names.length) setTimeout(function () { toast("Achievement unlocked: " + names.join(", ")); }, 1600);
+    var names = (r.achievements || []).map(function (id) { var a = (S.achievements || []).filter(function (x) { return x.id === id; })[0]; return a ? a.icon + " " + L(a.name) : id; });
+    if (names.length) setTimeout(function () { toast(L("Achievement unlocked: {x}", { x: names.join(", ") })); }, 1600);
   }
 
   /* scratch card: the prize is drawn on the server the moment you start scratching */
+  var scratching = false;
   function initScratch() {
     var cv = document.getElementById("scr"); if (!cv || cv.dataset.on) return; cv.dataset.on = "1";
     var x = cv.getContext("2d"), started = false, done = false, cells = {}, W = cv.width, H = cv.height;
     var g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, "#C9C3B6"); g.addColorStop(.5, "#EDE8DC"); g.addColorStop(1, "#B5AFA2");
     x.fillStyle = g; x.fillRect(0, 0, W, H);
-    x.fillStyle = "#6B665C"; x.font = "bold 20px sans-serif"; x.textAlign = "center"; x.fillText("SCRATCH HERE ✨", W / 2, H / 2 + 7);
+    x.fillStyle = "#6B665C"; x.font = "bold 20px sans-serif"; x.textAlign = "center"; x.fillText(L("SCRATCH HERE ✨"), W / 2, H / 2 + 7);
     function at(e) { var r = cv.getBoundingClientRect(), p = e.touches ? e.touches[0] : e; return [(p.clientX - r.left) * W / r.width, (p.clientY - r.top) * H / r.height]; }
     function rub(e) {
       if (done) return; e.preventDefault();
       var p = at(e);
-      if (!started) { started = true; api("/api/pass/scratch", {}).then(function (r) {
-        if (!r.ok) { done = true; toast(r.error); return; }
-        document.getElementById("scr-prize").innerHTML = "+" + r.points + "<small>POINTS</small>";
+      if (!started) { started = true; scratching = true; api("/api/pass/scratch", {}).then(function (r) {
+        if (!r.ok) { done = true; scratching = false; toast(r.error); return; }
+        document.getElementById("scr-prize").innerHTML = "+" + r.points + "<small>" + L("POINTS") + "</small>";
         cv.dataset.pts = r.points; S.customer = Object.assign(S.customer, r.customer); }); }
       x.globalCompositeOperation = "destination-out"; x.beginPath(); x.arc(p[0], p[1], 20, 0, 7); x.fill();
       cells[Math.floor(p[0] / 30) + "," + Math.floor(p[1] / 28)] = 1;
       if (Object.keys(cells).length > 22 && cv.dataset.pts) { done = true; cv.style.transition = "opacity .5s"; cv.style.opacity = 0;
-        toast("+" + cv.dataset.pts + " Smash Points!"); setTimeout(function () { keepText(); }, 1800); }
+        toast(L("+{n} Smash Points!", { n: cv.dataset.pts })); setTimeout(function () { scratching = false; keepText(); }, 1800); }
     }
     var down = false;
     cv.addEventListener("pointerdown", function (e) { down = true; cv.setPointerCapture(e.pointerId); rub(e); });
@@ -725,14 +882,14 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   }
   function openGame(id, practice) {
     (practice ? Promise.resolve({ ok: true, play: null }) : api("/api/pass/game/start", { game: id })).then(function (r) {
-      if (!r.ok && r.net) { toast("No internet right now. Your game is still waiting, try again in a moment."); return; }
+      if (!r.ok && r.net) { toast(L("No internet right now. Your game is still waiting, try again in a moment.")); return; }
       if (!r.ok) { toast(r.error); return; }
       var ov = document.getElementById("game"), info = GAME_INFO[id];
       ov.hidden = false; document.body.style.overflow = "hidden";
       var left = practice ? null : Math.max(0, ((S.customer && S.customer.gamesLeft) || 1) - 1);
-      ov.innerHTML = '<div class="g-top"><b>' + info[0] + " " + info[1] + '</b><span id="g-hud"></span></div>' +
-        (practice ? '<p class="g-lives">PRACTICE · no points</p>' : '<p class="g-lives">' + hearts(left) + " " + left + " " + (left === 1 ? "life" : "lives") + " left after this game</p>") +
-        '<canvas id="g-cv"></canvas><p class="g-help">' + info[2] + "</p>";
+      ov.innerHTML = '<div class="g-top"><b>' + info[0] + " " + L(info[1]) + '</b><span id="g-hud" dir="ltr"></span></div>' +
+        (practice ? '<p class="g-lives">PRACTICE · no points</p>' : '<p class="g-lives">' + hearts(left) + " " + L(left === 1 ? "1 life left after this game" : "{n} lives left after this game", { n: left }) + "</p>") +
+        '<canvas id="g-cv"></canvas><p class="g-help">' + L(info[2]) + "</p>";
       var cv = document.getElementById("g-cv"), dpr = Math.min(2, window.devicePixelRatio || 1);
       var W = Math.min(window.innerWidth - 24, 420), H = Math.min(window.innerHeight - 200, 560);
       cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + "px"; cv.style.height = H + "px";
@@ -744,21 +901,21 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
         (practice ? Promise.resolve({ ok: true, score: score, raw: raw, practice: true }) : api("/api/pass/game/finish", body)).then(function (f) {
           /* no internet at the end: keep the score on the phone and send it later */
           if (!f.ok && f.net) { store("pc_finish", body); f = { ok: true, score: score, raw: raw, saved: true }; }
-          var big = raw != null ? '<p class="g-score">' + raw + "<small>/1000</small></p>" +
-              (rounds ? '<p class="note">Rounds: ' + rounds.join(" · ") + "</p>" : "") +
-              (f.newRecord ? '<p class="big" style="color:var(--butter)">🏆 NEW RECORD!</p>' : f.record ? '<p class="note">Your record: <b style="color:var(--butter)">' + f.record + "</b></p>" : "")
-            : '<p class="g-score">' + (f.ok ? f.score : score) + "<small>/100</small></p>";
-          ov.innerHTML = '<div class="g-end"><p class="big">' + (f.ok ? (f.score >= 90 ? "🔥 LEGENDARY" : f.score >= 60 ? "😎 NICE" : "👊 GOOD TRY") : "Game over") + "</p>" +
+          var big = raw != null ? '<p class="g-score" dir="ltr">' + raw + "<small>/1000</small></p>" +
+              (rounds ? '<p class="note">' + L("Rounds: {r}", { r: rounds.join(" · ") }) + "</p>" : "") +
+              (f.newRecord ? '<p class="big" style="color:var(--butter)">' + L("🏆 NEW RECORD!") + "</p>" : f.record ? '<p class="note">' + L("Your record: <b>{n}</b>", { n: f.record }) + "</p>" : "")
+            : '<p class="g-score" dir="ltr">' + (f.ok ? f.score : score) + "<small>/100</small></p>";
+          ov.innerHTML = '<div class="g-end"><p class="big">' + L(f.ok ? (f.score >= 90 ? "🔥 LEGENDARY" : f.score >= 60 ? "😎 NICE" : "👊 GOOD TRY") : "Game over") + "</p>" +
             big +
-            '<p class="note">' + (f.practice ? "Practice round: no points counted." : f.saved ? "No internet. Your score is saved and your points are added as soon as you're back online."
-              : f.ok ? (f.points ? "+" + f.points + " Smash Points · your score goes on the game leaderboard" : "That finished too fast to count.") : esc(f.error || "")) + "</p>";
+            '<p class="note">' + (f.practice ? "Practice round: no points counted." : f.saved ? L("No internet. Your score is saved and your points are added as soon as you're back online.")
+              : f.ok ? (f.points ? L("+{n} Smash Points · your score goes on the game leaderboard", { n: f.points }) : L("That finished too fast to count.")) : esc(L(f.error || ""))) + "</p>";
           if (f.ok && f.customer) { S.customer = Object.assign(S.customer, f.customer); celebrate(f); }
           var lives = practice ? 1 : f.customer ? f.customer.gamesLeft : f.saved ? Math.max(0, ((S.customer && S.customer.gamesLeft) || 1) - 1) : 0;
           var end = ov.querySelector(".g-end");
-          end.insertAdjacentHTML("beforeend", (practice ? "" : '<p class="lives">' + hearts(lives) + " <b>" + (lives ? lives + " " + (lives === 1 ? "life" : "lives") + " left" : "No lives left · your next order brings 5 more") + "</b></p>") +
-            (lives ? '<button type="button" class="btn pri" data-' + (practice ? "practice" : "game") + '="' + id + '">🔁 PLAY AGAIN</button>' +
-              '<button type="button" class="btn ghost" id="g-switch">🎮 CHANGE GAME</button>' : "") +
-            '<button type="button" class="btn ' + (lives ? "ghost" : "pri") + '" id="g-close">' + (practice ? "BACK" : "BACK TO MY CARD") + "</button>");
+          end.insertAdjacentHTML("beforeend", (practice ? "" : '<p class="lives">' + hearts(lives) + " <b>" + (lives ? livesText(lives) : L("No lives left · your next order brings 5 more")) + "</b></p>") +
+            (lives ? '<button type="button" class="btn pri" data-' + (practice ? "practice" : "game") + '="' + id + '">' + L("🔁 PLAY AGAIN") + "</button>" +
+              '<button type="button" class="btn ghost" id="g-switch">' + L("🎮 CHANGE GAME") + "</button>" : "") +
+            '<button type="button" class="btn ' + (lives ? "ghost" : "pri") + '" id="g-close">' + (practice ? "BACK" : L("BACK TO MY CARD")) + "</button>");
           end.setAttribute("data-practice-mode", practice ? "1" : "");
         });
       };
@@ -833,10 +990,10 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
         ctx.textAlign = "center"; ctx.fillStyle = "#FFD21C"; ctx.font = "bold 30px sans-serif";
         var y = cy + R * 0.75 + 50;
         if (state === "play") ctx.fillText(Math.min(1000, taps * 10) + " / 1000", cx, y);
-        else if (state === "ready") { ctx.fillText("ROUND " + (round + 1) + " OF " + ROUNDS, cx, y); ctx.font = "bold 17px sans-serif"; ctx.fillStyle = "#B3AEA3"; ctx.fillText("TAP THE RAMEKIN TO START", cx, y + 30); }
-        else if (state === "between") { ctx.fillText("ROUND " + round + ": " + scores[round - 1] + " / 1000", cx, y); ctx.font = "bold 17px sans-serif"; ctx.fillStyle = "#B3AEA3"; ctx.fillText("TAP FOR ROUND " + (round + 1), cx, y + 30); }
+        else if (state === "ready") { ctx.fillText(L("ROUND {r} OF {t}", { r: round + 1, t: ROUNDS }), cx, y); ctx.font = "bold 17px sans-serif"; ctx.fillStyle = "#B3AEA3"; ctx.fillText(L("TAP THE RAMEKIN TO START"), cx, y + 30); }
+        else if (state === "between") { ctx.fillText(L("ROUND {r}: {s} / 1000", { r: round, s: scores[round - 1] }), cx, y); ctx.font = "bold 17px sans-serif"; ctx.fillStyle = "#B3AEA3"; ctx.fillText(L("TAP FOR ROUND {r}", { r: round + 1 }), cx, y + 30); }
         ctx.font = "bold 15px sans-serif"; ctx.fillStyle = "#B3AEA3";
-        ctx.fillText((rec ? "YOUR RECORD " + rec : "NO RECORD YET") + (best ? "  ·  BEST TODAY " + best : ""), cx, 34);
+        ctx.fillText((rec ? L("YOUR RECORD {n}", { n: rec }) : L("NO RECORD YET")) + (best ? "  ·  " + L("BEST TODAY {n}", { n: best }) : ""), cx, 34);
       }
       function hudText() { hud.textContent = "R" + Math.min(ROUNDS, round + 1) + "/" + ROUNDS + " · ⏱ " + (state === "play" ? Math.max(0, SECS - (performance.now() - t0) / 1000).toFixed(1) : SECS + ".0"); }
       cv.addEventListener("pointerdown", function () {
@@ -873,13 +1030,13 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
         ctx.font = "60px sans-serif"; ctx.textAlign = "center"; ctx.fillText("🥩", W / 2, by - 50);
         ctx.fillStyle = "#FFD21C"; ctx.font = "bold 26px sans-serif";
         if (now - msgT < 700) ctx.fillText(msg, W / 2, by + 100);
-        ctx.fillStyle = "#B3AEA3"; ctx.font = "bold 16px sans-serif"; ctx.fillText("TAP ANYWHERE TO SMASH", W / 2, H - 30);
+        ctx.fillStyle = "#B3AEA3"; ctx.font = "bold 16px sans-serif"; ctx.fillText(L("TAP ANYWHERE TO SMASH"), W / 2, H - 30);
         hud.textContent = "Round " + Math.min(5, round + 1) + " / 5 · " + Math.round(total);
         requestAnimationFrame(loop);
       }
       cv.addEventListener("pointerdown", function () {
         if (over) return; var d = Math.abs(pos(performance.now()) - 0.5), pts = Math.max(0, 20 * (1 - d * 3.2));
-        total += pts; round++; msg = d < 0.03 ? "PERFECT!" : d < 0.08 ? "GREAT" : d < 0.15 ? "OK" : "MISS"; msgT = performance.now(); speed += 0.35;
+        total += pts; round++; msg = L(d < 0.03 ? "PERFECT!" : d < 0.08 ? "GREAT" : d < 0.15 ? "OK" : "MISS"); msgT = performance.now(); speed += 0.35;
         if (navigator.vibrate) navigator.vibrate(40);
         if (round >= 5) { over = true; setTimeout(function () { finish(total); }, 600); }
       });
@@ -895,7 +1052,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     phoneField.iso = c[0]; cc.setAttribute("data-iso", c[0]); cc.value = "+" + c[2];
     document.getElementById(id + "-flag").textContent = flag(c[0]);
     inp.setAttribute("data-max", c[4]); inp.placeholder = c[0] === "AE" ? "561234567" : ""; inp.value = inp.value.slice(0, c[4]);
-    document.getElementById(id + "-hint").textContent = lenText(c) + " after +" + c[2] + ", without the first 0";
+    document.getElementById(id + "-hint").textContent = hintText(c);
     ccList(id, null); if (focusNumber) inp.focus();
   }
   function ccList(id, q) {
@@ -906,7 +1063,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       return word ? x[1].toLowerCase().indexOf(word) >= 0 : !dig || x[2].indexOf(dig) === 0; });
     box.innerHTML = hits.length ? hits.map(function (x) {
       return '<button type="button" role="option" data-cc="' + id + '" data-iso="' + x[0] + '"><span>' + flag(x[0]) + '</span><b>+' + x[2] + "</b>" + esc(x[1]) + "</button>"; }).join("")
-      : '<p class="note" style="margin:8px">No country with that code.</p>';
+      : '<p class="note" style="margin:8px">' + L("No country with that code.") + "</p>";
     box.hidden = false; cc.setAttribute("aria-expanded", "true");
   }
   document.addEventListener("focusin", function (e) {
@@ -942,6 +1099,25 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     }
     var v = t.value.replace(/\D/g, "").replace(/^0/, "").slice(0, +t.getAttribute("data-max") || 15); if (v !== t.value) t.value = v;
   });
+  document.addEventListener("toggle", function (e) { if (e.target && e.target.id === "more") moreOpen = e.target.open; }, true);
+
+  /* the customer's card keeps itself up to date: when the truck stamps, it shows within a few seconds */
+  function sig(c) { return c ? [c.burger, c.dessert, c.points, c.gamesLeft, c.scratchLeft, (c.visits || []).length, c.pending ? c.pending.id : 0, (c.achievements || []).length].join("|") : ""; }
+  setInterval(function () {
+    if (route().name !== "card" || !S.customer || S.staff || document.hidden || offline || scratching || screen !== "home") return;
+    if (!document.getElementById("game").hidden) return;
+    var a = document.activeElement; if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
+    api("/api/pass/session").then(function (res) {
+      if (!res.ok || !res.customer || !S.customer || sig(res.customer) === sig(S.customer)) return;
+      var stamped = (res.customer.visits || []).length > (S.customer.visits || []).length;
+      S = res; MENU = {}; (res.menu || []).forEach(function (m) { MENU[m.id] = m; }); store("pc_card", res);
+      var qb = document.getElementById("qrbig");
+      if (stamped && !qb.hidden) { qb.hidden = true; document.body.style.overflow = ""; }
+      render();
+      if (stamped) { toast("✅ Stamped! Your card is updated."); api("/api/pass/board").then(function (b) { if (b.ok) { lb = b; if (route().name === "card") keepText(); } }); }
+    });
+  }, 5000);
+
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && !document.getElementById("qrbig").hidden) document.getElementById("qr-close").click();
   });
@@ -963,7 +1139,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       api("/api/pass/review", { food: rv.food, vibe: rv.vibe, comment: val("r-text"), card: rv.card }).then(function (r) {
         done(); if (!r.ok) return showErr("r-err", r.error);
         screen = "home"; rv = { food: 0, vibe: 0, card: "burger" }; load();
-        toast(r.bonus ? "Thanks! Bonus stamp added to your " + r.bonus + " card" : "Thanks for the review");
+        toast(r.bonus ? "Thanks! Bonus stamp added to your " + r.bonus + " card" : "Thanks for the review");   /* both lines are in AR */
       });
     }
     if (f.id === "f-staff") api("/api/login", { user: val("st-user"), pin: val("st-pin") }).then(function (r) { done(); if (!r.ok) return showErr("st-err", r.error); load(); });
