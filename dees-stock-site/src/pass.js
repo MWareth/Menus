@@ -89,6 +89,12 @@ async function ensureTables(env) {
     await env.DB.batch(tables.map((t) => env.DB.prepare("DELETE FROM " + t))
       .concat([env.DB.prepare("INSERT OR IGNORE INTO meta (k, v) VALUES ('pass-wipe:2026-10-13', ?)").bind(new Date().toISOString())]));
   }
+  /* once: cards deleted by customers before 14 Oct left their points, games and history behind */
+  if (!(await env.DB.prepare("SELECT 1 AS x FROM meta WHERE k = 'pass-orphans:2026-10-14'").first())) {
+    await env.DB.batch(["pass_visits", "pass_redeems", "pass_completions", "pass_points", "pass_plays"]
+      .map((t) => env.DB.prepare("DELETE FROM " + t + " WHERE phone NOT IN (SELECT phone FROM pass_customers)"))
+      .concat([env.DB.prepare("INSERT OR IGNORE INTO meta (k, v) VALUES ('pass-orphans:2026-10-14', ?)").bind(new Date().toISOString())]));
+  }
   /* added after launch: lets a customer keep their name off Top Smashers */
   try { await env.DB.prepare("ALTER TABLE pass_customers ADD COLUMN board_hide INTEGER NOT NULL DEFAULT 0").run(); } catch (e) { /* already there */ }
   /* added later: a game's own score (Crack the Brûlée is out of 1000), for personal records */
@@ -343,19 +349,8 @@ export async function handlePass(request, env, path, d) {
     return ok({ bonus, achievements: earned });
   }
 
-  if (path === "/api/pass/delete" && request.method === "POST") {
-    const phone = await customerId();
-    const c = phone ? await get(phone) : null;
-    if (!c) return fail("signed_out", 401);
-    const b = await body();
-    if (!d.sameString(await pinOf(phone, String(b.pin || "")), c.pin)) return fail("That PIN isn't right.", 401);
-    await env.DB.batch([
-      env.DB.prepare("DELETE FROM pass_visits WHERE phone = ?").bind(phone),
-      env.DB.prepare("DELETE FROM pass_redeems WHERE phone = ?").bind(phone),
-      env.DB.prepare("DELETE FROM pass_customers WHERE phone = ?").bind(phone)
-    ]);
-    return ok({}, { "set-cookie": "pc=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0" });
-  }
+  /* customers can't delete their own card any more: they email smashandpassdxb@gmail.com and the admin does it */
+  if (path === "/api/pass/delete") return fail("To delete your Pass Card, email smashandpassdxb@gmail.com.", 403);
 
   /* ---------------- staff (the stock app's own logins) ---------------- */
   if (path === "/api/pass/board" && request.method === "GET") {
@@ -535,6 +530,18 @@ export async function handlePass(request, env, path, d) {
       await env.DB.prepare("INSERT INTO pass_redeems (phone, at, card, item, by, stock) VALUES (?, ?, ?, ?, ?, ?)")
         .bind(phone, new Date().toISOString(), "points", m.id, me.id, stock).run();
       return ok({ customer: await withStats(await get(phone)), stock });
+    }
+
+    /* admin only: remove a customer completely (card, stamps, visits, free items, points, games, records) */
+    if (path === "/api/pass/staff/delete" && request.method === "POST") {
+      if (me.role !== "admin") return fail("Only the admin can delete a Pass Card.", 403);
+      const b = await body();
+      const phone = normPhone(b.phone);
+      if (!validPhone(phone) || !(await get(phone))) return fail("Customer not found.", 404);
+      if (String(b.confirm || "").trim().toUpperCase() !== "DELETE") return fail('Type DELETE to confirm.');
+      await env.DB.batch(["pass_visits", "pass_redeems", "pass_completions", "pass_points", "pass_plays", "pass_customers"]
+        .map((t) => env.DB.prepare("DELETE FROM " + t + " WHERE phone = ?").bind(phone)));
+      return ok({ deleted: phone });
     }
 
     if (path === "/api/pass/staff/resetpin" && request.method === "POST") {

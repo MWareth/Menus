@@ -341,9 +341,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       c.visits.forEach(function (v) { h += '<div class="bl"><span>' + niceDate(v.at) + " · " + esc(itemsText(v.items)) + '</span><span style="color:var(--muted);flex:none">' + (v.food ? "★ " + v.food + "/" + v.vibe : "") + "</span></div>"; });
       h += "</div>";
     }
-    h += '<details class="panel"><summary>Delete my Pass Card</summary><p class="note">This removes your card, your stamps and your reviews for good.</p>' +
-      '<form id="f-del" class="row" novalidate><div class="field"><label for="del-pin">Your PIN</label><input id="del-pin" inputmode="numeric" maxlength="4" type="password" autocomplete="current-password"></div>' +
-      '<button class="btn red" type="submit" style="align-self:flex-end">DELETE FOR GOOD</button></form><p class="err" id="del-err" hidden></p></details>';
+    h += '<p class="note" style="text-align:center;margin:4px 0 12px">Want your Pass Card and data deleted? Email <a href="mailto:smashandpassdxb@gmail.com?subject=Delete%20my%20Pass%20Card" style="color:var(--butter)">smashandpassdxb@gmail.com</a> from the email on your card.</p>';
     return h;
   }
   function loginForm() {
@@ -362,7 +360,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       phoneField("j-phone", "Mobile number") +
       '<div class="field"><label for="j-email">Email</label><input id="j-email" type="email" autocomplete="email" required></div>' +
       '<div class="field"><label for="j-pin">Choose a 4-digit PIN</label><input id="j-pin" inputmode="numeric" maxlength="4" type="password" autocomplete="new-password"></div>' +
-      '<label class="check"><input type="checkbox" id="j-ok"><span>I agree that Smash &amp; Pass keeps my name, number, email, what I buy and my reviews to run the Pass Card. I can delete my card at any time.</span></label>' +
+      '<label class="check"><input type="checkbox" id="j-ok"><span>I agree that Smash &amp; Pass keeps my name, number, email, what I buy and my reviews to run the Pass Card. To delete my card, I email smashandpassdxb@gmail.com.</span></label>' +
       '<label class="check"><input type="checkbox" id="j-offers"><span>Send me offers on WhatsApp or email (optional).</span></label>' +
       '<p class="err" id="j-err" hidden></p><button class="btn pri" type="submit">CREATE MY CARD</button>' +
       '<button class="btn ghost" type="button" id="to-login">I ALREADY HAVE ONE</button></form>';
@@ -420,6 +418,10 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     h += '</div><details class="panel"><summary>Customer forgot their PIN</summary><form id="f-reset" class="row" novalidate>' +
       '<div class="field"><label for="rp-pin">New 4-digit PIN</label><input id="rp-pin" inputmode="numeric" maxlength="4"></div>' +
       '<button class="btn ghost" type="submit" style="align-self:flex-end">SET NEW PIN</button></form><p class="err" id="rp-err" hidden></p></details>';
+    if (S.staff.role === "admin" && !c.offline) h += '<details class="panel"><summary>Delete this customer (admin)</summary>' +
+      '<p class="note">For deletion requests sent to smashandpassdxb@gmail.com. Removes the card and everything on it for good: stamps, visits, free items, points, games and records. It can\'t be undone.</p>' +
+      '<form id="f-cdel" class="row" novalidate><div class="field"><label for="cdel-confirm">Type DELETE</label><input id="cdel-confirm" autocomplete="off" autocapitalize="characters"></div>' +
+      '<button class="btn red" type="submit" style="align-self:flex-end">DELETE FOR GOOD</button></form><p class="err" id="cdel-err" hidden></p></details>';
     return h;
   }
   function redeemPanel() {
@@ -961,7 +963,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       if (!r.ok && r.net && val("s-q").replace(/\D/g, "").length >= 8) { offline = true; paintQueue(); found = { offline: true, phone: val("s-q"), first: "", last: "" }; welcomeP = null; basket = {}; return render(); }
       if (!r.ok) return showErr("s-err", r.error); found = r.customer; welcomeP = r.welcome; basket = {}; render(); });
     if (f.id === "f-reset") api("/api/pass/staff/resetpin", { phone: found.phone, pin: val("rp-pin") }).then(function (r) { done(); if (!r.ok) return showErr("rp-err", r.error); toast("New PIN set. Tell the customer."); render(); });
-    if (f.id === "f-del") api("/api/pass/delete", { pin: val("del-pin") }).then(function (r) { done(); if (!r.ok) return showErr("del-err", r.error); S.customer = null; store("pc_card", null); store("pc_qr", null); render(); toast("Your Pass Card was deleted."); });
+    if (f.id === "f-cdel") api("/api/pass/staff/delete", { phone: found.phone, confirm: val("cdel-confirm") }).then(function (r) {
+      done(); if (!r.ok) return showErr("cdel-err", r.error); found = null; welcomeP = null; basket = {}; render(); toast("Pass Card deleted with all its stamps, points and history."); });
   });
 
   load();
