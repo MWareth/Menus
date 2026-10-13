@@ -109,6 +109,19 @@ button{cursor:pointer}
 .card .meta{font-weight:700;font-size:13px}
 .ready-banner{background:var(--carbon);color:var(--butter);border-radius:12px;padding:8px 12px;font-weight:900;letter-spacing:.06em;font-size:13px;text-align:center}
 .qrbox{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.panel.qr-top{display:flex;flex-direction:row;gap:14px;align-items:center;width:100%;text-align:left;color:var(--paper);font:inherit;cursor:pointer;border-color:var(--butter)}
+.qr-thumb{flex:none;width:78px;height:78px;background:#fff;border-radius:12px;padding:5px}
+.qr-thumb img{display:block;width:100%;height:100%}
+.qr-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.qr-txt b{font-size:18px;color:var(--butter)}
+.qr-txt small{color:var(--muted);font-size:12.5px;line-height:1.35}
+.qr-go{flex:none;font-size:22px;color:var(--butter)}
+.qrbig{position:fixed;inset:0;z-index:60;background:#fff;display:grid;place-items:center;padding:20px;overflow:auto}
+.qrbig-in{width:100%;max-width:420px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--carbon)}
+.qrbig-in img{width:min(86vw,380px);height:auto;aspect-ratio:1;display:block}
+.qrbig-name{font-size:22px;font-weight:900;margin:6px 0 0}
+.qrbig-num{font-size:18px;font-weight:700;margin:0;letter-spacing:.04em}
+.qrbig .btn{width:100%;margin-top:8px}
 .qr{background:#fff;padding:6px;border-radius:12px;flex:none;width:150px;height:150px}
 .qr img{display:block;width:138px;height:138px}
 .big{font-family:var(--display);font-size:22px;color:var(--butter);margin:0}
@@ -149,6 +162,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   <main id="app" class="wrap" aria-live="polite"><div class="panel"><p class="note">Loading your card…</p></div></main>
 </div>
 <div id="game" class="game" hidden role="dialog" aria-label="Game"></div>
+<div id="qrbig" class="qrbig" hidden role="dialog" aria-modal="true" aria-label="Your Pass Card QR code"></div>
 <div id="toast" class="toast" hidden></div>
 <script>
 (function () {
@@ -250,6 +264,11 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     if (!c) return screen === "join" ? joinForm() : screen === "crew" ? needStaff() + '<button class="btn ghost" type="button" id="to-login">BACK</button>' : loginForm();
     if (screen === "review" && c.pending) return reviewForm(c);
     var h = '<div class="hello"><h2>Hey ' + esc(c.first) + '</h2><button type="button" class="btn ghost" id="logout" style="flex:none;padding:8px 12px">LOG OUT</button></div>';
+    /* the QR sits on top as a thumbnail; tapping it fills the screen for the truck to scan */
+    h += '<button type="button" class="panel qr-top" id="qr-open" aria-label="Show my QR code full screen">' +
+      '<span class="qr-thumb"><img src="/api/pass/qr.svg" alt=""></span>' +
+      '<span class="qr-txt"><span class="lbl">Show your QR code</span><b>' + esc(fmtPhone(c.phone)) + "</b>" +
+      '<small>A unique QR code made for your phone number. Tap to make it big.</small></span><span class="qr-go" aria-hidden="true">⤢</span></button>';
     if (c.pending) h += '<div class="panel"><div class="lbl">How was your visit on ' + niceDate(c.pending.at) + "?</div>" +
       '<p class="note">Two quick ratings and an optional comment.' + (c.bonus ? "" : ' Your first review earns a <b style="color:var(--butter)">bonus stamp</b>.') + "</p>" +
       '<button type="button" class="btn pri" id="go-review">RATE MY VISIT</button></div>';
@@ -264,8 +283,6 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       (lv.next ? " · " + (lv.next[0] - lv.total) + " more to " + lv.next[2] + " " + lv.next[1] : " · top level") + "</p></div>";
     h += cardHtml(c, "burger") + cardHtml(c, "dessert");
     h += boardHtml(lb, c) + achHtml(c);
-    h += '<div class="panel"><div class="lbl">Show your QR code</div><div class="qrbox"><div class="qr"><img src="/api/pass/qr.svg" alt="Your Pass Card QR code"></div>' +
-      '<div style="flex:1 1 160px"><p class="big">' + esc(fmtPhone(c.phone)) + '</p><p class="note">A unique QR code made for your phone number. The truck scans it to add your stamps. Every burger and dessert is a stamp; a Brownie Bag counts as 2.</p></div></div></div>';
     if (c.visits.length) {
       h += '<div class="panel"><div class="lbl">Your visits</div>';
       c.visits.forEach(function (v) { h += '<div class="bl"><span>' + niceDate(v.at) + " · " + esc(itemsText(v.items)) + '</span><span style="color:var(--muted);flex:none">' + (v.food ? "★ " + v.food + "/" + v.vibe : "") + "</span></div>"; });
@@ -499,6 +516,15 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       });
     }
     else if (t.hasAttribute("data-game")) openGame(t.getAttribute("data-game"));
+    else if (t.id === "qr-open" && S.customer) {
+      var qb = document.getElementById("qrbig");
+      qb.innerHTML = '<div class="qrbig-in"><p class="lbl" style="color:var(--carbon)">Show this at the window</p>' +
+        '<img src="/api/pass/qr.svg" alt="Your Pass Card QR code"><p class="qrbig-name">' + esc(S.customer.first + " " + S.customer.last) + "</p>" +
+        '<p class="qrbig-num">' + esc(fmtPhone(S.customer.phone)) + '</p><p class="note" style="color:#555">The truck scans it to add your stamps. Every burger and dessert is a stamp; a Brownie Bag counts as 2.</p>' +
+        '<button type="button" class="btn pri" id="qr-close">DONE</button></div>';
+      qb.hidden = false; document.body.style.overflow = "hidden"; document.getElementById("qr-close").focus();
+    }
+    else if (t.id === "qr-close") { document.getElementById("qrbig").hidden = true; document.body.style.overflow = ""; var o = document.getElementById("qr-open"); if (o) o.focus(); }
     else if (t.id === "g-close") { var ov = document.getElementById("game"); ov.hidden = true; ov.innerHTML = ""; document.body.style.overflow = ""; load(); }
     else if (t.hasAttribute("data-free")) {
       t.disabled = true;
@@ -762,6 +788,9 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       if (hit) { t.value = dd.slice(hit[2].length); pickCountry(t.id, hit[0], false); }
     }
     var v = t.value.replace(/\D/g, "").replace(/^0/, "").slice(0, +t.getAttribute("data-max") || 15); if (v !== t.value) t.value = v;
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !document.getElementById("qrbig").hidden) document.getElementById("qr-close").click();
   });
   document.addEventListener("submit", function (e) {
     e.preventDefault();

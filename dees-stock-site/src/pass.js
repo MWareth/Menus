@@ -258,7 +258,7 @@ export async function handlePass(request, env, path, d) {
   if (path === "/api/pass/join" && request.method === "POST") {
     const b = await body();
     const phone = normPhone(b.phone), first = clean(b.first, 40), last = clean(b.last, 40),
-      email = clean(b.email, 120), pin = String(b.pin || "");
+      email = clean(b.email, 120).toLowerCase(), pin = String(b.pin || "");
     if (!first || !last) return fail("Add your first and last name.");
     if (!validPhone(phone)) return fail("Check your mobile number: pick the country, then the number without the first 0.");
     if (!email) return fail("Add your email.");
@@ -266,6 +266,9 @@ export async function handlePass(request, env, path, d) {
     if (!/^\d{4}$/.test(pin)) return fail("Your PIN needs exactly 4 digits.");
     if (b.consent !== true) return fail("Tick the box to agree, so we can keep your stamps.");
     if (await get(phone)) return fail("This number already has a Pass Card. Log in instead.", 409);
+    /* one Pass Card per email too (compared without capitals or spaces) */
+    if (await env.DB.prepare("SELECT 1 AS x FROM pass_customers WHERE lower(trim(email)) = ? LIMIT 1").bind(email.toLowerCase()).first())
+      return fail("This email already has a Pass Card. Log in with that card's number, or use another email.", 409);
     await env.DB.prepare("INSERT INTO pass_customers (phone, first, last, email, pin, offers, joined) VALUES (?, ?, ?, ?, ?, ?, ?)")
       .bind(phone, first, last, email || null, await pinOf(phone, pin), b.offers === true ? 1 : 0, new Date().toISOString()).run();
     return ok({}, { "set-cookie": await issue(phone) });
