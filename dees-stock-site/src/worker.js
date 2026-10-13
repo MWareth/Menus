@@ -598,11 +598,22 @@ async function api(request, env, path) {
     const found = (board.state.team || []).find(
       (u) => (u.user || "").toLowerCase() === who || (u.name || "").trim().toLowerCase() === who
     );
+    /* 5 wrong tries on one username locks it for 15 minutes (a 4-digit PIN is guessable otherwise) */
+    const failKey = "loginfail:" + who.slice(0, 60);
+    const failRow = await env.DB.prepare("SELECT v FROM meta WHERE k = ?").bind(failKey).first();
+    const fail = failRow ? JSON.parse(failRow.v) : { n: 0, until: 0 };
+    if (fail.until > Date.now()) {
+      return json({ ok: false, error: "Too many wrong tries. Wait 15 minutes and try again." }, 429);
+    }
     /* hash either way, so a wrong username and a wrong PIN cost the same time */
     const given = await pinHash(pin);
     if (!found || !sameString(given, found.pin)) {
+      const n = fail.n + 1;
+      await env.DB.prepare("INSERT OR REPLACE INTO meta (k, v) VALUES (?, ?)")
+        .bind(failKey, JSON.stringify(n >= 5 ? { n: 0, until: Date.now() + 15 * 60e3 } : { n, until: 0 })).run();
       return json({ ok: false, error: "That username and PIN don't match." }, 401);
     }
+    if (failRow) await env.DB.prepare("DELETE FROM meta WHERE k = ?").bind(failKey).run();
     return json(
       { ok: true, me: { id: found.id, name: found.name, user: found.user, role: found.role } },
       200,

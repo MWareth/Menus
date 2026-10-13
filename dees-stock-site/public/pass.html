@@ -28,6 +28,8 @@ button{cursor:pointer}
 .brand p{margin:0;color:var(--muted);font-size:12.5px;max-width:150px;text-align:right}
 .staffbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--muted)}
 .staffbar a{color:var(--paper);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 12px;text-decoration:none;font-weight:900;letter-spacing:.06em}
+.crewlink{display:block;margin:10px auto 0;background:none;border:0;color:var(--line);font:inherit;font-size:11px;letter-spacing:.08em;cursor:pointer;padding:4px 10px}
+.staffbar .linkbtn{margin-left:auto;background:none;border:0;color:var(--muted);font:inherit;font-weight:900;letter-spacing:.06em;cursor:pointer;padding:6px 4px}
 .staffbar a[aria-current="page"]{background:var(--butter);color:var(--carbon);border-color:var(--butter)}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px}
 .lbl{font-size:11.5px;font-weight:900;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
@@ -97,7 +99,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
 </head>
 <body>
 <div class="wrap">
-  <header class="brand">
+  <header class="brand" id="brand">
     <h1><span>SMASH &amp; PASS</span>THE PASS CARD</h1>
     <p>Buy 9, the 10th is on us. Pass the payment this time.</p>
   </header>
@@ -151,7 +153,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   /* ---------------- customer ---------------- */
   function viewCard() {
     var c = S.customer;
-    if (!c) return screen === "join" ? joinForm() : loginForm();
+    if (!c) return screen === "join" ? joinForm() : screen === "crew" ? needStaff() + '<button class="btn ghost" type="button" id="to-login">BACK</button>' : loginForm();
     if (screen === "review" && c.pending) return reviewForm(c);
     var h = '<div class="hello"><h2>Hey ' + esc(c.first) + '</h2><button type="button" class="btn ghost" id="logout" style="flex:none;padding:8px 12px">LOG OUT</button></div>';
     if (c.pending) h += '<div class="panel"><div class="lbl">How was your visit on ' + niceDate(c.pending.at) + "?</div>" +
@@ -182,7 +184,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       '<div class="field"><label for="l-pin">4-digit PIN</label><input id="l-pin" inputmode="numeric" maxlength="4" type="password" autocomplete="current-password"></div>' +
       '<p class="err" id="l-err" hidden></p><button class="btn pri" type="submit">OPEN MY CARD</button>' +
       '<button class="btn ghost" type="button" id="to-join">NEW HERE? GET A PASS CARD</button>' +
-      '<p class="note">Forgot your PIN? Ask at the truck window and they\'ll reset it.</p></form>';
+      '<p class="note">Forgot your PIN? Ask at the truck window and they\'ll reset it.</p>' +
+      '<button type="button" class="crewlink" id="to-crew">crew</button></form>';
   }
   function joinForm() {
     return '<form class="panel" id="f-join" novalidate><div class="lbl">Get your Pass Card</div>' +
@@ -207,8 +210,10 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
 
   /* ---------------- truck ---------------- */
   function needStaff() {
-    return '<div class="panel"><div class="lbl">Truck staff only</div><p class="note">Log in to the stock app on this phone first, then scan the card again.</p>' +
-      '<a class="btn pri" href="/" style="text-align:center;text-decoration:none">OPEN THE STOCK APP</a></div>';
+    return '<form class="panel" id="f-staff" novalidate><div class="lbl">Truck crew login</div><p class="note">Same username and PIN as Dee\'s Stock.</p>' +
+      '<div class="field"><label for="st-user">Username</label><input id="st-user" autocomplete="username" autocapitalize="none"></div>' +
+      '<div class="field"><label for="st-pin">PIN</label><input id="st-pin" type="password" inputmode="numeric" autocomplete="current-password"></div>' +
+      '<p class="err" id="st-err" hidden></p><button class="btn pri" type="submit">LOG IN</button></form>';
   }
   function viewTruck() {
     if (!S.staff) return needStaff();
@@ -287,14 +292,23 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   }
 
   /* ---------------- render + load ---------------- */
+  /* one link for everyone: on /pass a crew login goes straight to its dashboard */
+  function crewHome() { return S.staff && (S.staff.role === "admin" || S.staff.role === "dees") ? "/pass/owner" : "/pass/truck"; }
   function render() {
     var r = route();
     var bar = document.getElementById("staffbar");
-    if (S.staff) {
+    /* the customer page never shows anything staff-side; truck + owner are their own pages */
+    var crew = r.name === "truck" || r.name === "owner" || r.name === "scan" && S.staff;
+    document.getElementById("brand").innerHTML = crew
+      ? "<h1><span>SMASH &amp; PASS</span>TRUCK CREW</h1><p>Staff only. Stamp orders and see the numbers.</p>"
+      : "<h1><span>SMASH &amp; PASS</span>THE PASS CARD</h1><p>Buy 9, the 10th is on us. Pass the payment this time.</p>";
+    document.title = crew ? "Truck crew · Pass Card" : "The Pass Card · Smash & Pass";
+    if (crew && S.staff) {
       bar.hidden = false;
-      bar.innerHTML = "<span>" + esc(S.staff.name) + " ·</span>" + [["/pass/truck", "TRUCK"], ["/pass/owner", "OWNER"], ["/pass", "MY CARD"]].map(function (l) {
-        var cur = (r.name === "truck" || r.name === "scan") && l[0] === "/pass/truck" || r.name === "owner" && l[0] === "/pass/owner" || r.name === "card" && l[0] === "/pass";
-        return '<a href="' + l[0] + '" data-nav' + (cur ? ' aria-current="page"' : "") + ">" + l[1] + "</a>"; }).join("");
+      bar.innerHTML = "<span>" + esc(S.staff.name) + " ·</span>" + [["/pass/truck", "TRUCK"], ["/pass/owner", "OWNER"]].map(function (l) {
+        var cur = (r.name === "truck" || r.name === "scan") && l[0] === "/pass/truck" || r.name === "owner" && l[0] === "/pass/owner";
+        return '<a href="' + l[0] + '" data-nav' + (cur ? ' aria-current="page"' : "") + ">" + l[1] + "</a>"; }).join("") +
+        '<button type="button" class="linkbtn" id="st-out">LOG OUT</button>';
     } else bar.hidden = true;
     if (r.name === "card") app.innerHTML = viewCard();
     else if (r.name === "owner") app.innerHTML = viewOwner();
@@ -306,6 +320,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     api("/api/pass/session").then(function (res) {
       if (!res.ok) { app.innerHTML = '<div class="panel"><p class="err">Couldn\'t load the Pass Card. Pull down to refresh.</p></div>'; return; }
       S = res; MENU = {}; (res.menu || []).forEach(function (m) { MENU[m.id] = m; });
+      if (r.name === "card" && S.staff) { history.replaceState(null, "", crewHome()); screen = "home"; return load(); }
       if (r.name === "scan" && S.staff) {
         return api("/api/pass/staff/find?q=" + encodeURIComponent(r.code)).then(function (f) {
           found = f.ok ? f.customer : null; welcomeP = f.ok ? f.welcome : null; basket = {}; render();
@@ -324,8 +339,10 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     var a = e.target.closest("a[data-nav]");
     if (a) { e.preventDefault(); found = null; redeemFor = null; go(a.getAttribute("href")); return; }
     var t = e.target.closest("button"); if (!t) return;
+    if (t.id === "st-out") { api("/api/logout", {}).then(function () { found = null; owner = null; screen = "home"; go("/pass"); }); return; }
     if (t.id === "to-join") { screen = "join"; render(); }
     else if (t.id === "to-login") { screen = "home"; render(); }
+    else if (t.id === "to-crew") { screen = "crew"; render(); }
     else if (t.id === "go-review") { screen = "review"; render(); }
     else if (t.id === "r-back") { screen = "home"; render(); }
     else if (t.id === "logout") api("/api/pass/logout", {}).then(function () { S.customer = null; screen = "home"; render(); });
@@ -378,6 +395,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
         toast(r.bonus ? "Thanks! Bonus stamp added to your " + r.bonus + " card" : "Thanks for the review");
       });
     }
+    if (f.id === "f-staff") api("/api/login", { user: val("st-user"), pin: val("st-pin") }).then(function (r) { done(); if (!r.ok) return showErr("st-err", r.error); load(); });
     if (f.id === "f-find") api("/api/pass/staff/find?q=" + encodeURIComponent(val("s-q"))).then(function (r) { done(); if (!r.ok) return showErr("s-err", r.error); found = r.customer; welcomeP = r.welcome; basket = {}; render(); });
     if (f.id === "f-reset") api("/api/pass/staff/resetpin", { phone: found.phone, pin: val("rp-pin") }).then(function (r) { done(); if (!r.ok) return showErr("rp-err", r.error); toast("New PIN set. Tell the customer."); render(); });
     if (f.id === "f-del") api("/api/pass/delete", { pin: val("del-pin") }).then(function (r) { done(); if (!r.ok) return showErr("del-err", r.error); S.customer = null; render(); toast("Your Pass Card was deleted."); });
