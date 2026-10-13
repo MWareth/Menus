@@ -628,7 +628,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   var GAME_INFO = {
     stack: ["🍔", "Burger Stack", "Tap to drop each layer. Stack it tall and straight."],
     "catch": ["🍰", "Catch the Dee'sert", "Slide the tray. Catch desserts, dodge the ketchup bombs."],
-    crack: ["🔨", "Crack the Brûlée", "Tap the ramekin as fast as you can. 10 seconds."],
+    crack: ["🔨", "Crack the Brûlée", "3 rounds of 15 seconds. Tap fast, score out of 1000. Beat your record."],
     smash: ["🥩", "Perfect Smash", "Hit SMASH when the marker is in the middle. 5 rounds."]
   };
   function pointsHtml(c) {
@@ -640,12 +640,13 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
         '<div class="bar"><i style="width:' + pc + '%"></i></div><small>' + r.cost + " points</small></div>";
     });
     h += "</div>";
-    h += '<div class="panel"><div class="lbl">🎮 Game zone</div>';
+    h += '<div class="panel"><div class="lbl">🎮 Game zone</div>' + (c.records && c.records.crack ? '<p class="note">🏆 Your Crack the Brûlée record: <b style="color:var(--butter)">' + c.records.crack + " / 1000</b></p>" : "");
     if (c.scratchLeft) h += '<p class="note">You\'ve got a <b style="color:var(--butter)">scratch card</b> from your order. Scratch it!</p>' +
       '<div class="scratch"><div class="scr-prize" id="scr-prize">?</div><canvas id="scr" width="300" height="140" aria-label="Scratch card"></canvas></div>';
     if (c.gamesLeft) {
       h += '<p class="note">' + c.gamesLeft + " game" + (c.gamesLeft > 1 ? "s" : "") + " to play. Up to " + (S.gameMax || 25) + " points each.</p><div class=\"games\">";
-      (S.games || []).forEach(function (g) { var i = GAME_INFO[g]; h += '<button type="button" data-game="' + g + '"><span>' + i[0] + "</span><b>" + i[1] + "</b><small>" + i[2] + "</small></button>"; });
+      (S.games || []).forEach(function (g) { var i = GAME_INFO[g], rc = c.records && c.records[g];
+        h += '<button type="button" data-game="' + g + '"><span>' + i[0] + "</span><b>" + i[1] + "</b><small>" + i[2] + (rc ? '<br><b style="color:var(--butter);font-family:inherit;font-size:12px">🏆 Your record: ' + rc + "</b>" : "") + "</small></button>"; });
       h += "</div>";
     } else if (!c.scratchLeft) h += '<p class="note">Every order unlocks a game and a scratch card. Show your card at the window, then play while you wait.</p>';
     h += "</div>";
@@ -708,13 +709,18 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + "px"; cv.style.height = H + "px";
       var ctx = cv.getContext("2d"); ctx.scale(dpr, dpr);
       var hud = document.getElementById("g-hud");
-      var finish = function (score) {
+      var finish = function (score, raw, rounds) {
         score = Math.max(0, Math.min(100, Math.round(score)));
-        (practice ? Promise.resolve({ ok: true, score: score, practice: true }) : api("/api/pass/game/finish", { play: r.play, score: score })).then(function (f) {
+        var body = { play: r.play, score: score }; if (raw != null) body.raw = raw;
+        (practice ? Promise.resolve({ ok: true, score: score, raw: raw, practice: true }) : api("/api/pass/game/finish", body)).then(function (f) {
           /* no internet at the end: keep the score on the phone and send it later */
-          if (!f.ok && f.net) { store("pc_finish", { play: r.play, score: score }); f = { ok: true, score: score, saved: true }; }
+          if (!f.ok && f.net) { store("pc_finish", body); f = { ok: true, score: score, raw: raw, saved: true }; }
+          var big = raw != null ? '<p class="g-score">' + raw + "<small>/1000</small></p>" +
+              (rounds ? '<p class="note">Rounds: ' + rounds.join(" · ") + "</p>" : "") +
+              (f.newRecord ? '<p class="big" style="color:var(--butter)">🏆 NEW RECORD!</p>' : f.record ? '<p class="note">Your record: <b style="color:var(--butter)">' + f.record + "</b></p>" : "")
+            : '<p class="g-score">' + (f.ok ? f.score : score) + "<small>/100</small></p>";
           ov.innerHTML = '<div class="g-end"><p class="big">' + (f.ok ? (f.score >= 90 ? "🔥 LEGENDARY" : f.score >= 60 ? "😎 NICE" : "👊 GOOD TRY") : "Game over") + "</p>" +
-            '<p class="g-score">' + (f.ok ? f.score : score) + "<small>/100</small></p>" +
+            big +
             '<p class="note">' + (f.practice ? "Practice round: no points counted." : f.saved ? "No internet. Your score is saved and your points are added as soon as you're back online."
               : f.ok ? "+" + f.points + " Smash Points" : esc(f.error || "")) + "</p>" +
             '<button type="button" class="btn pri" id="g-close">' + (practice ? "BACK" : "BACK TO MY CARD") + "</button></div>";
@@ -776,28 +782,48 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       requestAnimationFrame(loop);
     },
     /* Crack the Brûlée: taps in 10 seconds, 70 taps = 100 */
+    /* Crack the Brûlée: 3 rounds of 15 seconds, each tap = 10 points (1000 max a round);
+       the best round counts and is the customer's record to beat */
     crack: function (ctx, W, H, cv, hud, finish) {
-      var taps = 0, t0 = null, over = false, cracks = [];
+      var ROUNDS = 3, SECS = 15, round = 0, taps = 0, t0 = null, state = "ready", best = 0, scores = [], cracks = [], readyAt = 0;
+      var rec = (S.customer && S.customer.records && S.customer.records.crack) || 0;
       function draw() {
         ctx.fillStyle = "#1E1E1E"; ctx.fillRect(0, 0, W, H);
-        var cx = W / 2, cy = H / 2, R = Math.min(W, H) * 0.36;
+        var cx = W / 2, cy = H / 2 - 20, R = Math.min(W, H) * 0.36;
         rr(ctx, cx - R, cy, R * 2, R * 0.75, 18, "#FFF9EE");
         ctx.fillStyle = "#FFF9EE"; ctx.beginPath(); ctx.ellipse(cx, cy, R, R * 0.32, 0, 0, 7); ctx.fill();
         ctx.fillStyle = "#E3A23B"; ctx.beginPath(); ctx.ellipse(cx, cy, R * 0.86, R * 0.25, 0, 0, 7); ctx.fill();
         ctx.strokeStyle = "#5A2E0E"; ctx.lineWidth = 2;
         cracks.forEach(function (c) { ctx.beginPath(); ctx.moveTo(cx + c[0], cy + c[1]); ctx.lineTo(cx + c[2], cy + c[3]); ctx.stroke(); });
-        ctx.fillStyle = "#FFD21C"; ctx.font = "bold 22px sans-serif"; ctx.textAlign = "center";
-        ctx.fillText(t0 ? taps + " CRACKS" : "TAP TO START", cx, cy + R * 0.75 + 46);
+        ctx.textAlign = "center"; ctx.fillStyle = "#FFD21C"; ctx.font = "bold 30px sans-serif";
+        var y = cy + R * 0.75 + 50;
+        if (state === "play") ctx.fillText(Math.min(1000, taps * 10) + " / 1000", cx, y);
+        else if (state === "ready") { ctx.fillText("ROUND " + (round + 1) + " OF " + ROUNDS, cx, y); ctx.font = "bold 17px sans-serif"; ctx.fillStyle = "#B3AEA3"; ctx.fillText("TAP THE RAMEKIN TO START", cx, y + 30); }
+        else if (state === "between") { ctx.fillText("ROUND " + round + ": " + scores[round - 1] + " / 1000", cx, y); ctx.font = "bold 17px sans-serif"; ctx.fillStyle = "#B3AEA3"; ctx.fillText("TAP FOR ROUND " + (round + 1), cx, y + 30); }
+        ctx.font = "bold 15px sans-serif"; ctx.fillStyle = "#B3AEA3";
+        ctx.fillText((rec ? "YOUR RECORD " + rec : "NO RECORD YET") + (best ? "  ·  BEST TODAY " + best : ""), cx, 34);
       }
+      function hudText() { hud.textContent = "R" + Math.min(ROUNDS, round + 1) + "/" + ROUNDS + " · ⏱ " + (state === "play" ? Math.max(0, SECS - (performance.now() - t0) / 1000).toFixed(1) : SECS + ".0"); }
       cv.addEventListener("pointerdown", function () {
-        if (over) return; if (!t0) { t0 = performance.now(); tick(); }
+        var now = performance.now();
+        if (state === "done" || now < readyAt) return;
+        if (state === "ready" || state === "between") { state = "play"; taps = 0; cracks = []; t0 = now; tick(); }
         taps++; var R = Math.min(W, H) * 0.3, a = Math.random() * 7;
-        cracks.push([Math.cos(a) * R * 0.2, Math.sin(a) * R * 0.06, Math.cos(a) * R * (0.4 + Math.random() * 0.5), Math.sin(a) * R * 0.2]); draw();
-        if (navigator.vibrate) navigator.vibrate(8);
+        cracks.push([Math.cos(a) * R * 0.2, Math.sin(a) * R * 0.06, Math.cos(a) * R * (0.4 + Math.random() * 0.5), Math.sin(a) * R * 0.2]);
+        if (cracks.length > 80) cracks.shift();
+        draw(); if (navigator.vibrate) navigator.vibrate(8);
       });
-      function tick() { if (over) return; var left = 10 - (performance.now() - t0) / 1000; hud.textContent = "⏱ " + Math.max(0, left).toFixed(1);
-        if (left <= 0) { over = true; return finish(taps / 70 * 100); } requestAnimationFrame(tick); }
-      draw(); hud.textContent = "⏱ 10.0";
+      function tick() {
+        if (state !== "play") return; hudText();
+        if (performance.now() - t0 >= SECS * 1000) {
+          var sc = Math.min(1000, taps * 10); scores.push(sc); best = Math.max(best, sc); round++;
+          readyAt = performance.now() + 1200;               /* a short pause so a late tap doesn't start the next round */
+          if (round >= ROUNDS) { state = "done"; draw(); return setTimeout(function () { finish(best / 10, best, scores); }, 900); }
+          state = "between"; draw(); hudText(); return;
+        }
+        requestAnimationFrame(tick);
+      }
+      draw(); hudText();
     },
     /* Perfect Smash: 5 rounds, hit near the middle of the bar */
     smash: function (ctx, W, H, cv, hud, finish) {

@@ -90,6 +90,8 @@ async function ensureTables(env) {
   }
   /* added after launch: lets a customer keep their name off Top Smashers */
   try { await env.DB.prepare("ALTER TABLE pass_customers ADD COLUMN board_hide INTEGER NOT NULL DEFAULT 0").run(); } catch (e) { /* already there */ }
+  /* added later: a game's own score (Crack the Brûlée is out of 1000), for personal records */
+  try { await env.DB.prepare("ALTER TABLE pass_plays ADD COLUMN raw INTEGER").run(); } catch (e) { /* already there */ }
   readyDone = true;
 }
 
@@ -212,8 +214,11 @@ export async function handlePass(request, env, path, d) {
     const r = await env.DB.prepare("SELECT card, month, COUNT(*) AS n FROM pass_completions WHERE phone = ? GROUP BY card, month").bind(c.phone).all();
     const done = { burger: 0, dessert: 0 }; let month = 0;
     (r.results || []).forEach((x) => { done[x.card] = (done[x.card] || 0) + x.n; if (x.month === dubaiMonth()) month += x.n; });
+    const records = {};
+    ((await env.DB.prepare("SELECT game, MAX(raw) AS r FROM pass_plays WHERE phone = ? AND raw IS NOT NULL GROUP BY game").bind(c.phone).all()).results || [])
+      .forEach((x) => { if (x.r) records[x.game] = x.r; });
     const ach = ((await env.DB.prepare("SELECT kind FROM pass_points WHERE phone = ? AND kind LIKE 'ach:%'").bind(c.phone).all()).results || []).map((x) => x.kind.slice(4));
-    return { ...pub(c), done, doneMonth: month, boardHide: !!c.board_hide, points: await balance(c.phone),
+    return { ...pub(c), done, doneMonth: month, boardHide: !!c.board_hide, points: await balance(c.phone), records,
       gamesLeft: (await tokens(c.phone, "game")).length + ((await openPlay(c.phone)) ? 1 : 0), scratchLeft: (await tokens(c.phone, "scratch")).length, achievements: ach };
   };
   /* Top Smashers: cards finished this month, ties go to whoever got there first.
@@ -387,16 +392,19 @@ export async function handlePass(request, env, path, d) {
     const b = await body();
     const p = await env.DB.prepare("SELECT * FROM pass_plays WHERE id = ? AND phone = ? AND kind = 'game' AND finished IS NULL").bind(String(b.play || ""), phone).first();
     if (!p) return fail("That game is already over.", 409);
-    /* every game lasts at least ~8 seconds; a faster finish is a replayed request, not a game */
-    const quick = Date.now() - Date.parse(p.started) < 6000;
-    const score = quick ? 0 : Math.max(0, Math.min(100, Math.round(Number(b.score) || 0)));
+    /* every game takes a while (Crack the Brûlée is 3 x 15 s); a faster finish is a replayed request, not a game */
+    const quick = Date.now() - Date.parse(p.started) < (p.game === "crack" ? 40000 : 6000);
+    const raw = p.game === "crack" ? (quick ? 0 : Math.max(0, Math.min(1000, Math.round(Number(b.raw) || 0)))) : null;
+    const score = quick ? 0 : raw != null ? Math.round(raw / 10) : Math.max(0, Math.min(100, Math.round(Number(b.score) || 0)));
+    const before = raw != null ? ((await env.DB.prepare("SELECT MAX(raw) AS r FROM pass_plays WHERE phone = ? AND game = ?").bind(phone, p.game).first()) || {}).r || 0 : 0;
     const pts = Math.round(score / 100 * GAME_MAX);
     const now = new Date().toISOString();
-    const res = await env.DB.prepare("UPDATE pass_plays SET finished = ?, score = ?, points = ? WHERE id = ? AND finished IS NULL").bind(now, score, pts, p.id).run();
+    const res = await env.DB.prepare("UPDATE pass_plays SET finished = ?, score = ?, points = ?, raw = ? WHERE id = ? AND finished IS NULL").bind(now, score, pts, raw, p.id).run();
     if (!(res.meta && res.meta.changes)) return fail("That game is already over.", 409);
     if (pts) await pointsRow(phone, pts, "game", p.game + " " + score).run();
     const earned = score >= 90 ? await award(phone, ["high_score"]) : [];
-    return ok({ score, points: pts, achievements: earned, customer: await withStats(await get(phone)) });
+    return ok({ score, raw, points: pts, achievements: earned, customer: await withStats(await get(phone)),
+      record: raw != null ? Math.max(before, raw) : null, newRecord: raw != null && raw > 0 && raw > before });
   }
 
   if (path === "/api/pass/scratch" && request.method === "POST") {
