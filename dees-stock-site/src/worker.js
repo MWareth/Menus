@@ -417,6 +417,20 @@ export const REPAIRS = {
       if (+it.realPackaging !== 0.6) { it.realPackaging = 0.6; changed = true; }
     });
     return changed;
+  },
+  /* 13 Oct: the Pass Card is starting over with no customers. Its test runs
+     logged real desserts off the stock as giveaways (welcome surprise, free
+     dessert, points reward), all marked "Pass Card…"; those pieces go back to
+     unsold. Deliveries already closed in the settle are left as they are. */
+  "pass-card-test-giveaways": (state) => {
+    const closed = new Set((state.weeks || []).map((w) => w.start));
+    let changed = false;
+    (state.batches || []).forEach((b) => {
+      if (closed.has(b.drop || b.id) || !Array.isArray(b.sales)) return;
+      const keep = b.sales.filter((x) => !(x.kind === "gift" && /^Pass Card/.test(String(x.ch || ""))));
+      if (keep.length !== b.sales.length) { b.sales = keep; changed = true; }
+    });
+    return changed;
   }
 };
 

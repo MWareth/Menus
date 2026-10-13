@@ -81,6 +81,13 @@ async function ensureTables(env) {
     env.DB.prepare("CREATE TABLE IF NOT EXISTS pass_plays (id TEXT PRIMARY KEY, phone TEXT NOT NULL, visit_id INTEGER NOT NULL," +
       " kind TEXT NOT NULL, game TEXT, started TEXT NOT NULL, finished TEXT, score INTEGER, points INTEGER, UNIQUE (visit_id, kind))")
   ]);
+  /* 13 Oct: start the Pass Card over. Every customer and all their history goes,
+     once; the truck QR scan counter (pass_scans) and the team logins stay. */
+  if (!(await env.DB.prepare("SELECT 1 AS x FROM meta WHERE k = 'pass-wipe:2026-10-13'").first())) {
+    const tables = ["pass_customers", "pass_visits", "pass_redeems", "pass_completions", "pass_points", "pass_plays"];
+    await env.DB.batch(tables.map((t) => env.DB.prepare("DELETE FROM " + t))
+      .concat([env.DB.prepare("INSERT OR IGNORE INTO meta (k, v) VALUES ('pass-wipe:2026-10-13', ?)").bind(new Date().toISOString())]));
+  }
   /* added after launch: lets a customer keep their name off Top Smashers */
   try { await env.DB.prepare("ALTER TABLE pass_customers ADD COLUMN board_hide INTEGER NOT NULL DEFAULT 0").run(); } catch (e) { /* already there */ }
   readyDone = true;
