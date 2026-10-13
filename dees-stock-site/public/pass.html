@@ -395,7 +395,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   function syncQueue() {
     var q = queue(); if (!q.length || syncing) return; syncing = true;
     var item = q[0];
-    api("/api/pass/staff/stamp", { phone: item.phone, items: item.items, offline: true, qid: item.qid }).then(function (res) {
+    api("/api/pass/staff/stamp", { phone: item.phone, items: item.items, offline: true, qid: item.qid, at: item.at }).then(function (res) {
       syncing = false;
       if (res.net || res.error === "staff_only") { paintQueue(); return; }      /* still offline / logged out: try later */
       offline = false;
@@ -772,6 +772,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
         }
         if (!res.ok) { t.disabled = false; toast(res.error || "Couldn't stamp. Try again."); return; }
         found = res.customer; basket = {}; welcomeP = null; render();
+        var short = (res.stock && res.stock.short || []).map(function (x) { return x.qty + "× " + x.name; }).join(", ");
+        if (short) { setTimeout(function () { toast("Not found in stock: " + short + ". Log it in Dee's Stock by hand.", true); }, 3200); }
         toast(res.welcome ? "Stamped. Welcome surprise: " + res.welcome.label + (res.welcome.kind === "dessert" ? " (logged as a giveaway)" : "")
           : (res.completed && res.completed.length ? "🎉 Card complete! Free " + res.completed.join(" + ") + " banked, new card started"
             : "Stamped: +" + res.added.burger + " burger, +" + res.added.dessert + " dessert"));

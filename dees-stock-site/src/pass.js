@@ -12,7 +12,7 @@
  * cannot be made up for someone else's.
  */
 import qrcode from "qrcode-generator";
-import { mailReady, sendMail, orderEmail } from "./mail.js";
+import { mailReady, sendMail, orderEmail, alertEmail, dubaiTime } from "./mail.js";
 
 export const NEED = 9;
 /* `off` = not sold right now: kept so past visits still read right, hidden from the truck */
@@ -526,18 +526,31 @@ export async function handlePass(request, env, path, d) {
         await env.DB.prepare("UPDATE pass_customers SET surprise = ?, surprise_at = ? WHERE phone = ? AND surprise IS NULL")
           .bind(tag, new Date().toISOString(), phone).run();
       }
+      /* an offline stamp keeps the time it was taken (up to a week back), so the sale lands on the right day */
+      const now = Date.now(), t0 = b.offline === true ? Date.parse(b.at) : NaN;
+      const at = new Date(t0 > now - 7 * 864e5 && t0 <= now ? t0 : now).toISOString();
+      const sold = await saleToStock(env, d, items, me, at);
       const done = [...filled("burger", phone, c.burger, burger), ...filled("dessert", phone, c.dessert, dessert)];
       await env.DB.batch([
         ...done.map(([p, k]) => completion(p, k)),
         pointsRow(phone, (burger + dessert) * POINTS_PER_STAMP, "order", Object.entries(items).map(([k, n]) => n + "x " + k).join(", ") + (qid ? " #" + qid : "")),
         env.DB.prepare("UPDATE pass_customers SET burger = burger + ?, dessert = dessert + ? WHERE phone = ?").bind(burger, dessert, phone),
         env.DB.prepare("INSERT INTO pass_visits (phone, at, items, by, burger, dessert) VALUES (?, ?, ?, ?, ?, ?)")
-          .bind(phone, new Date().toISOString(), JSON.stringify(items), me.id, burger, dessert)
+          .bind(phone, at, JSON.stringify(items), me.id, burger, dessert)
       ]);
       const earned = await checkOrderAchievements(phone);
       const after = await withStats(await get(phone));
       /* the customer's order email, sent after the reply so the truck never waits for it */
-      if (mailReady(env) && c.email && !c.no_order_email && d.later) {
+      const copied = mailReady(env) && c.email && !c.no_order_email && d.later;
+      /* the owner's dessert alert, unless the BCC of the customer's email already tells them */
+      if (!copied && sold.logged.length && mailReady(env) && env.ALERT_TO && d.later) {
+        const n = sold.logged.reduce((a, x) => a + x.qty, 0);
+        d.later(sendMail(env, { to: env.ALERT_TO, fromName: "Dee's Stock alerts", ...alertEmail({
+          title: "🍰 " + n + " dessert" + (n === 1 ? "" : "s") + " sold",
+          lines: sold.logged.map((x) => x.qty + "× " + x.name + " · " + sold.ch + " · " + dubaiTime(at) + " · Pass Card, stamped by " + me.name),
+          link: new URL(request.url).origin + "/" }) }));
+      }
+      if (copied) {
         const origin = new URL(request.url).origin;
         const mail = orderEmail({
           first: c.first, need: NEED, card: { burger: after.burger, dessert: after.dessert }, points: after.points, gameMin: GAME_WINDOW_MIN,
@@ -547,7 +560,7 @@ export async function handlePass(request, env, path, d) {
         d.later(sendMail(env, { to: c.email, bcc: env.ALERT_TO, fromName: "Smash & Pass", ...mail }));
       }
       return ok({ customer: after, added: { burger, dessert }, welcome, completed: done.map((x) => x[1]),
-        points: (burger + dessert) * POINTS_PER_STAMP, achievements: earned });
+        points: (burger + dessert) * POINTS_PER_STAMP, achievements: earned, stock: { logged: sold.logged, short: sold.short } });
     }
 
     if (path === "/api/pass/staff/redeem" && request.method === "POST") {
@@ -674,6 +687,44 @@ async function giftFromStock(env, d, itemName, me, opts) {
     if ((await d.saveBoard(env, board.version, st)) != null) return true;
   }
   return false;
+}
+
+/* A stamped order's desserts are logged as sales, so the truck doesn't log them
+   twice: each piece comes off the oldest open lot of that item still in date,
+   spilling into the next lot when one runs out. Anything not found in stock is
+   returned so the truck can log it by hand. */
+async function saleToStock(env, d, items, me, at) {
+  const want = Object.entries(items).map(([id, n]) => ({ m: MENU_BY_ID.get(id), n })).filter((x) => x.m && x.m.stock);
+  if (!want.length) return { logged: [], short: [] };
+  const on = new Date(Date.parse(at) + 4 * 3600e3).toISOString().slice(0, 10);
+  const addDays = (ds, n) => { const t = new Date(ds + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() + (+n || 0)); return t.toISOString().slice(0, 10); };
+  const left = (b) => (+b.qty || 0) - (b.sales || []).reduce((a, s) => a + (+s.qty || 0), 0);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const board = await d.loadBoard(env);
+    const st = board.state;
+    const closed = new Set((st.weeks || []).map((w) => w.start));
+    const ch = (Array.isArray(st.channels) && st.channels[0]) || "Window";
+    const logged = [], short = [];
+    want.forEach(({ m, n }) => {
+      const it = (st.items || []).find((i) => i.name === m.stock);
+      const lots = !it ? [] : (st.batches || [])
+        .filter((b) => b.itemId === it.id && !b.voided && !closed.has(b.drop || b.id) && left(b) > 0 && addDays(b.madeOn, b.shelf) >= on)
+        .sort((a, b) => (a.madeOn < b.madeOn ? -1 : a.madeOn > b.madeOn ? 1 : 0));
+      let need = n;
+      for (const lot of lots) {
+        if (!need) break;
+        const q = Math.min(need, left(lot));
+        lot.sales = (lot.sales || []).concat([{ qty: q, by: me.id, at, on, ch, pass: true }]);
+        need -= q;
+      }
+      if (n - need) logged.push({ name: m.stock, qty: n - need });
+      if (need) short.push({ name: m.stock, qty: need });
+    });
+    if (!logged.length) return { logged, short };
+    st.updatedAt = new Date().toISOString();
+    if ((await d.saveBoard(env, board.version, st)) != null) return { logged, short, ch };
+  }
+  return { logged: [], short: want.map(({ m, n }) => ({ name: m.stock, qty: n })) };
 }
 
 /* The welcome surprise for a first visit: the dessert lot closest to its
