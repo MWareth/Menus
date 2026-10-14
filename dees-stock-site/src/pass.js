@@ -21,6 +21,7 @@ export const PASS_MENU = [
   { id: "ss", name: "San Sebastian", card: "dessert", stamps: 1, stock: "San Sebastian" },
   { id: "brownie", name: "Brownie Bag (2 pcs)", card: "dessert", stamps: 1, stock: "Brownie Bag" },
   { id: "cb", name: "Crème Brûlée", card: "dessert", stamps: 1, stock: "Crème Brûlée" },
+  { id: "choc", name: "Chocolate Cake", card: "dessert", stamps: 1, stock: "Chocolate Cake" },
   { id: "lazy", name: "Lazy Cake", card: "dessert", stamps: 1, stock: "Lazy Cake", off: true },
   { id: "pav", name: "Mini Pavlova", card: "dessert", stamps: 1, stock: "Mini Pavlova", off: true },
   { id: "smash", name: "Smashed burger", card: "burger", stamps: 1, off: true },

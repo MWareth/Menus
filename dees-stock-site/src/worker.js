@@ -423,6 +423,16 @@ export const REPAIRS = {
      logged real desserts off the stock as giveaways (welcome surprise, free
      dessert, points reward), all marked "Pass Card…"; those pieces go back to
      unsold. Deliveries already closed in the settle are left as they are. */
+  /* 14 Oct: Dee's new Chocolate Cake joins the stock as a slice. It goes in
+     uncosted with no price; Dee fills the recipe, yield and price on the
+     Recipes tab, and until then it still sells and stamps on the Pass Card. */
+  "chocolate-cake-item": (state) => {
+    if ((state.items || []).some((it) => /^chocolate cake$/i.test(String(it.name || "").trim()))) return false;
+    state.items = state.items || [];
+    state.items.push({ id: "i-choc", name: "Chocolate Cake", note: "slice", price: 0, shelf: 3, active: true,
+      batchWord: "cake", portionWord: "slice", yieldPieces: 0, perPortion: 1, packaging: 0.25, recipe: [] });
+    return true;
+  },
   "pass-card-test-giveaways": (state) => {
     const closed = new Set((state.weeks || []).map((w) => w.start));
     let changed = false;

@@ -3709,7 +3709,7 @@
      name so it works on the live board with no reseed; an item's own `emoji`
      wins if one is ever set. */
   var ITEM_EMOJI = { "San Sebastian": "🧀", "Brownie Bag": "🍫", "Lazy Cake": "🎂",
-                     "Crème Brûlée": "🍮", "Mini Pavlova": "🍓" };
+                     "Crème Brûlée": "🍮", "Mini Pavlova": "🍓", "Chocolate Cake": "🍰" };
   function itemEmoji(it) { return (it && it.emoji) || (it && ITEM_EMOJI[it.name]) || ""; }
   function itemLabel(it) { if (!it) return "Deleted item"; var e = itemEmoji(it); return (e ? e + " " : "") + it.name; }
   /* San Sebastian sits at the top of every item list; the rest keep their order */
