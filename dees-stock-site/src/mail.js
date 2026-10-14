@@ -122,14 +122,14 @@ export function orderEmail({ first, items, card, need, points, gameMin, link, un
     '<p style="margin:0 0 6px;font-size:12px;letter-spacing:2px;color:#B3AEA3;font-weight:bold">YOUR ORDER</p>' +
     '<p style="margin:0">' + esc(items) + "</p></div>" +
     '<div style="background:#1E1E1E;border-radius:14px;padding:14px 16px;margin-bottom:14px"><table style="width:100%;border-collapse:collapse;color:#FFF9EE">' +
-    row("🍔 Burger card", (card.burger % need) + " / " + need) + row("🍰 Dee'sert card", (card.dessert % need) + " / " + need) +
+    row("🍔 Savory card", (card.burger % need) + " / " + need) + row("🍰 Dee'sert card", (card.dessert % need) + " / " + need) +
     (freeB ? row("🎁 Free burgers waiting", freeB) : "") + (freeD ? row("🎁 Free desserts waiting", freeD) : "") +
     row("⚡ Smash Points", points) + "</table></div>" +
     '<p style="margin:0 0 16px;color:#FFD21C;font-weight:bold">🎮 Your games are open for ' + gameMin + " minutes. Play while you wait!</p>" +
     '<p style="margin:0 0 22px"><a href="' + esc(link) + '" style="display:inline-block;background:#FFD21C;color:#101010;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:12px">OPEN MY PASS CARD</a></p>' +
     '<p style="margin:0;font-size:12px;color:#8A857B">You get this because you have a Smash &amp; Pass Pass Card. <a href="' + esc(unsub) + '" style="color:#B3AEA3">Stop order emails</a></p>');
   const text = "Thanks " + first + "! Your order is on your Pass Card.\n\nYour order: " + items +
-    "\nBurger card: " + (card.burger % need) + "/" + need + "\nDee'sert card: " + (card.dessert % need) + "/" + need +
+    "\nSavory card: " + (card.burger % need) + "/" + need + "\nDee'sert card: " + (card.dessert % need) + "/" + need +
     (freeB ? "\nFree burgers waiting: " + freeB : "") + (freeD ? "\nFree desserts waiting: " + freeD : "") +
     "\nSmash Points: " + points + "\n\nYour games are open for " + gameMin + " minutes: " + link + "\n\nStop order emails: " + unsub;
   return { subject: "Thanks for your order! Your Pass Card is updated", html, text };
