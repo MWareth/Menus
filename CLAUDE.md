@@ -71,3 +71,11 @@ balance, ½ CTO on the key, black card to cut the bounce. Blue hour is the money
 
 - Prices are AED. Never invent a price — leave a bracketed placeholder.
 - Never invent brand facts; if the proposal doesn't cover it, ask.
+
+## Dessert stickers (standard)
+
+Expiry stickers + lid tabs always use `stickers/make_sheet.py` (A4: 30 square
+3.4 cm stickers with a SCAN ME QR to the Pass Card, MADE/EXP, "10th one FREE";
+24 white lid tabs 2 cm | 0.8 cm | 2 cm at the bottom). Example:
+`python3 stickers/make_sheet.py --made "14 Oct 2026" --exp "17 Oct 2026" "San Sebastian:9" "Brownie Bag:12"`
+then `node stickers/render.mjs Dees-Smash-stickers`. `--tabs-only` reprints just the tabs.

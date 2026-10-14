@@ -1,0 +1,83 @@
+"""The standard Dee's x Smash & Pass sticker sheet (A4).
+
+Top: 3.4 cm square expiry stickers, 5 across x 6 rows (30 per page), "Option C":
+a yellow SCAN ME tab on the QR (Pass Card sign-up, /t), logo, emoji, name,
+MADE / EXP dates and "10th one FREE".
+Bottom: 24 white lid tabs, 4 across x 6 rows, 2 cm | 0.8 cm | 2 cm
+(FOLLOW US | logo | @SmashAndPass.DXB), Lilita One, thin grey cut lines.
+
+usage:
+  python3 stickers/make_sheet.py --made "14 Oct 2026" --exp "17 Oct 2026" "San Sebastian:9" "Brownie Bag:12" "Chocolate Cake:9"
+  python3 stickers/make_sheet.py --tabs-only            # lid tabs only, same spot, to reprint a used sheet
+  then: node stickers/render.mjs <out>                   # writes <out>.pdf and <out>-sheet.png
+options: --out NAME (default Dees-Smash-stickers), --no-tabs
+More than 30 stickers spill onto extra pages.
+"""
+import argparse, base64, io, os, qrcode, qrcode.image.svg
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+URL = "https://dees-stock.deestreats2026.workers.dev/t"
+EMOJI = {"San Sebastian": "🍰", "Brownie Bag": "🍫", "Chocolate Cake": "🍫🍰", "Crème Brûlée": "🍮"}
+PER_PAGE = 30
+
+ap = argparse.ArgumentParser()
+ap.add_argument("--made"); ap.add_argument("--exp")
+ap.add_argument("--out", default="Dees-Smash-stickers")
+ap.add_argument("--tabs-only", action="store_true"); ap.add_argument("--no-tabs", action="store_true")
+ap.add_argument("items", nargs="*", help='"Name:count"')
+a = ap.parse_args()
+if not a.tabs_only and not (a.made and a.exp and a.items):
+    ap.error("give --made, --exp and at least one \"Name:count\" (or --tabs-only)")
+
+b64 = lambda p: base64.b64encode(open(p, "rb").read()).decode()
+logo = "data:image/png;base64," + b64(os.path.join(HERE, "..", "smash-n-pass-brand-deck", "logo.png"))
+lilita = "data:font/ttf;base64," + b64(os.path.join(HERE, "LilitaOne.ttf"))
+buf = io.BytesIO(); qrcode.make(URL, image_factory=qrcode.image.svg.SvgPathImage, border=1).save(buf)
+qr = "data:image/svg+xml;base64," + base64.b64encode(buf.getvalue()).decode()
+IG = ('<svg class="ig" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="6" fill="none" stroke="#17140F" stroke-width="2.4"/>'
+      '<circle cx="12" cy="12" r="4.6" fill="none" stroke="#17140F" stroke-width="2.4"/><circle cx="17.6" cy="6.4" r="1.5" fill="#17140F"/></svg>')
+
+def sticker(name):
+    return (f'<div class="tk"><div class="top"><div class="qcol"><div class="pill">SCAN ME</div><img class="q" src="{qr}"></div>'
+            f'<div class="side"><img class="lg" src="{logo}"><span class="emo">{EMOJI.get(name, "")}</span><div class="prod">{name}</div></div></div>'
+            f'<div class="dt"><span>MADE</span> {a.made}</div><div class="dt best"><span>EXP</span> {a.exp}</div><div class="cta">10th one FREE 🎁</div></div>')
+
+TAB = (f'<div class="tab"><div class="p l">{IG}<span>FOLLOW US</span></div><div class="p m"><img src="{logo}"></div>'
+       f'<div class="p r"><span>@SmashAndPass.DXB</span></div></div>')
+
+names = [] if a.tabs_only else [n for spec in a.items for n in [spec.rsplit(":", 1)[0]] * int(spec.rsplit(":", 1)[1])]
+pages = [names[i:i + PER_PAGE] for i in range(0, len(names), PER_PAGE)] or [[]]
+tabs = "" if a.no_tabs else f'<div class="tabs">{TAB * 24}</div>'
+body = "".join(f'<div class="sheet"><div class="grid">{"".join(sticker(n) for n in pg)}</div>{tabs}</div>' for pg in pages)
+
+html = f"""<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Cairo:wght@600;700;900&display=swap">
+<style>
+@font-face{{font-family:'Lilita Local';src:url({lilita}) format('truetype')}}
+*{{box-sizing:border-box;margin:0;padding:0}}@page{{size:A4;margin:0}}
+body{{background:#fff;font-family:Cairo,sans-serif;color:#1C1917}}
+.sheet{{position:relative;width:210mm;height:297mm;overflow:hidden;page-break-after:always;break-after:page}}
+.grid{{position:absolute;left:0;right:0;top:8mm;display:grid;grid-template-columns:repeat(5,34mm);grid-auto-rows:34mm;gap:2mm;justify-content:center}}
+.tk{{width:34mm;height:34mm;border:0.3mm dashed #C9BCA4;border-radius:1.8mm;display:flex;flex-direction:column;justify-content:center;gap:0.5mm;padding:1.5mm;overflow:hidden}}
+.top{{display:flex;align-items:center;gap:1.3mm}}
+.qcol{{display:flex;flex-direction:column;align-items:stretch;flex:none}}
+.pill{{font-family:'Baloo 2',sans-serif;font-weight:800;background:#FFD21C;color:#17140F;text-align:center;line-height:1;letter-spacing:.04em;font-size:5.4pt;padding:0.7mm 0 0.5mm;border-radius:1mm 1mm 0 0}}
+.q{{display:block;width:15mm;height:15mm;border:0.5mm solid #FFD21C;border-top:0;border-radius:0 0 1mm 1mm}}
+.side{{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:0.8mm}}
+.lg{{height:4mm;width:auto;object-fit:contain}}
+.emo{{font-size:8.5pt;line-height:1;white-space:nowrap}}
+.prod{{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:6.6pt;color:#4A2C2A;line-height:1.05}}
+.dt{{font-size:5.4pt;color:#2B1E1A;font-weight:700;white-space:nowrap;line-height:1.1}}
+.dt span{{font-weight:900;color:#9A8A7C}}.dt.best{{color:#8A5A06}}.dt.best span{{color:#B7791A}}
+.cta{{font-size:5.3pt;font-weight:900;color:#B3261E;white-space:nowrap;line-height:1.1}}
+.tabs{{position:absolute;left:0;right:0;top:226.97mm;display:grid;grid-template-columns:repeat(4,48mm);grid-auto-rows:9mm;gap:2mm;justify-content:center}}
+.tab{{width:48mm;height:9mm;background:#fff;border:0.25mm dashed #CFC6B6;border-radius:1mm;display:grid;grid-template-columns:20mm 8mm 20mm;overflow:hidden}}
+.p{{display:flex;align-items:center;justify-content:center;gap:0.9mm;white-space:nowrap;color:#17140F;min-width:0;overflow:hidden}}
+.p.m{{border-left:0.25mm dashed #CFC6B6;border-right:0.25mm dashed #CFC6B6}}
+.p.m img{{height:3.8mm;width:auto;max-width:7mm;object-fit:contain}}
+.p.l span{{font-family:'Lilita Local','Lilita One','Arial Black',sans-serif;font-size:7.4pt;letter-spacing:.03em;line-height:1}}
+.p.r span{{font-family:'Lilita Local','Lilita One','Arial Black',sans-serif;font-size:5.4pt;line-height:1}}
+.ig{{width:3.4mm;height:3.4mm;display:block;flex:none}}
+</style></head><body>{body}</body></html>"""
+open(a.out + ".html", "w", encoding="utf-8").write(html)
+print(f"{a.out}.html: {len(names)} stickers on {len(pages)} page(s), {'no' if a.no_tabs else 24 * len(pages)} lid tabs")
