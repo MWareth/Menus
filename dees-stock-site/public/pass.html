@@ -1184,7 +1184,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       api("/api/pass/review", { food: rv.food, vibe: rv.vibe, comment: val("r-text"), card: rv.card }).then(function (r) {
         done(); if (!r.ok) return showErr("r-err", r.error);
         screen = "home"; rv = { food: 0, vibe: 0, card: "burger" }; load();
-        toast(r.bonus ? "Thanks! Bonus stamp added to your " + r.bonus + " card" : "Thanks for the review");   /* both lines are in AR */
+        toast(r.bonus ? "Thanks! Bonus stamp added to your " + (r.bonus === "burger" ? "savory" : r.bonus) + " card" : "Thanks for the review");   /* both lines are in AR */
       });
     }
     if (f.id === "f-staff") api("/api/login", { user: val("st-user"), pin: val("st-pin") }).then(function (r) { done(); if (!r.ok) return showErr("st-err", r.error); load(); });
