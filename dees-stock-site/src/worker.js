@@ -433,6 +433,32 @@ export const REPAIRS = {
       batchWord: "cake", portionWord: "slice", yieldPieces: 0, perPortion: 1, packaging: 0.25, recipe: [] });
     return true;
   },
+  /* 14 Oct: Dee's recipe for the cake, one cake = 8 slices, sold at AED 45.
+     Smash is charged AED 16 a slice (the make cost is about 13.4). Only fills
+     the recipe while it is still empty, so later edits on the Recipes tab stay. */
+  "chocolate-cake-recipe": (state) => {
+    const it = (state.items || []).find((i) => /^chocolate cake$/i.test(String(i.name || "").trim()));
+    if (!it || (it.recipe || []).length) return false;
+    it.recipe = [
+      { n: "Chocolate slab", q: 300, u: "g", pp: 63.13, pq: 300 },
+      { n: "Butter", q: 150, u: "g", pp: 17, pq: 200 },
+      { n: "Heavy cream", q: 300, u: "ml", pp: 22.05, pq: 1000 },
+      { n: "Cocoa powder", q: 40, u: "g", pp: 17.25, pq: 108 },
+      { n: "Oil", q: 130, u: "ml", pp: 17.25, pq: 750 },
+      { n: "Flour", q: 280, u: "g", pp: 17.75, pq: 2000 },
+      { n: "Vanilla", q: 2, u: "sachet", pp: 5, pq: 5 },
+      { n: "Eggs", q: 2, u: "pcs", pp: 23.75, pq: 30 },
+      { n: "Sugar", q: 120, u: "g", pp: 11.9, pq: 1000 },
+      { n: "Milk", q: 200, u: "ml", pp: 6.75, pq: 1000 },
+      { n: "Instant coffee", q: 2, u: "g", pp: 17.75, pq: 50 },
+      { n: "Vinegar", q: 15, u: "ml", pp: 8.5, pq: 473 },
+      { n: "Baking powder", q: 6, u: "g", pp: 10, pq: 225 },
+      { n: "Hot water", q: 130, u: "ml", pp: 2, pq: 1000 },
+      { n: "Salt", q: 3, u: "g", pp: 3, pq: 1000 }
+    ];
+    it.yieldPieces = 8; it.perPortion = 1; it.price = 45; it.chargeCost = 16; it.packaging = 0.25; it.overhead = 0.4;
+    return true;
+  },
   "pass-card-test-giveaways": (state) => {
     const closed = new Set((state.weeks || []).map((w) => w.start));
     let changed = false;
