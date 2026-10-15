@@ -3467,10 +3467,49 @@
   }
 
   /* ---------- setup ---------- */
+  /* Everything anyone logged, newest first, with the time and the name:
+     deliveries, sales, giveaways, waste, count fixes, voids, payments and
+     closed weeks. Admin only, on the Setup tab. */
+  function activityHtml() {
+    var who = function (id) { var u = (S.team || []).filter(function (x) { return x.id === id; })[0]; return u ? u.name : (id ? "Unknown" : "—"); };
+    var ev = [];
+    var drops = {};
+    (S.batches || []).forEach(function (b) {
+      var it = item(b.itemId), nm = it ? it.name : "Deleted item";
+      var k = b.drop || b.id;
+      if (!drops[k]) { drops[k] = { at: b.at, by: b.by, parts: [] }; ev.push({ at: b.at, by: b.by, what: "", drop: drops[k], kind: "delivery" }); }
+      drops[k].parts.push(count(b.qty, bPortion(b)) + " " + nm);
+      if (b.voided) ev.push({ at: b.voidedAt || b.at, by: b.voidedBy, what: "Voided " + count(b.qty, bPortion(b)) + " " + nm + (b.voidReason ? " · " + b.voidReason : ""), kind: "void" });
+      (b.sales || []).forEach(function (x) {
+        var q = Math.abs(+x.qty || 0), w = count(q, bPortion(b)) + " " + nm;
+        var what = x.undo ? "Undid: " + w + (x.kind ? " " + x.kind : " sold")
+          : x.fix ? "Count fixed: " + (x.qty > 0 ? "+" : "") + x.qty + " " + nm
+          : x.kind === "gift" ? w + " given away" + (x.ch ? " · " + x.ch : "")
+          : x.kind === "waste" ? w + " written off"
+          : x.kind ? w + " " + x.kind
+          : w + " sold" + (x.ch ? " · " + x.ch : "") + (x.pass ? " · Pass Card" : "");
+        ev.push({ at: x.at, by: x.by, what: what, kind: x.kind || (x.fix ? "fix" : "sale") });
+      });
+    });
+    Object.keys(S.monthPays || {}).forEach(function (mk) {
+      (S.monthPays[mk] || []).forEach(function (pm) { ev.push({ at: pm.at, by: pm.by, what: "Payment " + cur() + " " + money(pm.amount) + (pm["for"] === "profit" ? " · Dee's profit share" : " · for the cost"), kind: "pay" }); });
+    });
+    (S.payments || []).forEach(function (pm) { ev.push({ at: pm.at, by: pm.by, what: "Payment " + cur() + " " + money(pm.amount), kind: "pay" }); });
+    (S.weeks || []).forEach(function (w) { ev.push({ at: w.at, by: w.by, what: "Closed the delivery of " + niceDate(w.start), kind: "week" }); });
+    ev.forEach(function (e) { if (e.drop) e.what = "Delivery: " + e.drop.parts.join(", "); });
+    ev = ev.filter(function (e) { return e.at; }).sort(function (a, b) { return a.at < b.at ? 1 : -1; }).slice(0, 80);
+    var h = '<div class="subhead">ACTIVITY · WHO LOGGED WHAT, AND WHEN</div><div class="card"><div class="tw"><table class="tbl"><thead><tr><th>WHEN</th><th>WHO</th><th>WHAT</th></tr></thead><tbody>';
+    if (!ev.length) h += '<tr><td colspan="3">Nothing logged yet.</td></tr>';
+    ev.forEach(function (e) { h += "<tr><td style=\"white-space:nowrap\">" + esc(stamp(e.at)) + "</td><td style=\"white-space:nowrap\">" + esc(who(e.by)) + "</td><td>" + esc(e.what) + "</td></tr>"; });
+    h += "</tbody></table></div><p class=\"hint\" style=\"margin-top:8px\">Times are shown in this phone's own time zone. The last 80 entries.</p></div>";
+    return h;
+  }
+
   function viewSetup(perm) {
     if (!perm.canSetup) return '<div class="empty">Setup is admin only.</div>';
     var h = '<h2 class="sec">Setup</h2><p class="sub">Edit anything here. Changes apply to <em>future</em> orders only — anything already logged keeps the price, cost and shelf life it was saved with.</p>';
 
+    h += activityHtml();
     h += '<div class="subhead">ITEMS</div>';
     S.items.forEach(function (it) {
       h += '<div class="card" data-item="' + it.id + '"><div class="grid2">' +
