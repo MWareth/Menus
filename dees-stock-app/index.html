@@ -2773,7 +2773,7 @@
     var log = [];
     live().forEach(function (b) {
       (b.sales || []).forEach(function (s) {
-        log.push({ at: s.at, on: saleOn(s), qty: s.qty, by: s.by, fix: s.fix, kind: kindOf(s),
+        log.push({ at: s.at, on: saleOn(s), qty: s.qty, by: s.by, fix: s.fix, undo: s.undo, pass: s.pass, kind: kindOf(s),
                    ch: s.ch || channels()[0], item: (item(b.itemId) || {}).name || "\u2014" });
       });
     });
@@ -2783,12 +2783,12 @@
         "<th>ON</th><th>ITEM</th><th class=\"r\">QTY</th><th>WHAT</th><th>WHERE</th><th>BY</th></tr></thead><tbody>";
       log.sort(function (a, b) { return a.on < b.on ? 1 : a.on > b.on ? -1 : (a.at < b.at ? 1 : -1); });
       log.slice(0, 25).forEach(function (r) {
-        sell += "<tr><td>" + esc(niceDate(r.on)) +
+        sell += "<tr><td style=\"white-space:nowrap\">" + esc(niceDate(r.on)) + (r.at ? '<br><small style="color:var(--ink-3)">' + esc(new Date(r.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })) + "</small>" : "") +
           "</td><td>" + esc(r.item) + (r.fix ? ' <span class="pill p-soon">FIX</span>' : "") +
           '</td><td class="r num">' + (r.qty > 0 ? "+" + r.qty : r.qty) + "</td><td>" +
-          '<span class="pill ' + (r.kind === "waste" ? "p-today" : r.kind === "gift" ? "p-soon" : "p-fresh") +
-          '">' + KIND_LABEL[r.kind] + "</span></td><td>" +
-          (r.kind === "sale" ? esc(r.ch) : "\u2014") + "</td><td>" + esc(uname(r.by)) + "</td></tr>";
+          '<span class="pill ' + (r.undo ? "" : r.kind === "waste" ? "p-today" : r.kind === "gift" ? "p-soon" : "p-fresh") +
+          '">' + (r.undo ? "UNDONE" : KIND_LABEL[r.kind]) + "</span></td><td>" +
+          (r.kind === "sale" ? esc(r.ch) + (r.pass ? " · Pass Card" : "") : "\u2014") + "</td><td>" + esc(uname(r.by)) + "</td></tr>";
       });
       sell += "</tbody></table></div>";
       if (log.length > 25) sell += '<p class="hint" style="margin-top:10px">Showing the last 25.</p>';
