@@ -3498,10 +3498,13 @@
     (S.weeks || []).forEach(function (w) { ev.push({ at: w.at, by: w.by, what: "Closed the delivery of " + niceDate(w.start), kind: "week" }); });
     ev.forEach(function (e) { if (e.drop) e.what = "Delivery: " + e.drop.parts.join(", "); });
     ev = ev.filter(function (e) { return e.at; }).sort(function (a, b) { return a.at < b.at ? 1 : -1; }).slice(0, 80);
-    var h = '<div class="subhead">ACTIVITY · WHO LOGGED WHAT, AND WHEN</div><div class="card"><div class="tw"><table class="tbl"><thead><tr><th>WHEN</th><th>WHO</th><th>WHAT</th></tr></thead><tbody>';
-    if (!ev.length) h += '<tr><td colspan="3">Nothing logged yet.</td></tr>';
-    ev.forEach(function (e) { h += "<tr><td style=\"white-space:nowrap\">" + esc(stamp(e.at)) + "</td><td style=\"white-space:nowrap\">" + esc(who(e.by)) + "</td><td>" + esc(e.what) + "</td></tr>"; });
-    h += "</tbody></table></div><p class=\"hint\" style=\"margin-top:8px\">Times are shown in this phone's own time zone. The last 80 entries.</p></div>";
+    var h = '<div class="subhead">ACTIVITY · WHO LOGGED WHAT, AND WHEN</div><div class="card" style="padding:4px 14px">';
+    if (!ev.length) h += '<p class="hint" style="padding:10px 0">Nothing logged yet.</p>';
+    ev.forEach(function (e) {
+      h += '<div style="padding:10px 0;border-bottom:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:10px;font-size:12px;font-weight:800;letter-spacing:.04em;color:var(--brown)"><span>' +
+        esc(who(e.by)) + "</span><span>" + esc(stamp(e.at)) + '</span></div><div style="margin-top:3px;font-size:14px">' + esc(e.what) + "</div></div>";
+    });
+    h += '<p class="hint" style="padding:10px 0 8px">Times are in this phone\'s own time zone. The last 80 entries.</p></div>';
     return h;
   }
 
