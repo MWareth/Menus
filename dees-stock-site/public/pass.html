@@ -685,9 +685,15 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     if (log.length) {
       var byDay = {}, days = [];
       log.forEach(function (s) { var d = new Date(s.at).toLocaleDateString("en-GB", { timeZone: "Asia/Dubai", weekday: "short", day: "numeric", month: "short" }); if (!byDay[d]) { byDay[d] = []; days.push(d); } byDay[d].push(s); });
+      var dv = {}; log.forEach(function (s) { var k = s.device || "Other"; dv[k] = (dv[k] || 0) + 1; });
+      var joinedN = log.filter(function (s) { return s.joined; }).length;
+      h += '<div class="panel"><div class="lbl">Who scans</div><div class="kpis">' + Object.keys(dv).sort(function (a, b) { return dv[b] - dv[a]; }).map(function (k) { return kpi(dv[k], k); }).join("") +
+        kpi(joinedN, "scans that signed up") + "</div></div>";
       h += '<div class="panel"><div class="lbl">QR scans, one by one</div><p class="note">The time each poster or sticker QR was scanned. Scans since 16 Oct; the daily totals above go back further.</p>' +
         days.map(function (d) { return '<div class="lbl" style="margin-top:10px">' + esc(d) + " · " + byDay[d].length + '</div><p class="note" style="line-height:1.9">' +
-          byDay[d].map(function (s) { return new Date(s.at).toLocaleTimeString("en-GB", { timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit" }) + (s.src === "scan" ? " (ad)" : ""); }).join(" · ") + "</p>"; }).join("") + "</div>";
+          byDay[d].map(function (s) { return new Date(s.at).toLocaleTimeString("en-GB", { timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit" }) +
+            (s.device ? " " + esc(s.device) + (s.browser && s.browser !== "Other" ? "/" + esc(s.browser) : "") : "") + (s.src === "scan" ? " (ad)" : "") + (s.joined ? " ✅" : ""); }).join(" · ") + "</p>"; }).join("") +
+        '<p class="note">✅ = that scan signed up. iPhone/Instagram means the QR was opened inside the Instagram app.</p></div>';
     }
     return h + tools;
   }

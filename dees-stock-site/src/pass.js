@@ -117,6 +117,9 @@ async function ensureTables(env) {
   try { await env.DB.prepare("ALTER TABLE pass_customers ADD COLUMN device TEXT").run(); } catch (e) { /* already there */ }
   /* added later: 1 = the customer turned off order emails */
   try { await env.DB.prepare("ALTER TABLE pass_customers ADD COLUMN no_order_email INTEGER NOT NULL DEFAULT 0").run(); } catch (e) { /* already there */ }
+  for (const col of ["device TEXT", "browser TEXT", "joined INTEGER NOT NULL DEFAULT 0"]) {
+    try { await env.DB.prepare("ALTER TABLE pass_scan_log ADD COLUMN " + col).run(); } catch (e) { /* already there */ }
+  }
   readyDone = true;
 }
 
@@ -160,6 +163,14 @@ const validPhone = (p) => {
   return !!c && c[2] !== "971" && n >= c[3] && n <= c[4];
 };
 const clean = (s, n) => String(s == null ? "" : s).replace(/[\u0000-\u001f]/g, " ").trim().slice(0, n);
+/* What kind of phone scanned the QR, from the browser's user-agent string: no personal data. */
+export function deviceOf(ua) {
+  const u = String(ua);
+  const device = /iPhone/i.test(u) ? "iPhone" : /iPad/i.test(u) ? "iPad" : /Android/i.test(u) ? "Android" : /Windows|Macintosh|Linux/i.test(u) ? "Computer" : "Other";
+  const browser = /Instagram/i.test(u) ? "Instagram" : /FBAN|FBAV/i.test(u) ? "Facebook" : /Snapchat/i.test(u) ? "Snapchat" : /TikTok/i.test(u) ? "TikTok" : /WhatsApp/i.test(u) ? "WhatsApp"
+    : /SamsungBrowser/i.test(u) ? "Samsung" : /CriOS|Chrome/i.test(u) ? "Chrome" : /Safari/i.test(u) ? "Safari" : "Other";
+  return { device, browser };
+}
 const dubaiDay = () => new Date(Date.now() + 4 * 3600e3).toISOString().slice(0, 10);
 const dubaiMonth = (offset = 0) => { const t = new Date(Date.now() + 4 * 3600e3); t.setUTCDate(1); t.setUTCMonth(t.getUTCMonth() + offset); return t.toISOString().slice(0, 7); };
 export const PRIZE_MIN = 3;   // Top Smashers: #1 needs at least this many cards finished in the month
@@ -273,8 +284,14 @@ export async function handlePass(request, env, path, d) {
     const src = path === "/t" ? "truck" : "scan";
     await env.DB.prepare("INSERT INTO pass_scans (day, src, n) VALUES (?, ?, 1) ON CONFLICT(day, src) DO UPDATE SET n = n + 1")
       .bind(dubaiDay(), src).run();
-    await env.DB.prepare("INSERT INTO pass_scan_log (at, src) VALUES (?, ?)").bind(new Date().toISOString(), src).run();   /* every scan with its time */
-    return new Response(null, { status: 302, headers: { location: "/pass", "cache-control": "no-store" } });
+    const dev = deviceOf(request.headers.get("user-agent") || "");
+    const ins = await env.DB.prepare("INSERT INTO pass_scan_log (at, src, device, browser) VALUES (?, ?, ?, ?)")
+      .bind(new Date().toISOString(), src, dev.device, dev.browser).run();   /* every scan with its time and the kind of phone */
+    const scanId = ins.meta && ins.meta.last_row_id;
+    const h = new Headers({ location: "/pass", "cache-control": "no-store" });
+    /* a day-long cookie ties a later sign-up back to this scan (no personal data, just the row number) */
+    if (scanId) h.append("set-cookie", "ps=" + scanId + "; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400");
+    return new Response(null, { status: 302, headers: h });
   }
 
   if (path === "/api/pass/session" && request.method === "GET") {
@@ -333,6 +350,8 @@ export async function handlePass(request, env, path, d) {
       .bind(phone, first, last, email || null, await pinOf(phone, pin), b.offers === true ? 1 : 0, new Date().toISOString(), device).run();
     const res = ok({}, { "set-cookie": await issue(phone) });
     res.headers.append("set-cookie", "pd=" + device + "; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=" + 2 * 365 * 86400);
+    const ps = d.cookies(request).ps;
+    if (/^\d{1,12}$/.test(ps || "")) await env.DB.prepare("UPDATE pass_scan_log SET joined = 1 WHERE id = ?").bind(+ps).run();   /* this scan led to a card */
     return res;
   }
 
@@ -657,7 +676,7 @@ export async function handlePass(request, env, path, d) {
         .map((v) => ({ ...v, items: JSON.parse(v.items || "{}") }));
       const redeems = await all("SELECT phone, at, card, item, stock FROM pass_redeems ORDER BY at DESC LIMIT 1000");
       const scans = await all("SELECT day, src, n FROM pass_scans ORDER BY day DESC LIMIT 400");
-      const scanLog = await all("SELECT at, src FROM pass_scan_log ORDER BY id DESC LIMIT 300");
+      const scanLog = await all("SELECT at, src, device, browser, joined FROM pass_scan_log ORDER BY id DESC LIMIT 300");
       const pts = (await all("SELECT kind, COUNT(*) AS n, SUM(delta) AS pts FROM pass_points GROUP BY kind"));
       const plays = await all("SELECT kind, game, COUNT(*) AS n, AVG(score) AS avg FROM pass_plays WHERE finished IS NOT NULL GROUP BY kind, game");
       return ok({ customers, visits, redeems, scans, scanLog, menu: PASS_MENU, need: NEED, points: pts, plays, rewards: REWARDS });
