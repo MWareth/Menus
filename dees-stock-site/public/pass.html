@@ -680,6 +680,15 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       '</tbody></table></div><button type="button" class="btn ghost" id="copy-csv">COPY FOR EXCEL</button></div>';
     if (scans.length) h += '<div class="panel"><div class="lbl">Truck QR scans by day</div><div class="tw"><table><tbody>' +
       scans.slice(0, 30).map(function (s) { return "<tr><td>" + niceDate(s.day + "T12:00:00Z") + '</td><td class="r">' + s.n + "</td></tr>"; }).join("") + "</tbody></table></div></div>";
+    /* every scan with its time, newest first, grouped by day (Dubai time) */
+    var log = O.scanLog || [];
+    if (log.length) {
+      var byDay = {}, days = [];
+      log.forEach(function (s) { var d = new Date(s.at).toLocaleDateString("en-GB", { timeZone: "Asia/Dubai", weekday: "short", day: "numeric", month: "short" }); if (!byDay[d]) { byDay[d] = []; days.push(d); } byDay[d].push(s); });
+      h += '<div class="panel"><div class="lbl">QR scans, one by one</div><p class="note">The time each poster or sticker QR was scanned. Scans since 16 Oct; the daily totals above go back further.</p>' +
+        days.map(function (d) { return '<div class="lbl" style="margin-top:10px">' + esc(d) + " · " + byDay[d].length + '</div><p class="note" style="line-height:1.9">' +
+          byDay[d].map(function (s) { return new Date(s.at).toLocaleTimeString("en-GB", { timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit" }) + (s.src === "scan" ? " (ad)" : ""); }).join(" · ") + "</p>"; }).join("") + "</div>";
+    }
     return h + tools;
   }
 

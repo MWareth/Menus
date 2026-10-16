@@ -459,6 +459,8 @@ export const REPAIRS = {
     it.yieldPieces = 8; it.perPortion = 1; it.price = 45; it.chargeCost = 16; it.packaging = 0.25; it.overhead = 0.4;
     return true;
   },
+  /* 16 Oct: the Pass Card started over again; its test giveaways go back to unsold (same rule as 13 Oct) */
+  "pass-card-test-giveaways-16oct": (state) => REPAIRS["pass-card-test-giveaways"](state),
   "pass-card-test-giveaways": (state) => {
     const closed = new Set((state.weeks || []).map((w) => w.start));
     let changed = false;

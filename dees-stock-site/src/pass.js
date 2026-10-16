@@ -76,6 +76,7 @@ async function ensureTables(env) {
       " at TEXT NOT NULL, card TEXT NOT NULL, item TEXT NOT NULL, by TEXT, stock TEXT)"
     ),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS pass_scans (day TEXT NOT NULL, src TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, src))"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS pass_scan_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT NOT NULL, src TEXT NOT NULL)"),
     /* one row each time a card fills up (9 stamps); feeds the counter, the fan level and Top Smashers */
     env.DB.prepare("CREATE TABLE IF NOT EXISTS pass_completions (id INTEGER PRIMARY KEY AUTOINCREMENT, phone TEXT NOT NULL," +
       " card TEXT NOT NULL, at TEXT NOT NULL, month TEXT NOT NULL)"),
@@ -99,6 +100,14 @@ async function ensureTables(env) {
     await env.DB.batch(["pass_visits", "pass_redeems", "pass_completions", "pass_points", "pass_plays"]
       .map((t) => env.DB.prepare("DELETE FROM " + t + " WHERE phone NOT IN (SELECT phone FROM pass_customers)"))
       .concat([env.DB.prepare("INSERT OR IGNORE INTO meta (k, v) VALUES ('pass-orphans:2026-10-14', ?)").bind(new Date().toISOString())]));
+  }
+  /* 16 Oct: everything so far was a test. Start over once: every customer and
+     all their history, the QR scan counters and the scan log. Team logins and
+     the stock stay. Last night's backup row is kept for 30 nights. */
+  if (!(await env.DB.prepare("SELECT 1 AS x FROM meta WHERE k = 'pass-wipe:2026-10-16'").first())) {
+    const tables = ["pass_customers", "pass_visits", "pass_redeems", "pass_completions", "pass_points", "pass_plays", "pass_scans", "pass_scan_log"];
+    await env.DB.batch(tables.map((t) => env.DB.prepare("DELETE FROM " + t))
+      .concat([env.DB.prepare("INSERT OR IGNORE INTO meta (k, v) VALUES ('pass-wipe:2026-10-16', ?)").bind(new Date().toISOString())]));
   }
   /* added after launch: lets a customer keep their name off Top Smashers */
   try { await env.DB.prepare("ALTER TABLE pass_customers ADD COLUMN board_hide INTEGER NOT NULL DEFAULT 0").run(); } catch (e) { /* already there */ }
@@ -264,6 +273,7 @@ export async function handlePass(request, env, path, d) {
     const src = path === "/t" ? "truck" : "scan";
     await env.DB.prepare("INSERT INTO pass_scans (day, src, n) VALUES (?, ?, 1) ON CONFLICT(day, src) DO UPDATE SET n = n + 1")
       .bind(dubaiDay(), src).run();
+    await env.DB.prepare("INSERT INTO pass_scan_log (at, src) VALUES (?, ?)").bind(new Date().toISOString(), src).run();   /* every scan with its time */
     return new Response(null, { status: 302, headers: { location: "/pass", "cache-control": "no-store" } });
   }
 
@@ -647,9 +657,10 @@ export async function handlePass(request, env, path, d) {
         .map((v) => ({ ...v, items: JSON.parse(v.items || "{}") }));
       const redeems = await all("SELECT phone, at, card, item, stock FROM pass_redeems ORDER BY at DESC LIMIT 1000");
       const scans = await all("SELECT day, src, n FROM pass_scans ORDER BY day DESC LIMIT 400");
+      const scanLog = await all("SELECT at, src FROM pass_scan_log ORDER BY id DESC LIMIT 300");
       const pts = (await all("SELECT kind, COUNT(*) AS n, SUM(delta) AS pts FROM pass_points GROUP BY kind"));
       const plays = await all("SELECT kind, game, COUNT(*) AS n, AVG(score) AS avg FROM pass_plays WHERE finished IS NOT NULL GROUP BY kind, game");
-      return ok({ customers, visits, redeems, scans, menu: PASS_MENU, need: NEED, points: pts, plays, rewards: REWARDS });
+      return ok({ customers, visits, redeems, scans, scanLog, menu: PASS_MENU, need: NEED, points: pts, plays, rewards: REWARDS });
     }
   }
   return fail("not_found", 404);
@@ -660,7 +671,7 @@ export async function snapshot(env, d) {
   await ensureTables(env);
   const board = await d.loadBoard(env);
   const tables = {};
-  for (const t of ["pass_customers", "pass_visits", "pass_redeems", "pass_completions", "pass_points", "pass_plays", "pass_scans"]) {
+  for (const t of ["pass_customers", "pass_visits", "pass_redeems", "pass_completions", "pass_points", "pass_plays", "pass_scans", "pass_scan_log"]) {
     tables[t] = (await env.DB.prepare("SELECT * FROM " + t).all()).results || [];
   }
   return { app: "dees-stock", at: new Date().toISOString(), board: { version: board.version, state: board.state }, pass: tables };
