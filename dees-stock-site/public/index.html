@@ -2184,10 +2184,18 @@
     var onHand = 0, sold = 0, alerts = 0;
     open.forEach(function (b) { onHand += remaining(b); var st = status(b); if (st === "expired" || st === "today") alerts++; });
     live().forEach(function (b) { (b.sales || []).forEach(function (sl) { if (kindOf(sl) === "sale" && saleOn(sl) === t) sold += sl.qty; }); });
+    /* the month, counted the same way the other shops report theirs */
+    var mk0 = t.slice(0, 7), soldM = 0, delM = 0;
+    live().forEach(function (b) {
+      if ((b.madeOn || "").slice(0, 7) === mk0) delM += +b.qty || 0;
+      (b.sales || []).forEach(function (sl) { if (kindOf(sl) === "sale" && saleOn(sl).slice(0, 7) === mk0) soldM += sl.qty; });
+    });
+    var owesM = Math.max(0, monthTotals(mk0).outstanding);
     var h = '<h2 class="sec">Shops</h2><p class="sub">Tap a shop to open its dashboard.</p><div class="shopgrid">';
     h += '<button class="shopcard" type="button" data-shop="this"><div class="nm">' + esc(THIS_SHOP) + '</div><div class="deal">THIS DASHBOARD \u00b7 ' + (wholesale() ? "WHOLESALE" : (S.split.deesPct || 0) + "% TO DEE\'S") + '</div><div class="nums">' +
       '<div><b>' + onHand + '</b><span>ON THE SHELF</span></div><div><b>' + sold + '</b><span>SOLD TODAY</span></div>' +
-      '<div><b' + (alerts ? ' style="color:var(--bad)"' : "") + '>' + alerts + '</b><span>LOTS TO CLEAR</span></div><div><b>' + toDecideNow() + '</b><span>TO SETTLE</span></div></div><div class="go">OPEN \u2192</div></button>';
+      '<div><b' + (alerts ? ' style="color:var(--bad)"' : "") + '>' + alerts + '</b><span>LOTS TO CLEAR</span></div><div><b>' + cur() + " " + money(owesM) + '</b><span>OWES THIS MONTH</span></div>' +
+      '<div><b>' + soldM + '</b><span>SOLD THIS MONTH</span></div><div><b>' + delM + '</b><span>DELIVERED THIS MONTH</span></div></div><div class="go">OPEN \u2192</div></button>';
     (S.shops || []).forEach(function (x) {
       var key = String(x.url || "").trim().toLowerCase().replace(/^(https?:\/\/[^/]+).*$/, "$1"), rp = (S.reports || {})[key];
       h += '<a class="shopcard" href="' + esc(x.url) + '"' + (x.color ? ' style="border-left-color:' + esc(x.color) + '"' : "") + '><div class="nm">' + esc(x.name) + "</div>";
