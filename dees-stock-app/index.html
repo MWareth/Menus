@@ -200,6 +200,16 @@
   /* ---------- what each partner makes ---------- */
   .earn{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   @media (max-width:600px){.earn{grid-template-columns:1fr}}
+  .shops{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:16px}
+  .shop{display:block;width:100%;text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:16px;font:inherit;color:inherit;cursor:pointer;box-shadow:0 4px 14px rgba(28,25,23,.06)}
+  .shop:hover{border-color:var(--gold)}
+  .shop .nm{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:20px;line-height:1.1;display:flex;align-items:center;gap:8px}
+  .shop .deal{font-size:11px;font-weight:900;letter-spacing:.08em;color:var(--ink-3);margin:4px 0 10px}
+  .shop .nums{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px}
+  .shop .nums b{display:block;font-size:18px;line-height:1.1}
+  .shop .nums span{font-size:11px;color:var(--ink-3);font-weight:700;letter-spacing:.04em}
+  .shop .go{margin-top:12px;font-size:12px;font-weight:900;letter-spacing:.1em;color:var(--brown)}
+  .back{background:none;border:0;padding:0;font:inherit;font-weight:900;font-size:12px;letter-spacing:.1em;color:var(--ink-3);cursor:pointer;margin-bottom:10px}
   .ecard{border-radius:14px;padding:17px 16px 15px}
   .ecard.d{background:var(--brown);color:var(--cream)}
   .ecard.t{background:var(--butter);color:var(--char)}
@@ -2499,7 +2509,40 @@
       suggest: n > 0 ? Math.max(1, Math.round(soldN / n)) : 0
     };
   }
+  /* Dee's side opens on one card per shop: Smash & Pass (this app's own stock) and every
+     shop paired on the CLIENTS tab. The truck login never sees the cards. */
+  var shopSel = "";
+  try { shopSel = sessionStorage.getItem("deeserts.shop") || ""; } catch (e) {}
+  function pickShop(id) { shopSel = id; try { sessionStorage.setItem("deeserts.shop", id); } catch (e) {} if (id && id !== "smash") { clientsOnly = id; setTab("clients"); } else { clientsOnly = ""; setTab("stock"); } }
+  function shopCardsHtml(perm) {
+    var t = todayStr(), open = live().filter(function (b) { return remaining(b) > 0; });
+    var onHand = 0, sold = 0, alerts = 0;
+    open.forEach(function (b) { onHand += remaining(b); var st = status(b); if (st === "expired" || st === "today") alerts++; });
+    live().forEach(function (b) { (b.sales || []).forEach(function (sl) { if (kindOf(sl) === "sale" && saleOn(sl) === t) sold += sl.qty; }); });
+    var h = '<h2 class="sec">Shops</h2><p class="sub">Tap a shop to see its stock and its month on its own.</p><div class="shops">';
+    h += '<button class="shop" type="button" data-shop="smash"><div class="nm">\ud83c\udf54 Smash &amp; Pass</div><div class="deal">' + (S.split.deesPct || 0) + '% PROFIT SPLIT \u00b7 THIS APP</div><div class="nums">' +
+      '<div><b>' + onHand + '</b><span>ON THE SHELF</span></div><div><b>' + sold + '</b><span>SOLD TODAY</span></div>' +
+      '<div><b' + (alerts ? ' style="color:var(--bad)"' : "") + '>' + alerts + '</b><span>LOTS TO CLEAR</span></div><div><b>' + toDecideNow() + '</b><span>TO SETTLE</span></div></div><div class="go">OPEN \u2192</div></button>';
+    var list = S.clients || [], mk = todayStr().slice(0, 7);
+    if (list.length && !clientsData && !clientsBusy) loadClients(mk);
+    list.forEach(function (c) {
+      var r = clientsData && (clientsData.clients || []).filter(function (x) { return x.id === c.id; })[0], d = r && r.data;
+      h += '<button class="shop" type="button" data-shop="' + esc(c.id) + '"><div class="nm">\ud83c\udfea ' + esc(c.name) + "</div>";
+      if (d) {
+        var split = d.mode === "split";
+        h += '<div class="deal">' + (split ? d.splitPct + "% PROFIT SPLIT" : "WHOLESALE") + (d.inTrial ? " \u00b7 TRIAL" : "") + " \u00b7 " + esc(monthName(mk)).toUpperCase() + '</div><div class="nums">' +
+          '<div><b>' + d.totals.delivered + '</b><span>DELIVERED</span></div><div><b>' + d.totals.sold + '</b><span>SOLD</span></div>' +
+          '<div><b>' + (d.rows || []).reduce(function (a, x) { return a + (x.left || 0); }, 0) + '</b><span>ON THEIR SHELF</span></div><div><b>' + money(d.due) + '</b><span>THEY OWE</span></div></div>';
+      } else if (r && r.error) h += '<div class="deal" style="color:var(--warn)">' + (r.error === "bad_key" ? "NOT LINKED YET" : r.error === "unreachable" ? "SITE NOT ANSWERING" : "NO CODE") + "</div>";
+      else h += '<div class="deal">ASKING THEIR SITE\u2026</div>';
+      h += '<div class="go">OPEN \u2192</div></button>';
+    });
+    h += "</div>";
+    if (perm.canSetup) h += '<p class="hint">Add or remove shops on the CLIENTS tab.</p>';
+    return h;
+  }
   function viewStock(perm) {
+    if (perm.canDeliver && !shopSel) return shopCardsHtml(perm);
     var t = todayStr();
     var open = live().filter(function (b) { return remaining(b) > 0; });
     var expired = open.filter(function (b) { return status(b) === "expired"; });
@@ -2522,7 +2565,7 @@
       });
     });
 
-    var h = '<h2 class="sec">In stock</h2><p class="sub">' + niceDate(t) +
+    var h = (perm.canDeliver ? '<button class="back" type="button" data-shop="">\u2190 ALL SHOPS</button>' : "") + '<h2 class="sec">In stock \u00b7 Smash &amp; Pass</h2><p class="sub">' + niceDate(t) +
       " \u00b7 everything sent out and not yet sold.</p>";
     h += '<div class="stats">' +
       stat("ON HAND", onHand, count(onHand, "portion") + " unsold, across every item", "") +
@@ -3074,7 +3117,14 @@
   /* ---- the shops Dee's supplies: each runs its own Tap & Treat site; this tab pulls
      their month (delivered, sold, waste, what they owe) and puts Dee's real cost
      from the recipes next to it, so the profit per client is one screen. ---- */
-  var clientsMonth = "", clientsData = null, clientsBusy = false;
+  var clientsMonth = "", clientsData = null, clientsBusy = false, clientsOnly = "";
+  function loadClients(mk) {
+    if (typeof fetch !== "function") return;
+    clientsBusy = true;
+    fetch("/api/clients/month?month=" + mk, { credentials: "same-origin", cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) {
+      clientsBusy = false; clientsData = j && j.ok ? j : { clients: [], error: (j && j.error) || "No connection." }; render();
+    }, function () { clientsBusy = false; clientsData = { clients: [], error: "No connection." }; render(); });
+  }
   function clientItem(c, row) {
     var mapped = c.map && c.map[row.id] ? item(c.map[row.id]) : null;
     if (mapped) return mapped;
@@ -3085,9 +3135,11 @@
     if (!perm.canDeliver) return '<div class="empty">Clients are Dee\'s side only.</div>';
     var canEdit = perm.canSetup && !readOnly;
     var mk = clientsMonth || todayStr().slice(0, 7);
-    var h = '<h2 class="sec">Clients</h2><p class="sub">The shops that stock Dee\'s desserts on their own Tap &amp; Treat site. Smash &amp; Pass is not here: its stock and settlement live on this app already.</p>';
+    var only = clientsOnly && (S.clients || []).filter(function (c) { return c.id === clientsOnly; })[0];
+    var h = only ? '<button class="back" type="button" data-shop="">\u2190 ALL SHOPS</button><h2 class="sec">' + esc(only.name) + '</h2>'
+      : '<h2 class="sec">Clients</h2><p class="sub">The shops that stock Dee\'s desserts on their own Tap &amp; Treat site. Smash &amp; Pass is not here: its stock and settlement live on this app already.</p>';
     var list = S.clients || [];
-    if (canEdit) {
+    if (canEdit && !only) {
       h += '<div class="subhead">ADD A SHOP</div><div class="card"><div class="grid2">' +
         '<div class="field"><label for="cl-name">SHOP NAME</label><input id="cl-name" placeholder="e.g. Slate Kitchen & Cafe"></div>' +
         '<div class="field"><label for="cl-id">SHORT ID (letters only)</label><input id="cl-id" placeholder="e.g. slate"></div>' +
@@ -3099,14 +3151,11 @@
     if (!list.length) return h + '<div class="empty">No shops yet.</div>';
     if (!clientsData && !clientsBusy) {
       if (typeof fetch !== "function") return h + '<div class="banner info">The client numbers come from the hosted app.</div>';
-      clientsBusy = true;
-      fetch("/api/clients/month?month=" + mk, { credentials: "same-origin", cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) {
-        clientsBusy = false; clientsData = j && j.ok ? j : { clients: [], error: (j && j.error) || "No connection." }; render();
-      }, function () { clientsBusy = false; clientsData = { clients: [], error: "No connection." }; render(); });
+      loadClients(mk);
     }
     if (!clientsData) return h + '<div class="empty">Asking each shop for ' + esc(monthName(mk)) + '…</div>';
     var allPay = 0, allCost = 0, allSold = 0, allDel = 0;
-    (clientsData.clients || []).forEach(function (r) {
+    (clientsData.clients || []).filter(function (r) { return !only || r.id === only.id; }).forEach(function (r) {
       var c = list.filter(function (x) { return x.id === r.id; })[0] || r;
       h += '<div class="subhead">' + esc(r.name || r.id).toUpperCase() + '</div><div class="card">';
       h += '<p class="hint" style="margin:0 0 8px"><a href="' + esc(r.url) + '" target="_blank" rel="noopener">' + esc(r.url) + '</a>' +
@@ -3140,7 +3189,7 @@
       h += "</div>";
       allPay += pay; allCost += cost; allSold += sold; allDel += del;
     });
-    if ((clientsData.clients || []).length > 1) {
+    if (!only && (clientsData.clients || []).length > 1) {
       h += '<div class="subhead">ALL SHOPS · ' + esc(monthName(mk)).toUpperCase() + '</div><div class="costcard"><div class="grid">' +
         '<div class="cc"><div class="k">DELIVERED</div><div class="v">' + allDel + '</div></div><div class="cc"><div class="k">SOLD</div><div class="v">' + allSold + '</div></div>' +
         '<div class="cc"><div class="k">THEY PAY</div><div class="v">' + money(allPay) + '</div></div><div class="cc"><div class="k">MY COST</div><div class="v">' + money(allCost) + '</div></div>' +
@@ -3746,7 +3795,7 @@
   /* ============ actions ============ */
   function wire() {
     app.querySelectorAll("[data-tab]").forEach(function (b) {
-      b.onclick = function () { setTab(b.getAttribute("data-tab")); };
+      b.onclick = function () { var t = b.getAttribute("data-tab"); if (t === "stock") pickShop(""); else if (t === "clients") { clientsOnly = ""; setTab(t); } else setTab(t); };
     });
     app.querySelectorAll("[data-mtab]").forEach(function (b) {
       b.onclick = function () { selMonth = b.getAttribute("data-mtab"); render(); };
@@ -4219,6 +4268,9 @@
         var mk = b.getAttribute("data-munsettle");
         save(function (n) { if (n.monthsPaid) delete n.monthsPaid[mk]; }, monthName(mk) + " reopened.");
       };
+    });
+    app.querySelectorAll("[data-shop]").forEach(function (b) {
+      b.onclick = function () { pickShop(b.getAttribute("data-shop")); };
     });
     app.querySelectorAll("[data-copy]").forEach(function (b) {
       b.onclick = function () { var v = b.getAttribute("data-copy"); if (navigator.clipboard) navigator.clipboard.writeText(v).then(function () { toast("Copied."); }, function () { toast(v); }); else toast(v); };
