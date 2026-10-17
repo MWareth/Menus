@@ -113,6 +113,12 @@ async function saveBoard(env, expectedVersion, state) {
    recorded in meta so it is never applied twice. A repair only touches what
    it names: stock already sent out keeps the cost it was locked in at. */
 export const REPAIRS = {
+  /* 18 Oct: Lazy Cake is just "Lazy Cake", with no piece count after the name */
+  "lazy-cake-plain-name": (state) => {
+    let changed = false;
+    (state.items || []).forEach((it) => { if (it.name === "Lazy Cake" && /pcs|pieces/i.test(it.note || "")) { it.note = ""; changed = true; } });
+    return changed;
+  },
   "price-feed-token": (state) => { if (state.feedToken) return false; state.feedToken = newFeedToken(); return true; },
   /* Kiri cream cheese was costed at the retail 200 g pack (AED 12.50), which
      put a San Sebastian slice at AED 7.85. Dee's now buys the Greenhouse

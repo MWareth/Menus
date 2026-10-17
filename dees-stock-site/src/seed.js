@@ -22,7 +22,7 @@ export const SEED = {
     {
       "id": "i1",
       "name": "Lazy Cake",
-      "note": "4 pcs",
+      "note": "",
       "price": 26,
       "shelf": 3,
       "active": true,
