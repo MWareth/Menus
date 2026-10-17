@@ -54,6 +54,16 @@
   .shops{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px}
   .shops a,.shops span{display:inline-block;padding:5px 12px;border-radius:999px;font-size:12px;font-weight:900;letter-spacing:.06em;text-decoration:none;border:1.5px solid var(--line);color:var(--ink-2);background:var(--card)}
   .shops span{background:var(--brown);color:var(--paper);border-color:var(--brown)}
+  .shopgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:16px}
+  .shopcard{display:block;width:100%;text-align:left;background:var(--card);border:1.5px solid var(--line);border-left:8px solid var(--brown);border-radius:16px;padding:16px;font:inherit;color:inherit;cursor:pointer;text-decoration:none;box-shadow:0 4px 14px rgba(28,25,23,.06)}
+  .shopcard:hover{border-color:var(--gold)}
+  .shopcard .nm{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:21px;line-height:1.1}
+  .shopcard .deal{font-size:11px;font-weight:900;letter-spacing:.08em;color:var(--ink-3);margin:4px 0 10px}
+  .shopcard .nums{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px}
+  .shopcard .nums b{display:block;font-size:18px;line-height:1.1}
+  .shopcard .nums span{font-size:11px;color:var(--ink-3);font-weight:700;letter-spacing:.04em}
+  .shopcard .go{margin-top:12px;font-size:12px;font-weight:900;letter-spacing:.1em;color:var(--brown)}
+  .back{background:none;border:0;padding:0;font:inherit;font-weight:900;font-size:12px;letter-spacing:.1em;color:var(--ink-3);cursor:pointer;margin-bottom:10px}
   .tabs{background:var(--char);position:sticky;top:0;z-index:49;
     overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
   .tabs::-webkit-scrollbar{display:none}
@@ -2105,7 +2115,30 @@
       suggest: n > 0 ? Math.max(1, Math.round(soldN / n)) : 0
     };
   }
+  /* Dee's side opens on one card per shop. This shop's card opens the stock below;
+     every other shop's card opens that shop's own dashboard (its own site and login). */
+  var shopSel = "";
+  try { shopSel = sessionStorage.getItem("deeserts.shop") || ""; } catch (e) {}
+  function pickShop(id) { shopSel = id; try { sessionStorage.setItem("deeserts.shop", id); } catch (e) {} setTab("stock"); }
+  function shopCardsHtml(perm) {
+    var t = todayStr(), open = live().filter(function (b) { return remaining(b) > 0; });
+    var onHand = 0, sold = 0, alerts = 0;
+    open.forEach(function (b) { onHand += remaining(b); var st = status(b); if (st === "expired" || st === "today") alerts++; });
+    live().forEach(function (b) { (b.sales || []).forEach(function (sl) { if (kindOf(sl) === "sale" && saleOn(sl) === t) sold += sl.qty; }); });
+    var h = '<h2 class="sec">Shops</h2><p class="sub">Tap a shop to open its dashboard.</p><div class="shopgrid">';
+    h += '<button class="shopcard" type="button" data-shop="this"><div class="nm">' + esc(THIS_SHOP) + '</div><div class="deal">THIS DASHBOARD \u00b7 ' + (S.split.deesPct || 0) + '% TO DEE\'S</div><div class="nums">' +
+      '<div><b>' + onHand + '</b><span>ON THE SHELF</span></div><div><b>' + sold + '</b><span>SOLD TODAY</span></div>' +
+      '<div><b' + (alerts ? ' style="color:var(--bad)"' : "") + '>' + alerts + '</b><span>LOTS TO CLEAR</span></div><div><b>' + toDecideNow() + '</b><span>TO SETTLE</span></div></div><div class="go">OPEN \u2192</div></button>';
+    (S.shops || []).forEach(function (x) {
+      h += '<a class="shopcard" href="' + esc(x.url) + '"' + (x.color ? ' style="border-left-color:' + esc(x.color) + '"' : "") + '><div class="nm">' + esc(x.name) + '</div><div class="deal">ITS OWN DASHBOARD \u00b7 ITS OWN LOGIN</div>' +
+        '<p class="hint" style="margin:0">Stock, orders, settle and recipes for ' + esc(x.name) + ', in its own colours.</p><div class="go">OPEN \u2192</div></a>';
+    });
+    h += "</div>";
+    if (perm.canSetup) h += '<p class="hint">' + ((S.shops || []).length ? "Add or remove shops under Setup, Other shops." : "No other shops yet: add them under Setup, Other shops, with each one\'s dashboard link.") + "</p>";
+    return h;
+  }
   function viewStock(perm) {
+    if (perm.canDeliver && !shopSel) return shopCardsHtml(perm);
     var t = todayStr();
     var open = live().filter(function (b) { return remaining(b) > 0; });
     var expired = open.filter(function (b) { return status(b) === "expired"; });
@@ -2128,7 +2161,7 @@
       });
     });
 
-    var h = '<h2 class="sec">In stock</h2><p class="sub">' + niceDate(t) +
+    var h = (perm.canDeliver ? '<button class="back" type="button" data-shop="">\u2190 ALL SHOPS</button>' : "") + '<h2 class="sec">In stock \u00b7 ' + esc(THIS_SHOP) + '</h2><p class="sub">' + niceDate(t) +
       " \u00b7 everything sent out and not yet sold.</p>";
     h += '<div class="stats">' +
       stat("ON HAND", onHand, count(onHand, "portion") + " unsold, across every item", "") +
@@ -3190,9 +3223,9 @@
     h += activityHtml();
     h += '<div class="subhead">OTHER SHOPS</div><div class="card"><p class="hint" style="margin:0 0 10px">Every shop has its own dashboard and its own login. List them here and they appear at the top of every page for Dee\'s side, one tap to switch.</p>';
     (S.shops || []).forEach(function (x, i) {
-      h += '<div class="grid2"><div class="field"><label>SHOP</label><input data-shop-n="' + i + '" value="' + esc(x.name) + '"></div><div class="field"><label>DASHBOARD LINK</label><input data-shop-u="' + i + '" value="' + esc(x.url) + '"></div></div>';
+      h += '<div class="grid2"><div class="field"><label>SHOP</label><input data-shop-n="' + i + '" value="' + esc(x.name) + '"></div><div class="field"><label>DASHBOARD LINK</label><input data-shop-u="' + i + '" value="' + esc(x.url) + '"></div><div class="field"><label>CARD COLOUR</label><input data-shop-c="' + i + '" type="color" value="' + esc(x.color || "#8F352D") + '"></div></div>';
     });
-    h += '<div class="grid2"><div class="field"><label>SHOP</label><input id="shop-n" placeholder="e.g. Slate"></div><div class="field"><label>DASHBOARD LINK</label><input id="shop-u" placeholder="https://slate.…workers.dev"></div></div>' +
+    h += '<div class="grid2"><div class="field"><label>SHOP</label><input id="shop-n" placeholder="e.g. Slate"></div><div class="field"><label>DASHBOARD LINK</label><input id="shop-u" placeholder="https://slate.…workers.dev"></div><div class="field"><label>CARD COLOUR</label><input id="shop-c" type="color" value="#8F352D"></div></div>' +
       '<div class="acts"><button class="btn dark sm" type="button" data-act="saveshops">SAVE SHOPS</button></div><p class="hint">Clear a shop\'s name to remove it.</p></div>';
     h += '<div class="subhead">ITEMS</div>';
     S.items.forEach(function (it) {
@@ -3266,7 +3299,10 @@
   /* ============ actions ============ */
   function wire() {
     app.querySelectorAll("[data-tab]").forEach(function (b) {
-      b.onclick = function () { setTab(b.getAttribute("data-tab")); };
+      b.onclick = function () { var t = b.getAttribute("data-tab"); if (t === "stock") pickShop(""); else setTab(t); };
+    });
+    app.querySelectorAll("[data-shop]").forEach(function (b) {
+      b.onclick = function () { pickShop(b.getAttribute("data-shop")); };
     });
     app.querySelectorAll("[data-mtab]").forEach(function (b) {
       b.onclick = function () { selMonth = b.getAttribute("data-mtab"); render(); };
@@ -3610,10 +3646,11 @@
         var list = [], okUrl = function (u) { return /^https:\/\/[a-z0-9.-]+(:\d+)?(\/.*)?$/i.test(u) || /^http:\/\/localhost(:\d+)?$/.test(u); };
         app.querySelectorAll("[data-shop-n]").forEach(function (el) {
           var i = el.getAttribute("data-shop-n"), n = el.value.trim(), u = (app.querySelector('[data-shop-u="' + i + '"]') || {}).value || "";
-          if (n && okUrl(u.trim())) list.push({ name: n, url: u.trim() });
+          var c = (app.querySelector('[data-shop-c="' + i + '"]') || {}).value || "";
+          if (n && okUrl(u.trim())) list.push({ name: n, url: u.trim(), color: c });
         });
         var n2 = (document.getElementById("shop-n") || {}).value || "", u2 = ((document.getElementById("shop-u") || {}).value || "").trim();
-        if (n2.trim()) { if (!okUrl(u2)) { toast("The link must start with https://", true); return; } list.push({ name: n2.trim(), url: u2 }); }
+        if (n2.trim()) { if (!okUrl(u2)) { toast("The link must start with https://", true); return; } list.push({ name: n2.trim(), url: u2, color: (document.getElementById("shop-c") || {}).value || "" }); }
         var seen = {}; list = list.filter(function (x) { var k = x.url.replace(/\/+$/, "").toLowerCase(); if (seen[k]) return false; seen[k] = 1; return true; });
         save(function (nx) { nx.shops = list; }, list.length + " shop" + (list.length === 1 ? "" : "s") + " saved.");
       },
