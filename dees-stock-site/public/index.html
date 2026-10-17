@@ -263,7 +263,7 @@
   .dline:last-child{border-bottom:0;font-weight:900;color:var(--ink);padding-top:9px}
 
   /* ---------- recipe editor ---------- */
-  .ing{display:grid;grid-template-columns:1fr 78px 64px 86px 78px 92px 40px;gap:8px;align-items:end;margin-bottom:8px}
+  .ing{display:grid;grid-template-columns:1fr 78px 64px 92px 40px;gap:8px;align-items:end;margin-bottom:8px}
   .ing input{border:1.5px solid var(--line);border-radius:9px;padding:9px 10px;min-height:42px;width:100%;min-width:0;background:#fff}
   .ing .c{display:flex;flex-direction:column;justify-content:flex-end;min-width:0}
   .ing .ml{display:none}
@@ -278,7 +278,7 @@
   .ing .x:hover{border-color:#F0B6B0;color:var(--bad)}
   @media(max-width:760px){
     .ing-head{display:none}
-    .ing[data-row]{grid-template-columns:repeat(8,minmax(0,1fr));grid-template-areas:"n n n n n o o x" "q q u u pp pp pq pq";
+    .ing[data-row]{grid-template-columns:repeat(8,minmax(0,1fr));grid-template-areas:"n n n n n o o x" "q q q q u u u u";
       gap:10px 6px;padding-bottom:12px;margin-bottom:12px;border-bottom:1px dashed var(--line)}
     .ing .c-n{grid-area:n}.ing .c-q{grid-area:q}.ing .c-u{grid-area:u}
     .ing .c-pp{grid-area:pp}.ing .c-pq{grid-area:pq}.ing .c-o{grid-area:o}.ing .c-x{grid-area:x}
@@ -561,13 +561,14 @@
     var rows = pantryList();
     var h = '<div class="subhead">PANTRY · INGREDIENT PRICES THIS MONTH</div><div class="card">' +
       '<p class="hint" style="margin-bottom:10px">Set a pack price once here and every recipe that uses the ingredient updates: cost, profit and the P&amp;L. Orders already sent out keep the cost they went out at.</p>' +
-      '<div class="tw"><table><thead><tr><th>INGREDIENT</th><th>PACK PRICE (' + cur() + ')</th><th>PACK QTY</th><th>UNIT</th><th class="r">USED IN</th></tr></thead><tbody>';
+      '<div class="tw"><table><thead><tr><th>INGREDIENT</th><th>PACK PRICE (' + cur() + ')</th><th>PACK QTY</th><th>UNIT</th><th class="r">USED IN</th><th></th></tr></thead><tbody>';
     rows.forEach(function (r) {
       h += '<tr data-pantry="' + esc(r.n) + '"><td>' + esc(r.n) + (r.stored ? "" : ' <span class="pill p-soon" title="Not saved in the pantry yet">NEW</span>') + "</td>" +
         '<td><input data-pf="pp" type="number" min="0" step="0.01" value="' + r.pp + '" style="width:92px" aria-label="Pack price"></td>' +
         '<td><input data-pf="pq" type="number" min="0" step="any" value="' + r.pq + '" style="width:84px" aria-label="Pack qty"></td>' +
         '<td><input data-pf="u" value="' + esc(r.u) + '" style="width:60px" aria-label="Unit"></td>' +
-        '<td class="r">' + r.used + "</td></tr>";
+        '<td class="r">' + r.used + "</td>" +
+        '<td>' + (r.stored ? '<button class="x" type="button" data-delpantry="' + esc(r.n) + '" aria-label="Delete ingredient" style="border:1.5px solid var(--line);border-radius:9px;background:none;min-height:36px;min-width:36px;font-weight:900;color:var(--ink-3)">×</button>' : "") + "</td></tr>";
     });
     h += '</tbody></table></div><div class="acts" style="margin-top:10px"><button class="btn dark sm" type="button" data-act="savepantry">SAVE PRICES</button></div></div>';
     return h;
@@ -588,6 +589,12 @@
         r.pp = p.pp; r.pq = p.pq; if (p.u) r.u = p.u;
       }); });
     }, "Prices saved" + (touched ? ", " + touched + " recipe line" + (touched === 1 ? "" : "s") + " updated." : "."));
+  }
+  function delPantry(name) {
+    var k = normIng(name), used = 0;
+    S.items.forEach(function (it) { (it.recipe || []).forEach(function (r) { if (normIng(r.n) === k) used++; }); });
+    if (used) { toast(name + " is still in " + used + " recipe line" + (used === 1 ? "" : "s") + ". Remove it from those recipes first.", true); return; }
+    save(function (nx) { nx.pantry = (nx.pantry || []).filter(function (x) { return normIng(x.n) !== k; }); }, name + " deleted from the pantry.");
   }
   function chargeOf(it) {
     if (it && it.chargeCost != null && it.chargeCost !== "") return +it.chargeCost || 0;
@@ -2446,15 +2453,14 @@
 
       h += '<div class="ing ing-head"><span><span class="lbl">INGREDIENT</span></span>' +
         '<span><span class="lbl">RECIPE QTY</span></span><span><span class="lbl">UNIT</span></span>' +
-        '<span><span class="lbl">PACK PRICE</span></span><span><span class="lbl">PACK QTY</span></span>' +
         '<span><span class="lbl">COST USED</span></span><span></span></div>';
       (it.recipe || []).forEach(function (r, ix) {
         h += '<div class="ing" data-row="' + ix + '">' +
           '<span class="c c-n"><span class="ml">INGREDIENT</span><input data-f="n" value="' + esc(r.n) + '" placeholder="ingredient" aria-label="Ingredient"' + ro + "></span>" +
           '<span class="c c-q"><span class="ml">QTY</span><input data-f="q" type="number" min="0" step="any" value="' + r.q + '" aria-label="Recipe qty"' + ro + "></span>" +
           '<span class="c c-u"><span class="ml">UNIT</span><input data-f="u" value="' + esc(r.u || "") + '" placeholder="g" aria-label="Unit"' + ro + "></span>" +
-          '<span class="c c-pp"><span class="ml">PACK PRICE</span><input data-f="pp" type="number" min="0" step="0.01" value="' + (pantryOf(r.n) ? pantryOf(r.n).pp : r.pp) + '" aria-label="Pack price"' + (pantryOf(r.n) ? ' disabled title="Set in the pantry above"' : ro) + "></span>" +
-          '<span class="c c-pq"><span class="ml">PACK QTY</span><input data-f="pq" type="number" min="0" step="any" value="' + (pantryOf(r.n) ? pantryOf(r.n).pq : r.pq) + '" aria-label="Pack qty"' + (pantryOf(r.n) ? ' disabled title="Set in the pantry above"' : ro) + "></span>" +
+          '<input data-f="pp" type="hidden" value="' + (pantryOf(r.n) ? pantryOf(r.n).pp : r.pp) + '">' +
+          '<input data-f="pq" type="hidden" value="' + (pantryOf(r.n) ? pantryOf(r.n).pq : r.pq) + '">' +
           '<span class="c c-o"><span class="ml">COST USED</span><span class="out">0</span></span>' +
           (editable ? '<button class="x c-x" type="button" data-delrow="' + it.id + ":" + ix + '" aria-label="Remove">×</button>' : '<span class="c-x"></span>') +
           "</div>";
@@ -3666,6 +3672,9 @@
         var mk = b.getAttribute("data-munsettle");
         save(function (n) { if (n.monthsPaid) delete n.monthsPaid[mk]; }, monthName(mk) + " reopened.");
       };
+    });
+    app.querySelectorAll("[data-delpantry]").forEach(function (b) {
+      b.onclick = function () { delPantry(b.getAttribute("data-delpantry")); };
     });
     app.querySelectorAll("[data-act]").forEach(function (b) {
       var fn = acts[b.getAttribute("data-act")];

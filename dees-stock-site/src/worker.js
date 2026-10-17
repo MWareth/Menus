@@ -463,6 +463,21 @@ export const REPAIRS = {
      recipes themselves: where two recipes priced the same ingredient
      differently, the recipe added last (the newest shopping) wins, and that
      price is copied into every line with that name. */
+  "heavy-cream-is-cream": (state) => {
+    const norm = (n) => String(n || "").trim().toLowerCase().replace(/\s+/g, " ");
+    let changed = false;
+    (state.items || []).forEach((it) => (it.recipe || []).forEach((r) => {
+      const k = norm(r.n);
+      if (k === "heavy cream" || k === "cream") { if (r.n !== "Cream" || r.pp !== 22.05 || r.pq !== 1000) changed = true; r.n = "Cream"; r.pp = 22.05; r.pq = 1000; if (!r.u) r.u = "ml"; }
+    }));
+    if (Array.isArray(state.pantry)) {
+      const keep = state.pantry.filter((x) => { const k = norm(x.n); return k !== "heavy cream" && k !== "cream"; });
+      keep.push({ n: "Cream", pp: 22.05, pq: 1000, u: "ml" });
+      keep.sort((a, b) => a.n.localeCompare(b.n));
+      state.pantry = keep; changed = true;
+    }
+    return changed;
+  },
   "pantry-from-recipes": (state) => {
     if (Array.isArray(state.pantry)) return false;
     const norm = (n) => String(n || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -581,6 +596,7 @@ function forViewer(state, me) {
     /* running costs (petrol, DEWA, gas) are Dee's own books, not part of the
        50/50 — the truck never sees them */
     view.overheads = [];
+    view.pantry = [];   /* ingredient prices are Dee's side only */
   }
   return view;
 }
@@ -629,6 +645,9 @@ function mergeSave(stored, incoming, me) {
   if (Array.isArray(incoming.payments)) out.payments = incoming.payments;
   if (Array.isArray(incoming.buys)) out.buys = incoming.buys;
   if (Array.isArray(incoming.overheads)) out.overheads = incoming.overheads;
+  if (Array.isArray(incoming.pantry)) out.pantry = incoming.pantry.slice(0, 500).map((x) => ({
+    n: String((x && x.n) || "").slice(0, 80), pp: Math.max(0, +(x && x.pp) || 0), pq: +(x && x.pq) > 0 ? +x.pq : 1, u: String((x && x.u) || "").slice(0, 12)
+  })).filter((x) => x.n);
   if (incoming.monthsPaid && typeof incoming.monthsPaid === "object" && !Array.isArray(incoming.monthsPaid))
     out.monthsPaid = incoming.monthsPaid;
   if (incoming.monthPays && typeof incoming.monthPays === "object" && !Array.isArray(incoming.monthPays))
