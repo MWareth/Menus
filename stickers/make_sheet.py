@@ -11,26 +11,35 @@ usage:
   python3 stickers/make_sheet.py --tabs-only            # lid tabs only, same spot, to reprint a used sheet
   then: node stickers/render.mjs <out>                   # writes <out>.pdf and <out>-sheet.png
 options: --out NAME (default Dees-Smash-stickers), --no-tabs
+  --shop slate    Slate's sheet: Slate logo and colours, QR to Slate's own Pass Card (slate.tapntreat1.workers.dev/t).
+                  Lid tabs read @slatedxb (instagram.com/slatedxb).
 More than 30 stickers spill onto extra pages.
 """
 import argparse, base64, io, os, qrcode, qrcode.image.svg
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 URL = "https://dees-stock.deestreats2026.workers.dev/t"
-EMOJI = {"San Sebastian": "🍰", "Brownie Bag": "🍫", "Chocolate Cake": "🍫🍰", "Crème Brûlée": "🍮"}
+EMOJI = {"San Sebastian": "🍰", "Brownie Bag": "🍫", "Chocolate Cake": "🍫🍰", "Crème Brûlée": "🍮", "Mini Pavlova": "🍓", "Lazy Cake": "🍫"}
+SHOPS = {   # per shop: where the QR goes, the logo, the accent colour and the text on it, the lid-tab handle
+  "smash": {"url": URL, "logo": os.path.join(HERE, "..", "smash-n-pass-brand-deck", "logo.png"), "accent": "#FFD21C", "ink": "#17140F", "handle": "@SmashAndPass.DXB"},
+  "slate": {"url": "https://slate.tapntreat1.workers.dev/t", "logo": "/home/user/tapntreat/clients/slate/public/logo.png", "accent": "#8F352D", "ink": "#FFFFFF", "handle": "@slatedxb"},
+}
 PER_PAGE = 30
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--made"); ap.add_argument("--exp")
 ap.add_argument("--out", default="Dees-Smash-stickers")
 ap.add_argument("--tabs-only", action="store_true"); ap.add_argument("--no-tabs", action="store_true")
+ap.add_argument("--shop", default="smash", choices=sorted(SHOPS)); ap.add_argument("--handle")
 ap.add_argument("items", nargs="*", help='"Name:count"')
 a = ap.parse_args()
 if not a.tabs_only and not (a.made and a.exp and a.items):
     ap.error("give --made, --exp and at least one \"Name:count\" (or --tabs-only)")
 
 b64 = lambda p: base64.b64encode(open(p, "rb").read()).decode()
-logo = "data:image/png;base64," + b64(os.path.join(HERE, "..", "smash-n-pass-brand-deck", "logo.png"))
+SH = SHOPS[a.shop]; URL = SH["url"]; HANDLE = a.handle if a.handle is not None else SH["handle"]
+if not HANDLE: a.no_tabs = True   # no handle on file: no lid tabs rather than a made-up one
+logo = "data:image/png;base64," + b64(SH["logo"])
 lilita = "data:font/ttf;base64," + b64(os.path.join(HERE, "LilitaOne.ttf"))
 buf = io.BytesIO(); qrcode.make(URL, image_factory=qrcode.image.svg.SvgPathImage, border=1).save(buf)
 qr = "data:image/svg+xml;base64," + base64.b64encode(buf.getvalue()).decode()
@@ -43,7 +52,7 @@ def sticker(name):
             f'<div class="dt"><span>MADE</span> {a.made}</div><div class="dt best"><span>EXP</span> {a.exp}</div><div class="cta">10th one FREE 🎁</div></div>')
 
 TAB = (f'<div class="tab"><div class="p l">{IG}<span>FOLLOW US</span></div><div class="p m"><img src="{logo}"></div>'
-       f'<div class="p r"><span>@SmashAndPass.DXB</span></div></div>')
+       f'<div class="p r"><span>{HANDLE}</span></div></div>')
 
 names = [] if a.tabs_only else [n for spec in a.items for n in [spec.rsplit(":", 1)[0]] * int(spec.rsplit(":", 1)[1])]
 pages = [names[i:i + PER_PAGE] for i in range(0, len(names), PER_PAGE)] or [[]]
@@ -61,10 +70,10 @@ body{{background:#fff;font-family:Cairo,sans-serif;color:#1C1917}}
 .tk{{width:34mm;height:34mm;border:0.3mm dashed #C9BCA4;border-radius:1.8mm;display:flex;flex-direction:column;justify-content:center;gap:0.5mm;padding:1.5mm;overflow:hidden}}
 .top{{display:flex;align-items:center;gap:1.3mm}}
 .qcol{{display:flex;flex-direction:column;align-items:stretch;flex:none}}
-.pill{{font-family:'Baloo 2',sans-serif;font-weight:800;background:#FFD21C;color:#17140F;text-align:center;line-height:1;letter-spacing:.04em;font-size:5.4pt;padding:0.7mm 0 0.5mm;border-radius:1mm 1mm 0 0}}
-.q{{display:block;width:15mm;height:15mm;border:0.5mm solid #FFD21C;border-top:0;border-radius:0 0 1mm 1mm}}
+.pill{{font-family:'Baloo 2',sans-serif;font-weight:800;background:{SH["accent"]};color:{SH["ink"]};text-align:center;line-height:1;letter-spacing:.04em;font-size:5.4pt;padding:0.7mm 0 0.5mm;border-radius:1mm 1mm 0 0}}
+.q{{display:block;width:15mm;height:15mm;border:0.5mm solid {SH["accent"]};border-top:0;border-radius:0 0 1mm 1mm}}
 .side{{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:0.8mm}}
-.lg{{height:4mm;width:auto;object-fit:contain}}
+.lg{{height:{"6.5mm" if a.shop == "slate" else "4mm"};width:auto;max-width:100%;object-fit:contain}}
 .emo{{font-size:8.5pt;line-height:1;white-space:nowrap}}
 .prod{{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:6.6pt;color:#4A2C2A;line-height:1.05}}
 .dt{{font-size:5.4pt;color:#2B1E1A;font-weight:700;white-space:nowrap;line-height:1.1}}
