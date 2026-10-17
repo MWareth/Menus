@@ -22,7 +22,7 @@ URL = "https://dees-stock.deestreats2026.workers.dev/t"
 EMOJI = {"San Sebastian": "🍰", "Brownie Bag": "🍫", "Chocolate Cake": "🍫🍰", "Crème Brûlée": "🍮", "Mini Pavlova": "🍓", "Lazy Cake": "🍫"}
 SHOPS = {   # per shop: where the QR goes, the logo, the accent colour and the text on it, the lid-tab handle
   "smash": {"url": URL, "logo": os.path.join(HERE, "..", "smash-n-pass-brand-deck", "logo.png"), "accent": "#FFD21C", "ink": "#17140F", "handle": "@SmashAndPass.DXB"},
-  "slate": {"url": "https://slate.tapntreat1.workers.dev/t", "logo": "/home/user/tapntreat/clients/slate/public/logo.png", "accent": "#8F352D", "ink": "#FFFFFF", "handle": "@slatedxb"},
+  "slate": {"url": "https://slate.tapntreat1.workers.dev/t", "logo": "/home/user/tapntreat/clients/slate/public/logo.png", "accent": "#8F352D", "ink": "#FFFFFF", "handle": "@slatedxb", "tabLogo": False, "handlePt": 8.6},
 }
 PER_PAGE = 30
 
@@ -51,7 +51,8 @@ def sticker(name):
             f'<div class="side"><img class="lg" src="{logo}"><span class="emo">{EMOJI.get(name, "")}</span><div class="prod">{name}</div></div></div>'
             f'<div class="dt"><span>MADE</span> {a.made}</div><div class="dt best"><span>EXP</span> {a.exp}</div><div class="cta">10th one FREE 🎁</div></div>')
 
-TAB = (f'<div class="tab"><div class="p l">{IG}<span>FOLLOW US</span></div><div class="p m"><img src="{logo}"></div>'
+TAB_MID = f'<img src="{logo}">' if SH.get("tabLogo", True) else ""   # Slate: plain fold strip, no logo
+TAB = (f'<div class="tab"><div class="p l">{IG}<span>FOLLOW US</span></div><div class="p m">{TAB_MID}</div>'
        f'<div class="p r"><span>{HANDLE}</span></div></div>')
 
 names = [] if a.tabs_only else [n for spec in a.items for n in [spec.rsplit(":", 1)[0]] * int(spec.rsplit(":", 1)[1])]
@@ -85,7 +86,7 @@ body{{background:#fff;font-family:Cairo,sans-serif;color:#1C1917}}
 .p.m{{border-left:0.25mm dashed #CFC6B6;border-right:0.25mm dashed #CFC6B6}}
 .p.m img{{height:3.8mm;width:auto;max-width:7mm;object-fit:contain}}
 .p.l span{{font-family:'Lilita Local','Lilita One','Arial Black',sans-serif;font-size:7.4pt;letter-spacing:.03em;line-height:1}}
-.p.r span{{font-family:'Lilita Local','Lilita One','Arial Black',sans-serif;font-size:5.4pt;line-height:1}}
+.p.r span{{font-family:'Lilita Local','Lilita One','Arial Black',sans-serif;font-size:{SH.get("handlePt", 5.4)}pt;line-height:1}}
 .ig{{width:3.4mm;height:3.4mm;display:block;flex:none}}
 </style></head><body>{body}</body></html>"""
 open(a.out + ".html", "w", encoding="utf-8").write(html)
