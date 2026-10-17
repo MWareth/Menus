@@ -2524,6 +2524,12 @@
     sell += '<div class="subhead">ON THE TRUCK NOW</div>';
     sell += open.length ? rowsByDate(open, perm, true) :
       '<div class="empty">Nothing in date on the truck.</div>';
+    /* sold out but still in date: kept here so a mistaken last entry can be undone */
+    var gone = live().filter(function (b) { return remaining(b) <= 0 && status(b) !== "expired" && lastUndoable(b) >= 0 && !weekClosed(dropOf(b)); });
+    if (gone.length && perm.canSell && !readOnly) {
+      sell += '<div class="subhead">SOLD OUT TODAY \u00b7 UNDO A MISTAKE</div>';
+      sell += rowsByDate(gone, perm, true);
+    }
 
     /* --- the sales log --- */
     var log = [];
