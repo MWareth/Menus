@@ -599,6 +599,7 @@ function forViewer(state, me) {
     view.pantry = [];   /* ingredient prices are Dee's side only */
     view.clients = [];  /* the other shops Dee's supplies are not the truck's business */
   }
+  if (!permsOf(me).canSetup) (view.clients || []).forEach((c) => { delete c.key; });   /* only the admin sees the pairing codes */
   return view;
 }
 
@@ -671,11 +672,15 @@ function mergeSave(stored, incoming, me) {
   }
   /* the shops Dee's supplies (name, link, how their items map to ours); the keys stay in Cloudflare */
   if (perm.canSetup && Array.isArray(incoming.clients)) {
+    const had = new Map((stored.clients || []).map((c) => [c.id, c]));
+    const newKey = () => { const a = new Uint8Array(18); crypto.getRandomValues(a); return "DS-" + Array.from(a, (x) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[x % 32]).join(""); };
     out.clients = incoming.clients.slice(0, 50).map((c) => ({
       id: String((c && c.id) || "").toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 24),
       name: String((c && c.name) || "").slice(0, 60),
       url: String((c && c.url) || "").replace(/\/+$/, "").slice(0, 200),
-      map: c && c.map && typeof c.map === "object" && !Array.isArray(c.map) ? c.map : {}
+      map: c && c.map && typeof c.map === "object" && !Array.isArray(c.map) ? c.map : {},
+      /* the pairing code is made here once and never taken from the client */
+      key: (had.get(String((c && c.id) || "").toLowerCase()) || {}).key || newKey()
     })).filter((c) => c.id && /^https:\/\/[a-z0-9.-]+(:\d+)?(\/.*)?$/i.test(c.url.replace(/^http:\/\/localhost(?=[:/]|$)/, "https://localhost")));
   } else {
     out.clients = stored.clients;
@@ -803,7 +808,7 @@ async function api(request, env, path, later = () => {}) {
     const want = new URL(request.url).searchParams.get("month") || "";
     const month = /^\d{4}-\d{2}$/.test(want) ? want : new Date(Date.now() + 4 * 3600e3).toISOString().slice(0, 7);
     const clients = await Promise.all((board.state.clients || []).map(async (c) => {
-      const key = env["CLIENT_KEY_" + c.id.toUpperCase()];
+      const key = env["CLIENT_KEY_" + c.id.toUpperCase()] || c.key;
       if (!key) return { id: c.id, name: c.name, url: c.url, error: "no_key" };
       try {
         const r = await fetch(c.url + "/api/pass/supplier?month=" + month, { headers: { authorization: "Bearer " + key, accept: "application/json" }, signal: AbortSignal.timeout(8000) });
