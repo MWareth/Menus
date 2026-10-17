@@ -596,6 +596,7 @@ function forViewer(state, me) {
     /* running costs (petrol, DEWA, gas) are Dee's own books, not part of the
        50/50 — the truck never sees them */
     view.overheads = [];
+    view.shops = [];
     view.pantry = [];   /* ingredient prices are Dee's side only */
   }
   return view;
@@ -645,6 +646,7 @@ function mergeSave(stored, incoming, me) {
   if (Array.isArray(incoming.payments)) out.payments = incoming.payments;
   if (Array.isArray(incoming.buys)) out.buys = incoming.buys;
   if (Array.isArray(incoming.overheads)) out.overheads = incoming.overheads;
+  if (perm.canSetup && Array.isArray(incoming.shops)) out.shops = incoming.shops.slice(0, 30).map((x) => ({ name: String((x && x.name) || "").slice(0, 60), url: String((x && x.url) || "").slice(0, 200) })).filter((x) => x.name && /^https?:\/\//.test(x.url));
   if (Array.isArray(incoming.pantry)) out.pantry = incoming.pantry.slice(0, 500).map((x) => ({
     n: String((x && x.n) || "").slice(0, 80), pp: Math.max(0, +(x && x.pp) || 0), pq: +(x && x.pq) > 0 ? +x.pq : 1, u: String((x && x.u) || "").slice(0, 12)
   })).filter((x) => x.n);

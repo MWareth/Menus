@@ -38,6 +38,9 @@
   .out:hover{border-color:var(--brown);color:var(--brown)}
 
   /* ---------- tabs ---------- */
+  .shops{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+  .shops a,.shops span{display:inline-block;padding:5px 12px;border-radius:999px;font-size:12px;font-weight:900;letter-spacing:.06em;text-decoration:none;border:1.5px solid var(--line);color:var(--ink-2);background:var(--card)}
+  .shops span{background:var(--brown);color:var(--paper);border-color:var(--brown)}
   .tabs{background:var(--char);position:sticky;top:0;z-index:49;
     overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
   .tabs::-webkit-scrollbar{display:none}
@@ -830,6 +833,7 @@
   var artifact = null;
   var dl = null;                 /* the downloads capability, once it answers */
   var readOnly = false;
+  var THIS_SHOP = "Smash & Pass";   /* the shop this dashboard belongs to; other shops are links in the header */
   var busy = false;
   var tab = "stock";
   var lastPaintedTab = null;   /* so the view only animates when you switch tabs, not on every save */
@@ -2403,6 +2407,10 @@
     if (perm.canDeliver) tabs.push(["recipes", "RECIPES", 0]);
     if (perm.canSetup) tabs.push(["setup", "SETUP", 0]);
     tabs.push(["account", "MY PIN", 0]);
+    if (perm.canDeliver && (S.shops || []).length) {
+      html = html.replace("</div></header>", '<div class="shops"><span>' + esc(THIS_SHOP) + "</span>" +
+        S.shops.map(function (x) { return '<a href="' + esc(x.url) + '">' + esc(x.name) + "</a>"; }).join("") + "</div></div></header>");
+    }
     html += '<nav class="tabs"><div class="wrap">';
     tabs.forEach(function (t) {
       html += '<button class="tab" type="button" data-tab="' + t[0] + '" aria-current="' + (tab === t[0]) + '">' +
@@ -3622,6 +3630,12 @@
     var h = '<h2 class="sec">Setup</h2><p class="sub">Edit anything here. Changes apply to <em>future</em> orders only — anything already logged keeps the price, cost and shelf life it was saved with.</p>';
 
     h += activityHtml();
+    h += '<div class="subhead">OTHER SHOPS</div><div class="card"><p class="hint" style="margin:0 0 10px">Every shop has its own dashboard and its own login. List them here and they appear at the top of every page for Dee\'s side, one tap to switch.</p>';
+    (S.shops || []).forEach(function (x, i) {
+      h += '<div class="grid2"><div class="field"><label>SHOP</label><input data-shop-n="' + i + '" value="' + esc(x.name) + '"></div><div class="field"><label>DASHBOARD LINK</label><input data-shop-u="' + i + '" value="' + esc(x.url) + '"></div></div>';
+    });
+    h += '<div class="grid2"><div class="field"><label>SHOP</label><input id="shop-n" placeholder="e.g. Slate"></div><div class="field"><label>DASHBOARD LINK</label><input id="shop-u" placeholder="https://slate.…workers.dev"></div></div>' +
+      '<div class="acts"><button class="btn dark sm" type="button" data-act="saveshops">SAVE SHOPS</button></div><p class="hint">Clear a shop\'s name to remove it.</p></div>';
     h += '<div class="subhead">ITEMS</div>';
     S.items.forEach(function (it) {
       h += '<div class="card" data-item="' + it.id + '"><div class="grid2">' +
@@ -4033,6 +4047,17 @@
             pin: "d4165ae679b414636d9b7ff6fb6e1ee8b4824dfee69e3b2fc47fdfc259d38117" });
           n.defaultPins = true;
         }, "Person added with PIN 1234 — change it.");
+      },
+      saveshops: function () {
+        var list = [], okUrl = function (u) { return /^https:\/\/[a-z0-9.-]+(:\d+)?(\/.*)?$/i.test(u) || /^http:\/\/localhost(:\d+)?$/.test(u); };
+        app.querySelectorAll("[data-shop-n]").forEach(function (el) {
+          var i = el.getAttribute("data-shop-n"), n = el.value.trim(), u = (app.querySelector('[data-shop-u="' + i + '"]') || {}).value || "";
+          if (n && okUrl(u.trim())) list.push({ name: n, url: u.trim() });
+        });
+        var n2 = (document.getElementById("shop-n") || {}).value || "", u2 = ((document.getElementById("shop-u") || {}).value || "").trim();
+        if (n2.trim()) { if (!okUrl(u2)) { toast("The link must start with https://", true); return; } list.push({ name: n2.trim(), url: u2 }); }
+        var seen = {}; list = list.filter(function (x) { var k = x.url.replace(/\/+$/, "").toLowerCase(); if (seen[k]) return false; seen[k] = 1; return true; });
+        save(function (nx) { nx.shops = list; }, list.length + " shop" + (list.length === 1 ? "" : "s") + " saved.");
       },
       savesplit: function () {
         var pct = parseFloat(document.getElementById("sp-pct").value);
