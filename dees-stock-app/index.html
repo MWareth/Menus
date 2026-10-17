@@ -3465,8 +3465,9 @@
       }
     }
 
-    /* ---- running costs: Dee's own overheads, tracked but NOT in the split ---- */
-    if (perm.canDeliver) {
+    /* ---- running costs: Dee's own overheads, tracked but NOT in the split.
+       Switched off 18 Oct (not used); anything already logged is kept. ---- */
+    if (false && perm.canDeliver) {
       h += '<div class="subhead">RUNNING COSTS · JUST FOR YOU (NOT IN THE SPLIT)</div>';
       h += '<p class="sub" style="margin-top:-2px">Petrol, DEWA, gas and the like. Logged so you can watch them — <b>not</b> shared with Smash &amp; Pass and they don\'t change the settle above.</p>';
       if (!readOnly) {
