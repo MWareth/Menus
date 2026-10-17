@@ -113,6 +113,7 @@ async function saveBoard(env, expectedVersion, state) {
    recorded in meta so it is never applied twice. A repair only touches what
    it names: stock already sent out keeps the cost it was locked in at. */
 export const REPAIRS = {
+  "price-feed-token": (state) => { if (state.feedToken) return false; state.feedToken = newFeedToken(); return true; },
   /* Kiri cream cheese was costed at the retail 200 g pack (AED 12.50), which
      put a San Sebastian slice at AED 7.85. Dee's now buys the Greenhouse
      1.15 kg tub at AED 35 net, which makes the slice AED 5.44. */
@@ -576,6 +577,7 @@ const permsOf = (u) => ROLES[u && u.role] || ROLES.truck;
  */
 function forViewer(state, me) {
   const view = JSON.parse(JSON.stringify(state));
+  if (!permsOf(me).canSetup) delete view.feedToken;   /* the share link is the admin's */
   view.team = (view.team || []).map((u) => ({ id: u.id, name: u.name, user: u.user, role: u.role }));
   if (!permsOf(me).canDeliver) {
     /* the truck sees what it pays (the price per piece frozen on each lot, and
@@ -597,7 +599,8 @@ function forViewer(state, me) {
        50/50 — the truck never sees them */
     view.overheads = [];
     view.shops = [];
-    view.pantry = [];   /* ingredient prices are Dee's side only */
+    view.pantry = [];
+    delete view.feedUrl; delete view.feedAt; delete view.feedMatched;   /* ingredient prices are Dee's side only */
   }
   return view;
 }
@@ -647,6 +650,8 @@ function mergeSave(stored, incoming, me) {
   if (Array.isArray(incoming.buys)) out.buys = incoming.buys;
   if (Array.isArray(incoming.overheads)) out.overheads = incoming.overheads;
   if (perm.canSetup && Array.isArray(incoming.shops)) out.shops = incoming.shops.slice(0, 30).map((x) => ({ name: String((x && x.name) || "").slice(0, 60), url: String((x && x.url) || "").slice(0, 200), color: /^#[0-9a-f]{6}$/i.test((x && x.color) || "") ? x.color : "" })).filter((x) => x.name && /^https?:\/\//.test(x.url));
+  if (perm.canSetup && typeof incoming.feedUrl === "string") out.feedUrl = feedUrlOk(incoming.feedUrl.trim()) ? incoming.feedUrl.trim() : "";
+  out.feedToken = stored.feedToken; out.feedAt = stored.feedAt; out.feedMatched = stored.feedMatched;
   if (Array.isArray(incoming.pantry)) out.pantry = incoming.pantry.slice(0, 500).map((x) => ({
     n: String((x && x.n) || "").slice(0, 80), pp: Math.max(0, +(x && x.pp) || 0), pq: +(x && x.pq) > 0 ? +x.pq : 1, u: String((x && x.u) || "").slice(0, 12)
   })).filter((x) => x.n);
@@ -674,12 +679,65 @@ function mergeSave(stored, incoming, me) {
   return out;
 }
 
+
+/* ============ the price feed ============
+   One shop (Dee's Stock) is the primary pantry. It shares its ingredient prices and recipes
+   at a long random link; every other shop pastes that link once and pulls it every night
+   or on demand. Charges, selling prices, overheads, stock and the "shop's own" ticks stay local. */
+const norm = (n) => String(n || "").trim().toLowerCase().replace(/\s+/g, " ");
+function feedBody(state) {
+  return { ok: true, kind: "dees-prices", at: state.updatedAt || null, pantry: state.pantry || [],
+    items: (state.items || []).map((it) => ({ name: it.name, recipe: (it.recipe || []).map((r) => ({ n: r.n, q: r.q, u: r.u, pp: r.pp, pq: r.pq })),
+      yieldPieces: it.yieldPieces, perPortion: it.perPortion, packaging: it.packaging, realPackaging: it.realPackaging })) };
+}
+function applyFeed(state, feed) {
+  const by = {}; (feed.pantry || []).forEach((r) => { if (r && r.n) by[norm(r.n)] = { n: String(r.n).trim(), pp: +r.pp || 0, pq: +r.pq > 0 ? +r.pq : 1, u: r.u || "" }; });
+  state.pantry = Object.keys(by).sort().map((k) => by[k]);
+  let matched = 0;
+  (feed.items || []).forEach((src) => {
+    const it = (state.items || []).find((x) => norm(x.name) === norm(src.name));
+    if (!it) return;
+    const own = new Set((it.recipe || []).filter((r) => r.own).map((r) => norm(r.n)));
+    it.recipe = (src.recipe || []).map((r) => { const pan = by[norm(r.n)]; const line = { n: r.n, q: +r.q || 0, u: r.u || "", pp: pan ? pan.pp : +r.pp || 0, pq: pan ? pan.pq : (+r.pq > 0 ? +r.pq : 1) }; if (own.has(norm(r.n))) line.own = true; return line; });
+    ["yieldPieces", "perPortion", "packaging", "realPackaging"].forEach((f) => { if (src[f] != null && src[f] !== "") it[f] = src[f]; });
+    matched++;
+  });
+  return matched;
+}
+const feedUrlOk = (u) => /^https:\/\/[a-z0-9.-]+(:\d+)?\/api\/feed\/[A-Za-z0-9]{24,}$/i.test(u) || /^http:\/\/localhost(:\d+)?\/api\/feed\/[A-Za-z0-9]{24,}$/.test(u);
+async function pullFeed(env) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const board = await loadBoard(env);
+    const url = board.state.feedUrl;
+    if (!url || !feedUrlOk(url)) return { ok: false, error: "no_feed" };
+    let feed;
+    try {
+      const r = await fetch(url, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(10000) });
+      feed = await r.json().catch(() => null);
+      if (!r.ok || !feed || feed.kind !== "dees-prices") return { ok: false, error: r.status === 404 ? "bad_link" : "bad_feed" };
+    } catch (e) { return { ok: false, error: "unreachable" }; }
+    const next = JSON.parse(JSON.stringify(board.state));
+    const matched = applyFeed(next, feed);
+    next.feedAt = new Date().toISOString(); next.feedMatched = matched; next.updatedAt = next.feedAt;
+    if ((await saveBoard(env, board.version, next)) != null) return { ok: true, matched, pantry: next.pantry.length, at: next.feedAt };
+  }
+  return { ok: false, error: "busy" };
+}
+function newFeedToken() { const a = new Uint8Array(24); crypto.getRandomValues(a); return Array.from(a, (x) => "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"[x % 56]).join(""); }
+
 /* ============ the API ============ */
 
 async function api(request, env, path, later = () => {}) {
   await ready(env);
   const board = await repaired(env, await loadBoard(env));
   const me = await whoAmI(request, env, board.state);
+
+  /* another shop reading this shop's prices: no login, just the long link */
+  if (path.startsWith("/api/feed/") && request.method === "GET") {
+    const given = path.slice("/api/feed/".length);
+    if (!board.state.feedToken || given.length < 24 || !sameString(given, board.state.feedToken)) return json({ ok: false, error: "not_found" }, 404);
+    return json(feedBody(board.state));
+  }
 
   if (path === "/api/login" && request.method === "POST") {
     const body = await request.json().catch(() => ({}));
@@ -786,6 +844,21 @@ async function api(request, env, path, later = () => {}) {
     return json({ ok: true, version, state: forViewer(merged, me) });
   }
 
+  if (path === "/api/feed/reset" && request.method === "POST") {
+    if (!permsOf(me).canSetup) return json({ ok: false, error: "forbidden" }, 403);
+    const next = JSON.parse(JSON.stringify(board.state)); next.feedToken = newFeedToken(); next.updatedAt = new Date().toISOString();
+    const version = await saveBoard(env, board.version, next);
+    if (version == null) return json({ ok: false, error: "conflict" }, 409);
+    return json({ ok: true, version, state: forViewer(next, me) });
+  }
+  if (path === "/api/feed/pull" && request.method === "POST") {
+    if (!permsOf(me).canDeliver) return json({ ok: false, error: "forbidden" }, 403);
+    const r = await pullFeed(env);
+    if (!r.ok) return json(r, 400);
+    const now = await loadBoard(env);
+    return json({ ...r, version: now.version, state: forViewer(now.state, me) });
+  }
+
   if (path === "/api/pin" && request.method === "POST") {
     const body = await request.json().catch(() => ({}));
     const oldPin = String(body.oldPin || "").trim();
@@ -847,6 +920,7 @@ export default {
   /* nightly backup (cron in wrangler.jsonc); Cloudflare D1 Time Travel is the second safety net */
   async scheduled(event, env, ctx) {
     await ready(env);
+    ctx.waitUntil(pullFeed(env).then((r) => console.log("price feed", JSON.stringify(r))).catch((e) => console.error("price feed failed", e && e.message)));
     ctx.waitUntil(nightlyBackup(env, { loadBoard }).then((n) => console.log("backup saved", n, "bytes"))
       .catch((e) => console.error("backup failed", e && e.message)));
   },

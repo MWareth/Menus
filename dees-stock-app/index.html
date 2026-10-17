@@ -1020,6 +1020,12 @@
     var head = '<button type="button" data-act="togglepantry" aria-expanded="' + open + '" style="display:flex;width:100%;justify-content:space-between;align-items:center;background:none;border:0;padding:0;cursor:pointer;font:inherit;text-align:left" class="subhead">' +
       '<span>PANTRY · INGREDIENT PRICES THIS MONTH <span style="font-weight:600;letter-spacing:0">(' + rows.length + ')</span></span><span aria-hidden="true">' + (open ? "▲ HIDE" : "▼ SHOW") + "</span></button>";
     if (!open) return head;
+    if (followsFeed()) {
+      var h0 = head + '<div class="card"><p class="hint" style="margin-bottom:10px">These prices come from the primary pantry (' + esc(S.feedUrl.replace(/\/api\/feed\/.*$/, "")) + ')' + (S.feedAt ? ", last updated " + esc(stamp(S.feedAt)) : ", not pulled yet") + '. Change them there; they arrive here every night or when you press UPDATE NOW.</p>' +
+        '<div class="tw"><table><thead><tr><th>INGREDIENT</th><th class="r">PACK PRICE (' + cur() + ')</th><th class="r">PACK QTY</th><th>UNIT</th><th class="r">USED IN</th></tr></thead><tbody>';
+      rows.forEach(function (r) { h0 += "<tr><td>" + esc(r.n) + '</td><td class="r">' + money(r.pp) + '</td><td class="r">' + r.pq + "</td><td>" + esc(r.u) + '</td><td class="r">' + r.used + "</td></tr>"; });
+      return h0 + '</tbody></table></div><div class="acts" style="margin-top:10px"><button class="btn dark sm" type="button" data-act="pullfeed">UPDATE NOW</button></div></div>';
+    }
     var h = head + '<div class="card">' +
       '<p class="hint" style="margin-bottom:10px">Set a pack price once here and every recipe that uses the ingredient updates: cost, profit and the P&amp;L. Orders already sent out keep the cost they went out at.</p>' +
       '<div class="tw"><table><thead><tr><th>INGREDIENT</th><th>PACK PRICE (' + cur() + ')</th><th>PACK QTY</th><th>UNIT</th><th class="r">USED IN</th><th></th></tr></thead><tbody>';
@@ -1090,6 +1096,19 @@
       }, matched.length + " recipe" + (matched.length === 1 ? "" : "s") + " imported" + (skipped.length ? ". Not here, skipped: " + skipped.join(", ") : "."));
     };
     rd.readAsText(file);
+  }
+  /* the primary pantry: when this shop follows another shop's prices, recipes and the
+     pantry are read-only here and come from that link (nightly, or UPDATE NOW) */
+  function followsFeed() { return !!(S.feedUrl); }
+  function feedCall(path, okMsg) {
+    if (typeof fetch !== "function") { toast("Needs the hosted app.", true); return; }
+    busy = true; render();
+    fetch(path, { method: "POST", credentials: "same-origin", cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) {
+      busy = false;
+      if (!j || !j.ok) { render(); toast({ no_feed: "No link saved yet.", bad_link: "That link is not right: the other shop said not found. Copy it again from their Setup.", bad_feed: "That link did not answer with prices.", unreachable: "The other shop did not answer. Check the link.", busy: "Try again in a moment." }[j && j.error] || (j && j.error) || "Try again.", true); return; }
+      if (j.state) { S = j.state; if (typeof version !== "undefined") version = j.version; }
+      render(); toast(typeof okMsg === "function" ? okMsg(j) : okMsg);
+    }, function () { busy = false; render(); toast("No connection.", true); });
   }
   function chargeOf(it) {
     if (it && it.chargeCost != null && it.chargeCost !== "") return +it.chargeCost || 0;
@@ -2422,9 +2441,12 @@
     if (perm.canDeliver) tabs.push(["recipes", "RECIPES", 0]);
     if (perm.canSetup) tabs.push(["setup", "SETUP", 0]);
     tabs.push(["account", "MY PIN", 0]);
-    if (perm.canDeliver && (S.shops || []).length) {
-      html = html.replace("</div></header>", '<div class="shops"><span>' + esc(THIS_SHOP) + "</span>" +
-        S.shops.map(function (x) { return '<a href="' + esc(x.url) + '">' + esc(x.name) + "</a>"; }).join("") + "</div></div></header>");
+    if (perm.canDeliver && ((S.shops || []).length || followsFeed())) {
+      var home = followsFeed() ? S.feedUrl.replace(/\/api\/feed\/.*$/, "") : "";
+      html = html.replace("</div></header>", '<div class="shops">' +
+        (home ? '<a href="' + esc(home) + '" style="background:var(--char);color:var(--paper);border-color:var(--char)">\u2190 MAIN DASHBOARD</a>' : "") +
+        '<span>' + esc(THIS_SHOP) + "</span>" +
+        (S.shops || []).filter(function (x) { return x.url.replace(/\/+$/, "") !== home; }).map(function (x) { return '<a href="' + esc(x.url) + '">' + esc(x.name) + "</a>"; }).join("") + "</div></div></header>");
     }
     html += '<nav class="tabs"><div class="wrap">';
     tabs.forEach(function (t) {
@@ -2969,13 +2991,15 @@
       'then divided by how many pieces it makes. ' +
       'Numbers update as you type; nothing is saved until you press save.</p>';
     if (!editable) h += '<div class="banner info">Only Dee\'s side and admins can change recipes.</div>';
+    var fed = followsFeed();
+    if (editable && fed) h += '<div class="banner info"><b>Recipes and ingredient prices come from the primary pantry.</b> Set here: the SHOP\'S OWN ticks, overhead, what you charge and the selling price. Everything else arrives from the other shop' + (S.feedAt ? " (last updated " + esc(stamp(S.feedAt)) + ")" : "") + '. <button class="btn ghost sm" type="button" data-act="pullfeed" style="margin-left:6px">UPDATE NOW</button></div>';
     if (editable) h += pantryHtml();
-    if (editable) h += '<div class="acts" style="margin:0 0 14px"><button class="btn ghost sm" type="button" data-act="exportrecipes">EXPORT RECIPES &amp; PANTRY</button>' +
+    if (editable && !fed) h += '<div class="acts" style="margin:0 0 14px"><button class="btn ghost sm" type="button" data-act="exportrecipes">EXPORT RECIPES &amp; PANTRY</button>' +
       '<button class="btn ghost sm" type="button" data-act="importrecipes">IMPORT FROM A FILE</button><input id="rec-file" type="file" accept="application/json,.json" hidden></div>' +
       '<p class="hint" style="margin:-6px 0 14px">Export from the kitchen\'s stock app, import into any shop\'s: items are matched by name, and their recipe, yield, packaging and overhead come across with the pantry prices.</p>';
 
     S.items.forEach(function (it) {
-      var ro = editable ? "" : " disabled";
+      var ro = editable ? "" : " disabled", rf = editable && !fed ? "" : " disabled";   /* rf: fields the primary pantry owns */
       h += '<div class="card" data-recipe="' + it.id + '">';
       h += '<div class="recipe-h"><h3>' + esc(itemLabel(it)) + "</h3>" +
         '<span class="pill ' + (costed(it) ? "p-fresh" : "p-today") + '">' +
@@ -2986,28 +3010,28 @@
         '<span><span class="lbl">COST USED</span></span><span><span class="lbl" title="Tick when the shop adds this ingredient itself, so it is not in Dee\'s cost">SHOP\'S OWN</span></span><span></span></div>';
       (it.recipe || []).forEach(function (r, ix) {
         h += '<div class="ing' + (r.own ? " theirs" : "") + '" data-row="' + ix + '">' +
-          '<span class="c c-n"><span class="ml">INGREDIENT</span><input data-f="n" value="' + esc(r.n) + '" placeholder="ingredient" aria-label="Ingredient"' + ro + "></span>" +
-          '<span class="c c-q"><span class="ml">QTY</span><input data-f="q" type="number" min="0" step="any" value="' + r.q + '" aria-label="Recipe qty"' + ro + "></span>" +
-          '<span class="c c-u"><span class="ml">UNIT</span><input data-f="u" value="' + esc(r.u || "") + '" placeholder="g" aria-label="Unit"' + ro + "></span>" +
+          '<span class="c c-n"><span class="ml">INGREDIENT</span><input data-f="n" value="' + esc(r.n) + '" placeholder="ingredient" aria-label="Ingredient"' + rf + "></span>" +
+          '<span class="c c-q"><span class="ml">QTY</span><input data-f="q" type="number" min="0" step="any" value="' + r.q + '" aria-label="Recipe qty"' + rf + "></span>" +
+          '<span class="c c-u"><span class="ml">UNIT</span><input data-f="u" value="' + esc(r.u || "") + '" placeholder="g" aria-label="Unit"' + rf + "></span>" +
           '<input data-f="pp" type="hidden" value="' + (pantryOf(r.n) ? pantryOf(r.n).pp : r.pp) + '">' +
           '<input data-f="pq" type="hidden" value="' + (pantryOf(r.n) ? pantryOf(r.n).pq : r.pq) + '">' +
           '<span class="c c-o"><span class="ml">COST USED</span><span class="out">0</span></span>' +
           '<span class="c c-w"><span class="ml">SHOP\'S OWN</span><label class="own' + (r.own ? " on" : "") + '" title="The shop adds this ingredient itself, so it is not in Dee\'s cost"><input data-f="own" type="checkbox"' + (r.own ? " checked" : "") + ro + '> THEIRS</label></span>' +
-          (editable ? '<button class="x c-x" type="button" data-delrow="' + it.id + ":" + ix + '" aria-label="Remove">×</button>' : '<span class="c-x"></span>') +
+          (editable && !fed ? '<button class="x c-x" type="button" data-delrow="' + it.id + ":" + ix + '" aria-label="Remove">×</button>' : '<span class="c-x"></span>') +
           "</div>";
       });
       if (!(it.recipe || []).length) h += '<p class="hint" style="margin:4px 0 10px">No ingredients yet.</p>';
-      if (editable) h += '<button class="btn ghost sm" type="button" data-addrow="' + it.id + '">+ ADD INGREDIENT</button>';
+      if (editable && !fed) h += '<button class="btn ghost sm" type="button" data-addrow="' + it.id + '">+ ADD INGREDIENT</button>';
 
       h += '<div class="grid2" style="margin-top:16px">' +
         '<div class="field"><label>PIECES THIS RECIPE MAKES</label>' +
-        '<input data-f="yieldPieces" type="number" min="0" step="any" value="' + (it.yieldPieces || 0) + '"' + ro + "></div>" +
+        '<input data-f="yieldPieces" type="number" min="0" step="any" value="' + (it.yieldPieces || 0) + '"' + rf + "></div>" +
         '<div class="field"><label>PIECES IN ONE ' + esc(portionWordOf(it).toUpperCase()) + '</label>' +
-        '<input data-f="perPortion" type="number" min="1" step="any" value="' + (it.perPortion || 1) + '"' + ro + "></div>" +
+        '<input data-f="perPortion" type="number" min="1" step="any" value="' + (it.perPortion || 1) + '"' + rf + "></div>" +
         '<div class="field"><label>PACKAGING PER ' + esc(portionWordOf(it).toUpperCase()) + ' (' + cur() + ')</label>' +
-        '<input data-f="packaging" type="number" min="0" step="0.01" value="' + (it.packaging || 0) + '"' + ro + "></div>" +
+        '<input data-f="packaging" type="number" min="0" step="0.01" value="' + (it.packaging || 0) + '"' + rf + "></div>" +
         '<div class="field"><label>REAL PACKAGING PER ' + esc(portionWordOf(it).toUpperCase()) + ' (' + cur() + ') \u00b7 DEE\'S ONLY</label>' +
-        '<input data-f="realPackaging" type="number" min="0" step="0.01" value="' + (it.realPackaging != null && it.realPackaging !== "" ? it.realPackaging : "") + '" placeholder="same: ' + money(+it.packaging || 0) + '"' + ro + "></div>" +
+        '<input data-f="realPackaging" type="number" min="0" step="0.01" value="' + (it.realPackaging != null && it.realPackaging !== "" ? it.realPackaging : "") + '" placeholder="same: ' + money(+it.packaging || 0) + '"' + rf + "></div>" +
         '<div class="field"><label>OVERHEAD PER ' + esc(portionWordOf(it).toUpperCase()) + ' (' + cur() + ')</label>' +
         '<input data-f="overhead" type="number" min="0" step="0.01" value="' + overheadPerPiece(it) + '"' + ro + "></div>" +
         '<div class="field"><label>COST WE CHARGE SMASH (' + cur() + ')</label>' +
@@ -3669,6 +3693,14 @@
     var h = '<h2 class="sec">Setup</h2><p class="sub">Edit anything here. Changes apply to <em>future</em> orders only — anything already logged keeps the price, cost and shelf life it was saved with.</p>';
 
     h += activityHtml();
+    h += '<div class="subhead">PRIMARY PANTRY</div><div class="card">' +
+      '<p class="hint" style="margin:0 0 8px"><b>Share this shop\'s prices.</b> Any other shop that pastes this link follows this pantry and these recipes.</p>' +
+      (S.feedToken ? '<p style="margin:0 0 10px;word-break:break-all;font-family:var(--mono);font-size:12.5px;user-select:all">' + esc(location.origin + "/api/feed/" + S.feedToken) + '</p><div class="acts" style="margin-top:0"><button class="btn ghost sm" type="button" data-copy="' + esc(location.origin + "/api/feed/" + S.feedToken) + '">COPY LINK</button><button class="btn ghost sm" type="button" data-act="resetfeed">NEW LINK</button></div>' : '<p class="hint">The link appears after the first save.</p>') +
+      '<hr style="border:0;border-top:1px solid var(--line);margin:14px 0">' +
+      '<p class="hint" style="margin:0 0 8px"><b>Follow another shop\'s prices.</b> Paste the link from that shop\'s Setup. Prices and recipes then arrive every night, or when you press UPDATE NOW on Recipes. Clear it to go back to your own pantry.</p>' +
+      '<div class="field"><label for="feed-url">PRIMARY PRICES FROM</label><input id="feed-url" value="' + esc(S.feedUrl || "") + '" placeholder="https://…/api/feed/…"></div>' +
+      (S.feedUrl && S.feedAt ? '<p class="hint">Last updated ' + esc(stamp(S.feedAt)) + ', ' + (S.feedMatched || 0) + ' recipe' + (S.feedMatched === 1 ? "" : "s") + ' matched by name.</p>' : "") +
+      '<div class="acts"><button class="btn dark sm" type="button" data-act="savefeed">SAVE</button></div></div>';
     h += '<div class="subhead">OTHER SHOPS</div><div class="card"><p class="hint" style="margin:0 0 10px">Every shop has its own dashboard and its own login. List them here and they appear at the top of every page for Dee\'s side, one tap to switch.</p>';
     (S.shops || []).forEach(function (x, i) {
       h += '<div class="grid2"><div class="field"><label>SHOP</label><input data-shop-n="' + i + '" value="' + esc(x.name) + '"></div><div class="field"><label>DASHBOARD LINK</label><input data-shop-u="' + i + '" value="' + esc(x.url) + '"></div><div class="field"><label>CARD COLOUR</label><input data-shop-c="' + i + '" type="color" value="' + esc(x.color || "#8F352D") + '"></div></div>';
@@ -3748,6 +3780,9 @@
   function wire() {
     app.querySelectorAll("[data-tab]").forEach(function (b) {
       b.onclick = function () { var t = b.getAttribute("data-tab"); if (t === "stock") pickShop(""); else setTab(t); };
+    });
+    app.querySelectorAll("[data-copy]").forEach(function (b) {
+      b.onclick = function () { var v = b.getAttribute("data-copy"); if (navigator.clipboard) navigator.clipboard.writeText(v).then(function () { toast("Copied."); }, function () { toast(v); }); else toast(v); };
     });
     app.querySelectorAll("[data-shop]").forEach(function (b) {
       b.onclick = function () { pickShop(b.getAttribute("data-shop")); };
@@ -4090,6 +4125,14 @@
           n.defaultPins = true;
         }, "Person added with PIN 1234 — change it.");
       },
+      savefeed: function () {
+        var u = ((document.getElementById("feed-url") || {}).value || "").trim();
+        if (u && !/\/api\/feed\/[A-Za-z0-9]{24,}$/.test(u)) { toast("That is not a price link. Copy it from the other shop's Setup, Primary pantry.", true); return; }
+        save(function (nx) { nx.feedUrl = u; }, u ? "Saved. Pulling the prices now\u2026" : "Back to this shop's own pantry.");
+        if (u) setTimeout(function () { feedCall("/api/feed/pull", function (j) { return "Prices updated: " + j.matched + " recipe" + (j.matched === 1 ? "" : "s") + " and " + j.pantry + " ingredients."; }); }, 1200);
+      },
+      pullfeed: function () { feedCall("/api/feed/pull", function (j) { return "Prices updated: " + j.matched + " recipe" + (j.matched === 1 ? "" : "s") + " and " + j.pantry + " ingredients."; }); },
+      resetfeed: function () { ask({ title: "New link?", body: "The old link stops working. Every shop that follows this pantry will need the new one.", ok: "NEW LINK" }).then(function (go) { if (go) feedCall("/api/feed/reset", "New link made."); }); },
       saveshops: function () {
         var list = [], okUrl = function (u) { return /^https:\/\/[a-z0-9.-]+(:\d+)?(\/.*)?$/i.test(u) || /^http:\/\/localhost(:\d+)?$/.test(u); };
         app.querySelectorAll("[data-shop-n]").forEach(function (el) {
