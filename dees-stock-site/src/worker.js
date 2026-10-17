@@ -599,6 +599,7 @@ function forViewer(state, me) {
        50/50 — the truck never sees them */
     view.overheads = [];
     view.shops = [];
+    delete view.reports;
     view.pantry = [];
     delete view.feedUrl; delete view.feedAt; delete view.feedMatched;   /* ingredient prices are Dee's side only */
   }
@@ -651,7 +652,7 @@ function mergeSave(stored, incoming, me) {
   if (Array.isArray(incoming.overheads)) out.overheads = incoming.overheads;
   if (perm.canSetup && Array.isArray(incoming.shops)) out.shops = incoming.shops.slice(0, 30).map((x) => ({ name: String((x && x.name) || "").slice(0, 60), url: String((x && x.url) || "").slice(0, 200), color: /^#[0-9a-f]{6}$/i.test((x && x.color) || "") ? x.color : "" })).filter((x) => x.name && /^https?:\/\//.test(x.url));
   if (perm.canSetup && typeof incoming.feedUrl === "string") out.feedUrl = feedUrlOk(incoming.feedUrl.trim()) ? incoming.feedUrl.trim() : "";
-  out.feedToken = stored.feedToken; out.feedAt = stored.feedAt; out.feedMatched = stored.feedMatched;
+  out.selfUrl = stored.selfUrl; out.feedToken = stored.feedToken; out.feedAt = stored.feedAt; out.feedMatched = stored.feedMatched; out.reports = stored.reports;
   if (Array.isArray(incoming.pantry)) out.pantry = incoming.pantry.slice(0, 500).map((x) => ({
     n: String((x && x.n) || "").slice(0, 80), pp: Math.max(0, +(x && x.pp) || 0), pq: +(x && x.pq) > 0 ? +x.pq : 1, u: String((x && x.u) || "").slice(0, 12)
   })).filter((x) => x.n);
@@ -688,7 +689,8 @@ const norm = (n) => String(n || "").trim().toLowerCase().replace(/\s+/g, " ");
 function feedBody(state) {
   return { ok: true, kind: "dees-prices", at: state.updatedAt || null, pantry: state.pantry || [],
     items: (state.items || []).map((it) => ({ name: it.name, recipe: (it.recipe || []).map((r) => ({ n: r.n, q: r.q, u: r.u, pp: r.pp, pq: r.pq })),
-      yieldPieces: it.yieldPieces, perPortion: it.perPortion, packaging: it.packaging, realPackaging: it.realPackaging })) };
+      yieldPieces: it.yieldPieces, perPortion: it.perPortion, packaging: it.packaging, realPackaging: it.realPackaging,
+      overhead: it.overhead != null && it.overhead !== "" ? +it.overhead : (state.overheadPerPiece != null ? +state.overheadPerPiece || 0 : 1.21) })) };
 }
 function applyFeed(state, feed) {
   const by = {}; (feed.pantry || []).forEach((r) => { if (r && r.n) by[norm(r.n)] = { n: String(r.n).trim(), pp: +r.pp || 0, pq: +r.pq > 0 ? +r.pq : 1, u: r.u || "" }; });
@@ -699,13 +701,13 @@ function applyFeed(state, feed) {
     if (!it) return;
     const own = new Set((it.recipe || []).filter((r) => r.own).map((r) => norm(r.n)));
     it.recipe = (src.recipe || []).map((r) => { const pan = by[norm(r.n)]; const line = { n: r.n, q: +r.q || 0, u: r.u || "", pp: pan ? pan.pp : +r.pp || 0, pq: pan ? pan.pq : (+r.pq > 0 ? +r.pq : 1) }; if (own.has(norm(r.n))) line.own = true; return line; });
-    ["yieldPieces", "perPortion", "packaging", "realPackaging"].forEach((f) => { if (src[f] != null && src[f] !== "") it[f] = src[f]; });
+    ["yieldPieces", "perPortion", "packaging", "realPackaging", "overhead"].forEach((f) => { if (src[f] != null && src[f] !== "") it[f] = src[f]; });
     matched++;
   });
   return matched;
 }
 const feedUrlOk = (u) => /^https:\/\/[a-z0-9.-]+(:\d+)?\/api\/feed\/[A-Za-z0-9]{24,}$/i.test(u) || /^http:\/\/localhost(:\d+)?\/api\/feed\/[A-Za-z0-9]{24,}$/.test(u);
-async function pullFeed(env) {
+async function pullFeed(env, origin) {
   for (let attempt = 0; attempt < 3; attempt++) {
     const board = await loadBoard(env);
     const url = board.state.feedUrl;
@@ -719,12 +721,53 @@ async function pullFeed(env) {
     const next = JSON.parse(JSON.stringify(board.state));
     const matched = applyFeed(next, feed);
     next.feedAt = new Date().toISOString(); next.feedMatched = matched; next.updatedAt = next.feedAt;
-    if ((await saveBoard(env, board.version, next)) != null) return { ok: true, matched, pantry: next.pantry.length, at: next.feedAt };
+    if (origin) next.selfUrl = origin;   /* so the nightly pull can report under this shop's address */
+    if ((await saveBoard(env, board.version, next)) != null) { await reportUp(env, next, origin || next.selfUrl || ""); return { ok: true, matched, pantry: next.pantry.length, at: next.feedAt }; }
   }
   return { ok: false, error: "busy" };
 }
 function newFeedToken() { const a = new Uint8Array(24); crypto.getRandomValues(a); return Array.from(a, (x) => "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"[x % 56]).join(""); }
 
+
+
+/* ============ shop numbers for the main dashboard ============
+   A shop that follows the main dashboard's price link also reports its own numbers back
+   over the same link after every save, sale or stamp, so its card on the main dashboard
+   shows what is on its shelf, what sold and what it owes. No customer data travels. */
+function shopSummary(state) {
+  const now = new Date(Date.now() + 4 * 3600e3), today = now.toISOString().slice(0, 10), mk = today.slice(0, 7);
+  const addDays = (ds, n) => { const t = new Date(ds + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() + (+n || 0)); return t.toISOString().slice(0, 10); };
+  const closed = new Set((state.weeks || []).map((w) => w.start));
+  let onHand = 0, soldToday = 0, soldMonth = 0, toClear = 0, takings = 0, cost = 0, delivered = 0;
+  (state.batches || []).forEach((b) => {
+    if (b.voided) return;
+    const sales = b.sales || [];
+    const left = (+b.qty || 0) - sales.reduce((a, s) => a + (+s.qty || 0), 0);
+    const live = !closed.has(b.drop || b.id);
+    const end = b.madeOn ? addDays(b.madeOn, b.shelf) : "9999";
+    if (live && left > 0) { onHand += left; if (end <= today) toClear++; }
+    if ((b.madeOn || "").slice(0, 7) === mk) { delivered += +b.qty || 0; if (b.unitCost != null) cost += (+b.qty || 0) * (+b.unitCost || 0); }
+    sales.forEach((s) => {
+      if (s.kind) return;
+      const on = s.on || String(s.at || "").slice(0, 10);
+      if (on === today) soldToday += +s.qty || 0;
+      if (on.slice(0, 7) === mk) { soldMonth += +s.qty || 0; takings += (+s.qty || 0) * (+b.unitPrice || 0); }
+    });
+  });
+  const ws = state.split && state.split.basis === "wholesale", d = ws ? 0 : (+((state.split || {}).deesPct) || 0) / 100;
+  const owed = cost + Math.max(0, takings - cost) * d;
+  const paid = ((state.monthPays || {})[mk] || []).reduce((a, p) => a + (+p.amount || 0), 0);
+  return { onHand, soldToday, soldMonth, toClear, delivered, owed: Math.round((owed - paid) * 100) / 100, deal: ws ? "wholesale" : Math.round(d * 100) + "% split", month: mk };
+}
+async function reportUp(env, state, origin) {
+  const url = state.feedUrl;
+  if (!url || !feedUrlOk(url)) return;
+  try {
+    await fetch(url + "/report", { method: "POST", headers: { "content-type": "application/json" }, signal: AbortSignal.timeout(8000),
+      body: JSON.stringify({ url: origin, summary: shopSummary(state) }) });
+  } catch (e) { /* the main dashboard is down: the next save reports again */ }
+}
+const shopKey = (u) => String(u || "").trim().toLowerCase().replace(/^(https?:\/\/[^/]+).*$/, "$1");
 
 /* ============ low stock ============
    Each item can carry "warn below" (it.low). When a sale, a gift or a stamp takes an item's
@@ -765,6 +808,24 @@ async function api(request, env, path, later = () => {}) {
   const me = await whoAmI(request, env, board.state);
 
   /* another shop reading this shop's prices: no login, just the long link */
+  if (/^\/api\/feed\/[A-Za-z0-9]{24,}\/report$/.test(path) && request.method === "POST") {
+    const given = path.slice("/api/feed/".length, -"/report".length);
+    if (!board.state.feedToken || !sameString(given, board.state.feedToken)) return json({ ok: false, error: "not_found" }, 404);
+    const body = await request.json().catch(() => ({}));
+    const key = shopKey(body.url), sm = body.summary || {};
+    if (!/^https?:\/\/[a-z0-9.-]+(:\d+)?$/i.test(key)) return json({ ok: false, error: "bad_request" }, 400);
+    const num = (x) => (Number.isFinite(+x) ? Math.round(+x * 100) / 100 : 0);
+    const row = { at: new Date().toISOString(), onHand: num(sm.onHand), soldToday: num(sm.soldToday), soldMonth: num(sm.soldMonth), toClear: num(sm.toClear),
+      delivered: num(sm.delivered), owed: num(sm.owed), deal: String(sm.deal || "").slice(0, 20), month: String(sm.month || "").slice(0, 7) };
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const cur = await loadBoard(env), next = JSON.parse(JSON.stringify(cur.state));
+      next.reports = next.reports || {};
+      if (!next.reports[key] && Object.keys(next.reports).length >= 30) return json({ ok: false, error: "too_many" }, 400);
+      next.reports[key] = row;
+      if ((await saveBoard(env, cur.version, next)) != null) return json({ ok: true });
+    }
+    return json({ ok: false, error: "busy" }, 409);
+  }
   if (path.startsWith("/api/feed/") && request.method === "GET") {
     const given = path.slice("/api/feed/".length);
     if (!board.state.feedToken || given.length < 24 || !sameString(given, board.state.feedToken)) return json({ ok: false, error: "not_found" }, 404);
@@ -868,6 +929,7 @@ async function api(request, env, path, later = () => {}) {
     const version = await saveBoard(env, board.version, merged);
     if (version != null && mailReady(env) && env.ALERT_TO) later(saleAlert(env, board.state, merged, me, new URL(request.url).origin));
     if (version != null) later(lowStockCheck(env, board.state, merged, new URL(request.url).origin));
+    if (version != null) later(reportUp(env, merged, new URL(request.url).origin));
     if (version == null) {
       const now = await loadBoard(env);
       return json({
@@ -886,7 +948,7 @@ async function api(request, env, path, later = () => {}) {
   }
   if (path === "/api/feed/pull" && request.method === "POST") {
     if (!permsOf(me).canDeliver) return json({ ok: false, error: "forbidden" }, 403);
-    const r = await pullFeed(env);
+    const r = await pullFeed(env, new URL(request.url).origin);
     if (!r.ok) return json(r, 400);
     const now = await loadBoard(env);
     return json({ ...r, version: now.version, state: forViewer(now.state, me) });
@@ -968,7 +1030,7 @@ export default {
         await ready(env);
         return harden(await handlePass(request, env, url.pathname, {
           json, hmac, sameString, cookies, sessionSecret, loadBoard, saveBoard, whoAmI, later,
-          lowCheck: (before, after) => lowStockCheck(env, before, after, url.origin)
+          lowCheck: (before, after) => Promise.all([lowStockCheck(env, before, after, url.origin), reportUp(env, after, url.origin)])
         }));
       } catch (err) {
         return harden(json({ ok: false, error: "server_error", detail: String(err && err.message) }, 500));

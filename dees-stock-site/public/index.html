@@ -55,7 +55,7 @@
   .shops a,.shops span{display:inline-block;padding:5px 12px;border-radius:999px;font-size:12px;font-weight:900;letter-spacing:.06em;text-decoration:none;border:1.5px solid var(--line);color:var(--ink-2);background:var(--card)}
   .shops span{background:var(--brown);color:var(--paper);border-color:var(--brown)}
   .shopgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:16px}
-  .shopcard{display:block;width:100%;text-align:left;background:var(--card);border:1.5px solid var(--line);border-left:8px solid var(--brown);border-radius:16px;padding:16px;font:inherit;color:inherit;cursor:pointer;text-decoration:none;box-shadow:0 4px 14px rgba(28,25,23,.06)}
+  .shopcard{display:flex;flex-direction:column;justify-content:flex-start;width:100%;text-align:left;background:var(--card);border:1.5px solid var(--line);border-left:8px solid var(--brown);border-radius:16px;padding:16px;font:inherit;color:inherit;cursor:pointer;text-decoration:none;box-shadow:0 4px 14px rgba(28,25,23,.06)}
   .shopcard:hover{border-color:var(--gold)}
   .shopcard .nm{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:21px;line-height:1.1}
   .shopcard .deal{font-size:11px;font-weight:900;letter-spacing:.08em;color:var(--ink-3);margin:4px 0 10px}
@@ -2162,8 +2162,19 @@
       '<div><b>' + onHand + '</b><span>ON THE SHELF</span></div><div><b>' + sold + '</b><span>SOLD TODAY</span></div>' +
       '<div><b' + (alerts ? ' style="color:var(--bad)"' : "") + '>' + alerts + '</b><span>LOTS TO CLEAR</span></div><div><b>' + toDecideNow() + '</b><span>TO SETTLE</span></div></div><div class="go">OPEN \u2192</div></button>';
     (S.shops || []).forEach(function (x) {
-      h += '<a class="shopcard" href="' + esc(x.url) + '"' + (x.color ? ' style="border-left-color:' + esc(x.color) + '"' : "") + '><div class="nm">' + esc(x.name) + '</div><div class="deal">ITS OWN DASHBOARD \u00b7 ITS OWN LOGIN</div>' +
-        '<p class="hint" style="margin:0">Stock, orders, settle and recipes for ' + esc(x.name) + ', in its own colours.</p><div class="go">OPEN \u2192</div></a>';
+      var key = String(x.url || "").trim().toLowerCase().replace(/^(https?:\/\/[^/]+).*$/, "$1"), rp = (S.reports || {})[key];
+      h += '<a class="shopcard" href="' + esc(x.url) + '"' + (x.color ? ' style="border-left-color:' + esc(x.color) + '"' : "") + '><div class="nm">' + esc(x.name) + "</div>";
+      if (rp) {
+        var fresh = rp.at && (Date.now() - Date.parse(rp.at)) < 864e5 * 2;
+        h += '<div class="deal">' + esc(String(rp.deal || "").toUpperCase()) + ' \u00b7 UPDATED ' + esc(stamp(rp.at)).toUpperCase() + '</div><div class="nums">' +
+          '<div><b>' + rp.onHand + '</b><span>ON THE SHELF</span></div><div><b>' + rp.soldToday + '</b><span>SOLD TODAY</span></div>' +
+          '<div><b' + (rp.toClear ? ' style="color:var(--bad)"' : "") + '>' + rp.toClear + '</b><span>LOTS TO CLEAR</span></div><div><b>' + cur() + " " + money(Math.max(0, rp.owed)) + '</b><span>OWES THIS MONTH</span></div>' +
+          '<div><b>' + rp.soldMonth + '</b><span>SOLD THIS MONTH</span></div><div><b>' + rp.delivered + '</b><span>DELIVERED THIS MONTH</span></div></div>' +
+          (fresh ? "" : '<p class="hint" style="margin:6px 0 0;color:var(--warn)">No news from this shop for 2 days.</p>');
+      } else {
+        h += '<div class="deal">NO NUMBERS YET</div><p class="hint" style="margin:0">In ' + esc(x.name) + '\u2019s Setup, paste this dashboard\u2019s price link under Primary pantry. Its numbers then show here after every sale.</p>';
+      }
+      h += '<div class="go">OPEN \u2192</div></a>';
     });
     h += "</div>";
     if (perm.canSetup) h += '<p class="hint">' + ((S.shops || []).length ? "Add or remove shops under Setup, Other shops." : "No other shops yet: add them under Setup, Other shops, with each one\'s dashboard link.") + "</p>";
@@ -2563,7 +2574,7 @@
       'Numbers update as you type; nothing is saved until you press save.</p>';
     if (!editable) h += '<div class="banner info">Only Dee\'s side and admins can change recipes.</div>';
     var fed = followsFeed();
-    if (editable && fed) h += '<div class="banner info"><b>Recipes and ingredient prices come from the primary pantry.</b> Set here: the SHOP\'S OWN ticks, overhead, what you charge and the selling price. Everything else arrives from the other shop' + (S.feedAt ? " (last updated " + esc(stamp(S.feedAt)) + ")" : "") + '. <button class="btn ghost sm" type="button" data-act="pullfeed" style="margin-left:6px">UPDATE NOW</button></div>';
+    if (editable && fed) h += '<div class="banner info"><b>Recipes and ingredient prices come from the primary pantry.</b> Set here: the SHOP\'S OWN ticks, what you charge and the selling price. Everything else arrives from the other shop' + (S.feedAt ? " (last updated " + esc(stamp(S.feedAt)) + ")" : "") + '. <button class="btn ghost sm" type="button" data-act="pullfeed" style="margin-left:6px">UPDATE NOW</button></div>';
     if (editable) h += pantryHtml();
     if (editable && !fed) h += '<div class="acts" style="margin:0 0 14px"><button class="btn ghost sm" type="button" data-act="exportrecipes">EXPORT RECIPES &amp; PANTRY</button>' +
       '<button class="btn ghost sm" type="button" data-act="importrecipes">IMPORT FROM A FILE</button><input id="rec-file" type="file" accept="application/json,.json" hidden></div>' +
@@ -2604,7 +2615,7 @@
         '<div class="field"><label>REAL PACKAGING PER ' + esc(portionWordOf(it).toUpperCase()) + ' (' + cur() + ') \u00b7 DEE\'S ONLY</label>' +
         '<input data-f="realPackaging" type="number" min="0" step="0.01" value="' + (it.realPackaging != null && it.realPackaging !== "" ? it.realPackaging : "") + '" placeholder="same: ' + money(+it.packaging || 0) + '"' + rf + "></div>" +
         '<div class="field"><label>OVERHEAD PER ' + esc(portionWordOf(it).toUpperCase()) + ' (' + cur() + ')</label>' +
-        '<input data-f="overhead" type="number" min="0" step="0.01" value="' + overheadPerPiece(it) + '"' + ro + "></div>" +
+        '<input data-f="overhead" type="number" min="0" step="0.01" value="' + overheadPerPiece(it) + '"' + rf + "></div>" +
         '<div class="field"><label>COST WE CHARGE SMASH (' + cur() + ')</label>' +
         '<input data-f="charge" type="number" min="0" step="0.01" value="' + (chargeOf(it) == null ? "" : (Math.round(chargeOf(it) * 100) / 100)) + '" placeholder="e.g. ' + money(Math.ceil((unitCostOf(it) || 0) + 1)) + '"' + ro + "></div>" +
         '<div class="field"><label>OR CHARGE SMASH PER ' + esc(batchWordOf(it).toUpperCase()) + ' (' + cur() + ')</label>' +
