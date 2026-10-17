@@ -1939,6 +1939,7 @@
     var tabs = [["stock", "STOCK", alerts], ["out", "ORDERS", 0], ["money", "SETTLE", toDecideNow()]];
     if (perm.canDeliver) tabs.push(["pnl", "MY P&amp;L", 0]);
     if (perm.canDeliver) tabs.push(["recipes", "RECIPES", 0]);
+    if (perm.canDeliver) tabs.push(["clients", "CLIENTS", 0]);
     if (perm.canSetup) tabs.push(["setup", "SETUP", 0]);
     tabs.push(["account", "MY PIN", 0]);
     html += '<nav class="tabs"><div class="wrap">';
@@ -1965,6 +1966,7 @@
     else if (tab === "money") html += viewMoney(perm);
     else if (tab === "recipes") html += viewRecipes(perm);
     else if (tab === "pnl") html += viewPnl(perm);
+    else if (tab === "clients") html += viewClients(perm);
     else if (tab === "setup") html += viewSetup(perm);
     else if (tab === "account") html += viewAccount();
     else html += viewStock(perm);
@@ -2635,6 +2637,92 @@
 
   /* ---------- money ---------- */
   /* ============ MY P&L — Dee's own books (Marwan and Dina only) ============ */
+  /* ---- the shops Dee's supplies: each runs its own Tap & Treat site; this tab pulls
+     their month (delivered, sold, waste, what they owe) and puts Dee's real cost
+     from the recipes next to it, so the profit per client is one screen. ---- */
+  var clientsMonth = "", clientsData = null, clientsBusy = false;
+  function clientItem(c, row) {
+    var mapped = c.map && c.map[row.id] ? item(c.map[row.id]) : null;
+    if (mapped) return mapped;
+    var k = normIng(row.name);
+    return S.items.filter(function (it) { return normIng(it.name) === k; })[0] || null;
+  }
+  function viewClients(perm) {
+    if (!perm.canDeliver) return '<div class="empty">Clients are Dee\'s side only.</div>';
+    var canEdit = perm.canSetup && !readOnly;
+    var mk = clientsMonth || todayStr().slice(0, 7);
+    var h = '<h2 class="sec">Clients</h2><p class="sub">The shops that stock Dee\'s desserts on their own Tap &amp; Treat site. Smash &amp; Pass is not here: its stock and settlement live on this app already.</p>';
+    var list = S.clients || [];
+    if (canEdit) {
+      h += '<div class="subhead">ADD A SHOP</div><div class="card"><div class="grid2">' +
+        '<div class="field"><label for="cl-name">SHOP NAME</label><input id="cl-name" placeholder="e.g. Slate Kitchen & Cafe"></div>' +
+        '<div class="field"><label for="cl-id">SHORT ID (letters only)</label><input id="cl-id" placeholder="e.g. slate"></div>' +
+        '<div class="field" style="grid-column:1/-1"><label for="cl-url">THEIR SITE</label><input id="cl-url" placeholder="https://slate.tapntreat.workers.dev"></div></div>' +
+        '<p class="hint">Then in Cloudflare: add a secret called <b>CLIENT_KEY_' + "<span id=\"cl-keyname\">ID</span>" + '</b> on Dee\'s Stock, and the same value as <b>SUPPLIER_KEY</b> on the shop\'s Worker. Any long random text works. Never paste the key here.</p>' +
+        '<div class="acts"><button class="btn dark sm" type="button" data-act="addclient">ADD SHOP</button></div></div>';
+    }
+    h += '<div class="subhead">MONTH</div><div class="card"><div class="acts" style="margin-top:0"><input id="cl-month" type="month" value="' + esc(mk) + '" style="width:170px"> <button class="btn dark sm" type="button" data-act="loadclients">SHOW</button></div></div>';
+    if (!list.length) return h + '<div class="empty">No shops yet.</div>';
+    if (!clientsData && !clientsBusy) {
+      if (typeof fetch !== "function") return h + '<div class="banner info">The client numbers come from the hosted app.</div>';
+      clientsBusy = true;
+      fetch("/api/clients/month?month=" + mk, { credentials: "same-origin", cache: "no-store" }).then(function (r) { return r.json(); }).then(function (j) {
+        clientsBusy = false; clientsData = j && j.ok ? j : { clients: [], error: (j && j.error) || "No connection." }; render();
+      }, function () { clientsBusy = false; clientsData = { clients: [], error: "No connection." }; render(); });
+    }
+    if (!clientsData) return h + '<div class="empty">Asking each shop for ' + esc(monthName(mk)) + '…</div>';
+    var allPay = 0, allCost = 0, allSold = 0, allDel = 0;
+    (clientsData.clients || []).forEach(function (r) {
+      var c = list.filter(function (x) { return x.id === r.id; })[0] || r;
+      h += '<div class="subhead">' + esc(r.name || r.id).toUpperCase() + '</div><div class="card">';
+      h += '<p class="hint" style="margin:0 0 8px"><a href="' + esc(r.url) + '" target="_blank" rel="noopener">' + esc(r.url) + '</a>' +
+        (canEdit ? ' <button class="btn ghost sm" type="button" data-delclient="' + esc(r.id) + '" style="padding:1px 7px;margin-left:6px">REMOVE</button>' : "") + "</p>";
+      if (r.error) {
+        var why = { no_key: "No key yet. Add the secret CLIENT_KEY_" + r.id.toUpperCase() + " in Cloudflare on Dee's Stock, and the same value as SUPPLIER_KEY on their Worker.",
+                    bad_key: "The key here does not match SUPPLIER_KEY on their Worker.", unreachable: "Their site did not answer. Check the link." }[r.error] || ("Their site said: " + r.error);
+        h += '<div class="banner warn">' + esc(why) + "</div></div>";
+        return;
+      }
+      var d = r.data, split = d.mode === "split";
+      var pay = 0, cost = 0, sold = 0, del = 0, unmatched = 0;
+      h += '<p class="hint" style="margin:0 0 10px">Deal: <b>' + (split ? "profit split, " + d.splitPct + "% of sales to Dee's" : "wholesale, per piece delivered") + (d.inTrial ? " (trial)" : "") + "</b>. Cost is Dee's real cost per piece from the recipes, for every piece delivered.</p>";
+      h += '<div class="tw"><table><thead><tr><th>ITEM</th><th class="r">DELIVERED</th><th class="r">SOLD</th><th class="r">FREE</th><th class="r">WASTE</th><th class="r">LEFT</th><th class="r">THEY PAY</th><th class="r">MY COST</th><th class="r">PROFIT</th></tr></thead><tbody>';
+      (d.rows || []).forEach(function (row) {
+        var it = clientItem(c, row), each = it ? realEachOf(it) : null;
+        var p = split ? +row.split || 0 : +row.wholesale || 0, k = each != null ? each * row.delivered : null;
+        pay += p; sold += row.sold; del += row.delivered; if (k != null) cost += k; else if (row.delivered) unmatched++;
+        var who = '<td>' + esc(row.name);
+        if (!it || (c.map && c.map[row.id])) {
+          who += '<br><select data-map="' + esc(r.id) + ":" + esc(row.id) + '" style="font-size:12px;margin-top:3px"' + (canEdit ? "" : " disabled") + '><option value="">' + (it ? "— no match —" : "— pick our item —") + "</option>" +
+            S.items.map(function (x) { return '<option value="' + esc(x.id) + '"' + (c.map && c.map[row.id] === x.id ? " selected" : "") + ">" + esc(x.name) + "</option>"; }).join("") + "</select>";
+        }
+        who += "</td>";
+        h += "<tr>" + who + '<td class="r">' + row.delivered + '</td><td class="r">' + row.sold + '</td><td class="r">' + row.free + '</td><td class="r">' + row.waste + '</td><td class="r">' + (row.left == null ? "–" : row.left) +
+          '</td><td class="r">' + money(p) + '</td><td class="r">' + (k == null ? (row.delivered ? "?" : "–") : money(k)) + '</td><td class="r"><b' + (k != null && p - k < 0 ? ' style="color:var(--bad)"' : "") + ">" + (k == null ? "–" : money(p - k)) + "</b></td></tr>";
+      });
+      h += '<tr><td><b>Total</b></td><td class="r"><b>' + del + '</b></td><td class="r"><b>' + sold + '</b></td><td></td><td></td><td></td><td class="r"><b>' + money(pay) + '</b></td><td class="r"><b>' + money(cost) + '</b></td><td class="r"><b>' + money(pay - cost) + "</b></td></tr></tbody></table></div>";
+      if (unmatched) h += '<p class="hint" style="margin-top:8px">' + unmatched + " item" + (unmatched === 1 ? " is" : "s are") + " not matched to a recipe here, so the cost is missing" + (canEdit ? ": pick the matching item under its name." : ".") + "</p>";
+      h += "</div>";
+      allPay += pay; allCost += cost; allSold += sold; allDel += del;
+    });
+    if ((clientsData.clients || []).length > 1) {
+      h += '<div class="subhead">ALL SHOPS · ' + esc(monthName(mk)).toUpperCase() + '</div><div class="costcard"><div class="grid">' +
+        '<div class="cc"><div class="k">DELIVERED</div><div class="v">' + allDel + '</div></div><div class="cc"><div class="k">SOLD</div><div class="v">' + allSold + '</div></div>' +
+        '<div class="cc"><div class="k">THEY PAY</div><div class="v">' + money(allPay) + '</div></div><div class="cc"><div class="k">MY COST</div><div class="v">' + money(allCost) + '</div></div>' +
+        '<div class="cc ' + (allPay - allCost >= 0 ? "good" : "bad") + '"><div class="k">PROFIT</div><div class="v">' + money(allPay - allCost) + "</div></div></div></div>";
+    }
+    if (clientsData.error) h += '<div class="banner bad">' + esc(clientsData.error) + "</div>";
+    return h;
+  }
+  function addClient() {
+    var name = (document.getElementById("cl-name") || {}).value || "", id = ((document.getElementById("cl-id") || {}).value || "").toLowerCase().replace(/[^a-z0-9]+/g, ""), url = ((document.getElementById("cl-url") || {}).value || "").trim().replace(/\/+$/, "");
+    if (!name.trim() || !id) { toast("Give the shop a name and a short id.", true); return; }
+    if (!/^https:\/\/[a-z0-9.-]+(:\d+)?(\/.*)?$/i.test(url) && !/^http:\/\/localhost(:\d+)?$/.test(url)) { toast("The site must start with https://", true); return; }
+    if ((S.clients || []).some(function (c) { return c.id === id; })) { toast("That id is taken.", true); return; }
+    clientsData = null;
+    save(function (nx) { nx.clients = nx.clients || []; nx.clients.push({ id: id, name: name.trim(), url: url, map: {} }); }, name.trim() + " added. Now add CLIENT_KEY_" + id.toUpperCase() + " in Cloudflare.");
+  }
+
   function viewPnl(perm) {
     var h = '<h2 class="sec">My P&amp;L</h2>';
     h += '<p class="sub">Dee\'s own books. Only Marwan and Dina see this page — the truck never receives these numbers. ' +
@@ -3519,6 +3607,8 @@
       mrecordwin: openMonthRecord,
       addrow2: addDeliveryRow,
       savepantry: savePantry,
+      addclient: addClient,
+      loadclients: function () { clientsMonth = (document.getElementById('cl-month') || {}).value || clientsMonth; clientsData = null; render(); },
       togglepantry: togglePantry,
       deliver: addDelivery,
       notifystock: function () { notice("Stock note", stockNotice()); },
@@ -3685,6 +3775,18 @@
       b.onclick = function () {
         var mk = b.getAttribute("data-munsettle");
         save(function (n) { if (n.monthsPaid) delete n.monthsPaid[mk]; }, monthName(mk) + " reopened.");
+      };
+    });
+    app.querySelectorAll("[data-delclient]").forEach(function (b) {
+      b.onclick = function () {
+        var cid = b.getAttribute("data-delclient");
+        save(function (nx) { nx.clients = (nx.clients || []).filter(function (c) { return c.id !== cid; }); }, "Client removed. Its key in Cloudflare can be deleted too.");
+      };
+    });
+    app.querySelectorAll("[data-map]").forEach(function (sel) {
+      sel.onchange = function () {
+        var p = sel.getAttribute("data-map").split(":"), v = sel.value;
+        save(function (nx) { var c = (nx.clients || []).filter(function (x) { return x.id === p[0]; })[0]; if (!c) return; c.map = c.map || {}; if (v) c.map[p[1]] = v; else delete c.map[p[1]]; }, "Matched.");
       };
     });
     app.querySelectorAll("[data-delpantry]").forEach(function (b) {
