@@ -459,6 +459,22 @@ export const REPAIRS = {
     it.yieldPieces = 8; it.perPortion = 1; it.price = 45; it.chargeCost = 16; it.packaging = 0.25; it.overhead = 0.4;
     return true;
   },
+  /* 17 Oct: one price per ingredient for every recipe. Built once from the
+     recipes themselves: where two recipes priced the same ingredient
+     differently, the recipe added last (the newest shopping) wins, and that
+     price is copied into every line with that name. */
+  "pantry-from-recipes": (state) => {
+    if (Array.isArray(state.pantry)) return false;
+    const norm = (n) => String(n || "").trim().toLowerCase().replace(/\s+/g, " ");
+    const map = {};
+    (state.items || []).forEach((it) => (it.recipe || []).forEach((r) => {
+      const k = norm(r.n); if (!k) return;
+      map[k] = { n: String(r.n).trim(), pp: +r.pp || 0, pq: +r.pq || 1, u: r.u || "" };
+    }));
+    state.pantry = Object.keys(map).sort().map((k) => map[k]);
+    (state.items || []).forEach((it) => (it.recipe || []).forEach((r) => { const p = map[norm(r.n)]; if (p) { r.pp = p.pp; r.pq = p.pq; } }));
+    return true;
+  },
   /* 16 Oct: the Pass Card started over again; its test giveaways go back to unsold (same rule as 13 Oct) */
   "pass-card-test-giveaways-16oct": (state) => REPAIRS["pass-card-test-giveaways"](state),
   "pass-card-test-giveaways": (state) => {
