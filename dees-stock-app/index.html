@@ -51,6 +51,9 @@
   .shopcard .nums span{font-size:11px;color:var(--ink-3);font-weight:700;letter-spacing:.04em}
   .shopcard .go{margin-top:12px;font-size:12px;font-weight:900;letter-spacing:.1em;color:var(--brown)}
   .back{background:none;border:0;padding:0;font:inherit;font-weight:900;font-size:12px;letter-spacing:.1em;color:var(--ink-3);cursor:pointer;margin-bottom:10px}
+  .foldhead{display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none}
+  .foldhead:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+  .foldarrow{font-size:11px;letter-spacing:.08em;color:var(--ink-3)}
   .tabs{background:var(--char);position:sticky;top:0;z-index:49;
     overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
   .tabs::-webkit-scrollbar{display:none}
@@ -2483,7 +2486,31 @@
     html += "</div></main>";
 
     app.innerHTML = html;
+    if (tab === "setup") foldSetup();
     wire();
+  }
+  /* Setup is long: every section folds under its heading, closed by default, and each
+     phone remembers which ones were left open. */
+  function foldSetup() {
+    var open = {}; try { open = JSON.parse(localStorage.getItem("setup.open") || "{}"); } catch (e) {}
+    app.querySelectorAll("main .subhead").forEach(function (hd) {
+      var key = hd.textContent.trim().split(" ")[0] + "|" + hd.textContent.trim().length, box = document.createElement("div");
+      box.className = "fold";
+      var n = hd.nextElementSibling;
+      while (n && !(n.classList && n.classList.contains("subhead"))) { var nx = n.nextElementSibling; box.appendChild(n); n = nx; }
+      hd.parentNode.insertBefore(box, hd.nextSibling);
+      var label = hd.textContent;
+      hd.textContent = "";
+      hd.setAttribute("role", "button"); hd.setAttribute("tabindex", "0"); hd.classList.add("foldhead");
+      var t = document.createElement("span"); t.textContent = label;
+      var a = document.createElement("span"); a.className = "foldarrow";
+      hd.appendChild(t); hd.appendChild(a);
+      var set = function (on) { box.hidden = !on; hd.setAttribute("aria-expanded", on ? "true" : "false"); a.textContent = on ? "\u25B2 HIDE" : "\u25BC SHOW"; };
+      set(!!open[key]);
+      var flip = function () { var on = box.hidden; set(on); open[key] = on; try { localStorage.setItem("setup.open", JSON.stringify(open)); } catch (e) {} };
+      hd.onclick = flip;
+      hd.onkeydown = function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); } };
+    });
   }
 
   /* ---------- lock ---------- */
@@ -3796,7 +3823,10 @@
       "<p class=\"hint\" style=\"margin-top:12px\">Separate them with commas. These addresses are filled in for you " +
       "whenever someone presses <b>EMAIL NOTICE</b> on an order or <b>EMAIL THE STOCK NOTE</b>. " +
       "The page itself cannot post to a mail server, so it opens the note in your own mail app \u2014 " +
-      "you press send.</p></div>";
+      "you press send.</p>" +
+      '<hr style="border:0;border-top:1px solid var(--line);margin:14px 0">' +
+      '<p class="hint" style="margin:0 0 8px"><b>Automatic emails</b> (thank-yous, sale and low-stock alerts) go out from the Gmail set in Cloudflare. Check it works:</p>' +
+      '<button class="btn ghost sm" type="button" data-act="mailtest">SEND TEST EMAIL</button><p class="hint" id="mailtest-out" style="margin-top:8px"></p></div>';
 
     var oldOnes = S.batches.filter(function (b) {
       return daysBetween(todayStr(), expiresOn(b)) < -30;
@@ -4121,6 +4151,14 @@
       mrecordwin: openMonthRecord,
       addrow2: addDeliveryRow,
       savepantry: savePantry,
+      mailtest: function () {
+        var out = document.getElementById("mailtest-out"); if (out) out.textContent = "Sending\u2026";
+        if (typeof fetch !== "function") { if (out) out.textContent = "Needs the hosted app."; return; }
+        fetch("/api/pass/staff/mailtest", { method: "POST", credentials: "same-origin", cache: "no-store", headers: { "content-type": "application/json" }, body: "{}" })
+          .then(function (r) { return r.json(); })
+          .then(function (j) { if (out) { out.textContent = j && j.ok ? "Sent to " + j.to + ". Check the inbox (and spam)." : ((j && j.error) || "Didn't work. Try again."); out.style.color = j && j.ok ? "var(--ok)" : "var(--bad)"; } },
+                function () { if (out) out.textContent = "No connection."; });
+      },
       recostlots: function () {
         /* today's real cost per lot still out; lots in a closed week keep theirs */
         var want = {};
