@@ -263,7 +263,11 @@
   .dline:last-child{border-bottom:0;font-weight:900;color:var(--ink);padding-top:9px}
 
   /* ---------- recipe editor ---------- */
-  .ing{display:grid;grid-template-columns:1fr 78px 64px 92px 40px;gap:8px;align-items:end;margin-bottom:8px}
+  .ing{display:grid;grid-template-columns:1fr 78px 64px 92px 64px 40px;gap:8px;align-items:end;margin-bottom:8px}
+  .ing .own{display:flex;align-items:center;justify-content:center;gap:4px;min-height:42px;border:1.5px solid var(--line);border-radius:9px;font-size:10px;font-weight:900;letter-spacing:.05em;color:var(--ink-3);cursor:pointer;user-select:none}
+  .ing .own input{margin:0}
+  .ing .own.on{background:var(--shade);color:var(--brown);border-color:var(--gold)}
+  .ing.theirs .out{text-decoration:line-through;opacity:.55}
   .ing input{border:1.5px solid var(--line);border-radius:9px;padding:9px 10px;min-height:42px;width:100%;min-width:0;background:#fff}
   .ing .c{display:flex;flex-direction:column;justify-content:flex-end;min-width:0}
   .ing .ml{display:none}
@@ -278,10 +282,10 @@
   .ing .x:hover{border-color:#F0B6B0;color:var(--bad)}
   @media(max-width:760px){
     .ing-head{display:none}
-    .ing[data-row]{grid-template-columns:repeat(8,minmax(0,1fr));grid-template-areas:"n n n n n o o x" "q q q q u u u u";
+    .ing[data-row]{grid-template-columns:repeat(8,minmax(0,1fr));grid-template-areas:"n n n n n o o x" "q q q u u u w w";
       gap:10px 6px;padding-bottom:12px;margin-bottom:12px;border-bottom:1px dashed var(--line)}
     .ing .c-n{grid-area:n}.ing .c-q{grid-area:q}.ing .c-u{grid-area:u}
-    .ing .c-pp{grid-area:pp}.ing .c-pq{grid-area:pq}.ing .c-o{grid-area:o}.ing .c-x{grid-area:x}
+    .ing .c-pp{grid-area:pp}.ing .c-pq{grid-area:pq}.ing .c-o{grid-area:o}.ing .c-x{grid-area:x}.ing .c-w{grid-area:w}
     .ing .ml{display:block;font-size:9px;font-weight:900;letter-spacing:.06em;line-height:1.2;color:var(--ink-3);margin:auto 0 4px}
     .ing .c input{padding:9px 7px}
     .ing .out{justify-content:flex-start;padding:9px 8px;font-size:14px}
@@ -942,6 +946,7 @@
      portions  = pieces per batch / pieces per portion
      unit cost = batch cost / portions + packaging                        */
   function lineCost(r) {
+    if (r && r.own) return 0;   /* the shop adds this ingredient itself (e.g. the cream and berries on a pavlova) */
     var q = +r.q, pq = +r.pq, pp = +r.pp;
     if (!(pq > 0) || isNaN(q) || isNaN(pp)) return 0;
     return (q / pq) * pp;
@@ -1079,7 +1084,7 @@
         data.items.forEach(function (src) {
           var k = normIng(src.name), it = (nx.items || []).filter(function (x) { return normIng(x.name) === k; })[0];
           if (!it) return;
-          it.recipe = (src.recipe || []).map(function (r) { var pan = by[normIng(r.n)]; return { n: r.n, q: +r.q || 0, u: r.u || "", pp: pan ? pan.pp : +r.pp || 0, pq: pan ? pan.pq : (+r.pq > 0 ? +r.pq : 1) }; });
+          it.recipe = (src.recipe || []).map(function (r) { var pan = by[normIng(r.n)]; var line = { n: r.n, q: +r.q || 0, u: r.u || "", pp: pan ? pan.pp : +r.pp || 0, pq: pan ? pan.pq : (+r.pq > 0 ? +r.pq : 1) }; if (r.own) line.own = true; return line; });
           ["yieldPieces", "perPortion", "packaging", "realPackaging", "overhead", "chargeCost", "chargeTray"].forEach(function (f) { if (src[f] != null && src[f] !== "") it[f] = src[f]; });
         });
       }, matched.length + " recipe" + (matched.length === 1 ? "" : "s") + " imported" + (skipped.length ? ". Not here, skipped: " + skipped.join(", ") : "."));
@@ -2978,15 +2983,16 @@
 
       h += '<div class="ing ing-head"><span><span class="lbl">INGREDIENT</span></span>' +
         '<span><span class="lbl">RECIPE QTY</span></span><span><span class="lbl">UNIT</span></span>' +
-        '<span><span class="lbl">COST USED</span></span><span></span></div>';
+        '<span><span class="lbl">COST USED</span></span><span><span class="lbl" title="Tick when the shop adds this ingredient itself, so it is not in Dee\'s cost">SHOP\'S OWN</span></span><span></span></div>';
       (it.recipe || []).forEach(function (r, ix) {
-        h += '<div class="ing" data-row="' + ix + '">' +
+        h += '<div class="ing' + (r.own ? " theirs" : "") + '" data-row="' + ix + '">' +
           '<span class="c c-n"><span class="ml">INGREDIENT</span><input data-f="n" value="' + esc(r.n) + '" placeholder="ingredient" aria-label="Ingredient"' + ro + "></span>" +
           '<span class="c c-q"><span class="ml">QTY</span><input data-f="q" type="number" min="0" step="any" value="' + r.q + '" aria-label="Recipe qty"' + ro + "></span>" +
           '<span class="c c-u"><span class="ml">UNIT</span><input data-f="u" value="' + esc(r.u || "") + '" placeholder="g" aria-label="Unit"' + ro + "></span>" +
           '<input data-f="pp" type="hidden" value="' + (pantryOf(r.n) ? pantryOf(r.n).pp : r.pp) + '">' +
           '<input data-f="pq" type="hidden" value="' + (pantryOf(r.n) ? pantryOf(r.n).pq : r.pq) + '">' +
           '<span class="c c-o"><span class="ml">COST USED</span><span class="out">0</span></span>' +
+          '<span class="c c-w"><span class="ml">SHOP\'S OWN</span><label class="own' + (r.own ? " on" : "") + '" title="The shop adds this ingredient itself, so it is not in Dee\'s cost"><input data-f="own" type="checkbox"' + (r.own ? " checked" : "") + ro + '> THEIRS</label></span>' +
           (editable ? '<button class="x c-x" type="button" data-delrow="' + it.id + ":" + ix + '" aria-label="Remove">×</button>' : '<span class="c-x"></span>') +
           "</div>";
       });
@@ -4272,7 +4278,7 @@
     });
     app.querySelectorAll("[data-recipe]").forEach(function (card) {
       var recalc = function () { liveCost(card); };
-      card.querySelectorAll("input").forEach(function (el) { el.oninput = recalc; });
+      card.querySelectorAll("input").forEach(function (el) { el.oninput = recalc; el.onchange = recalc; });
       recalc();
     });
   }
@@ -4285,9 +4291,11 @@
       var q = g(row.querySelector('[data-f="q"]')),
           pp = g(row.querySelector('[data-f="pp"]')),
           pq = g(row.querySelector('[data-f="pq"]'));
-      var c = pq > 0 ? (q / pq) * pp : 0;
+      var ownEl = row.querySelector('[data-f="own"]'), own = !!(ownEl && ownEl.checked);
+      var c = own || !(pq > 0) ? 0 : (q / pq) * pp;
       total += c;
-      row.querySelector(".out").textContent = money(c);
+      row.classList.toggle("theirs", own); if (ownEl) ownEl.parentNode.classList.toggle("on", own);
+      row.querySelector(".out").textContent = own ? "theirs" : money(c);
     });
     var pieces = g(card.querySelector('[data-f="yieldPieces"]')),
         per = g(card.querySelector('[data-f="perPortion"]')),
@@ -4557,7 +4565,9 @@
       if (!nm) return;
       if (pq <= 0) { bad = true; return; }
       var pan = pantryOf(nm); if (pan) { pp = pan.pp; pq = pan.pq; }   /* the pantry price wins for a known ingredient */
-      rows.push({ n: nm, q: q, u: u, pp: pp, pq: pq });
+      var ownEl = row.querySelector('[data-f="own"]');
+      var line = { n: nm, q: q, u: u, pp: pp, pq: pq }; if (ownEl && ownEl.checked) line.own = true;
+      rows.push(line);
     });
     if (bad) { toast("Pack quantity must be above zero — that is what the price divides by.", true); return; }
     var pieces = val(card.querySelector('[data-f="yieldPieces"]'));
