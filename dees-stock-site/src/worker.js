@@ -725,6 +725,38 @@ async function pullFeed(env) {
 }
 function newFeedToken() { const a = new Uint8Array(24); crypto.getRandomValues(a); return Array.from(a, (x) => "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"[x % 56]).join(""); }
 
+
+/* ============ low stock ============
+   Each item can carry "warn below" (it.low). When a sale, a gift or a stamp takes an item's
+   pieces on the shelf from at or above that number to below it, the stock list gets one email:
+   the item, what is left, and what usually goes out, so the next batch can be prepared. */
+function shelfLeft(state) {
+  const today = new Date(Date.now() + 4 * 3600e3).toISOString().slice(0, 10);
+  const addDays = (ds, n) => { const t = new Date(ds + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() + (+n || 0)); return t.toISOString().slice(0, 10); };
+  const left = {};
+  (state.batches || []).forEach((b) => {
+    if (b.voided || (b.madeOn && addDays(b.madeOn, b.shelf) < today)) return;
+    const n = (+b.qty || 0) - (b.sales || []).reduce((a, s) => a + (+s.qty || 0), 0);
+    left[b.itemId] = (left[b.itemId] || 0) + Math.max(0, n);
+  });
+  return left;
+}
+async function lowStockCheck(env, before, after, origin) {
+  if (!mailReady(env)) return;
+  const was = shelfLeft(before), now = shelfLeft(after), hit = [];
+  (after.items || []).forEach((it) => {
+    const low = +it.low;
+    if (!(low > 0)) return;
+    const a = was[it.id] || 0, b = now[it.id] || 0;
+    if (a >= low && b < low) hit.push(it.name + ": " + b + " left (warn below " + low + ")");
+  });
+  if (!hit.length) return;
+  const list = ((after.alerts || {}).stock || []).length ? after.alerts.stock : String(env.ALERT_TO || "").split(/[,;]/).map((x) => x.trim()).filter(Boolean);
+  if (!list.length) return;
+  const mail = alertEmail({ title: "📦 Running low: " + hit.length + " item" + (hit.length === 1 ? "" : "s"), lines: hit.concat(["Time to prepare the next batch."]), link: (origin || "") + "/" });
+  await sendMail(env, { to: list[0], bcc: list.slice(1).join(","), fromName: "Stock alerts", ...mail });
+}
+
 /* ============ the API ============ */
 
 async function api(request, env, path, later = () => {}) {
@@ -835,6 +867,7 @@ async function api(request, env, path, later = () => {}) {
     const merged = mergeSave(board.state, body.state, me);
     const version = await saveBoard(env, board.version, merged);
     if (version != null && mailReady(env) && env.ALERT_TO) later(saleAlert(env, board.state, merged, me, new URL(request.url).origin));
+    if (version != null) later(lowStockCheck(env, board.state, merged, new URL(request.url).origin));
     if (version == null) {
       const now = await loadBoard(env);
       return json({
@@ -934,7 +967,8 @@ export default {
       try {
         await ready(env);
         return harden(await handlePass(request, env, url.pathname, {
-          json, hmac, sameString, cookies, sessionSecret, loadBoard, saveBoard, whoAmI, later
+          json, hmac, sameString, cookies, sessionSecret, loadBoard, saveBoard, whoAmI, later,
+          lowCheck: (before, after) => lowStockCheck(env, before, after, url.origin)
         }));
       } catch (err) {
         return harden(json({ ok: false, error: "server_error", detail: String(err && err.message) }, 500));

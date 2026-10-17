@@ -847,6 +847,11 @@
   var artifact = null;
   var dl = null;                 /* the downloads capability, once it answers */
   var readOnly = false;
+  /* wholesale: the shop pays what Dee's charges for every piece delivered and keeps all of
+     what it sells for; there is no profit to split. Otherwise Dee's takes its share. */
+  function wholesale() { return S.split && S.split.basis === "wholesale"; }
+  function splitD() { return wholesale() ? 0 : (S.split.deesPct || 0) / 100; }
+  var HOME_URL = "";                /* a client's dashboard: the supplier's main dashboard, for the back button */
   var THIS_SHOP = "Smash & Pass";   /* the shop this dashboard belongs to; other shops are links in the header */
   var busy = false;
   var tab = "stock";
@@ -1428,7 +1433,7 @@
     return Object.keys(seen).filter(Boolean).sort().reverse();
   }
   function monthTotals(mk) {
-    var d = (S.split.deesPct || 0) / 100;
+    var d = splitD();
     var rec = monthRecord(mk);
     var R = rec.t.takings, C = rec.t.cost, soldN = rec.t.sold;
     var P = R - C;                       /* profit = takings less the cost to make */
@@ -1646,7 +1651,7 @@
   }
   function settlement() {
     var t = totals(null);
-    var d = (S.split.deesPct || 0) / 100;
+    var d = splitD();
     var costShare = t.cost * (1 - d);   // truck's share of the cost that has been used up
     var revShare = t.revenue * d;       // Dee's share of what the truck took
     var owed = costShare + revShare;
@@ -2050,7 +2055,7 @@
     pg.right("TOTAL COST TO DEE'S", 460, y, 9, true, GREY);
     pg.right(cur() + " " + money(total), R - 8, y, 14, true, BROWN);
     y -= 18;
-    var d = (S.split.deesPct || 0) / 100;
+    var d = splitD();
     pg.right("Smash & Pass " + Math.round((1 - d) * 100) + "% share of this cost", 460, y, 9, false, GREY);
     pg.right(cur() + " " + money(total * (1 - d)), R - 8, y, 10, false, GREY);
     y -= 14;
@@ -2441,8 +2446,8 @@
     if (perm.canDeliver) tabs.push(["recipes", "RECIPES", 0]);
     if (perm.canSetup) tabs.push(["setup", "SETUP", 0]);
     tabs.push(["account", "MY PIN", 0]);
-    if (perm.canDeliver && ((S.shops || []).length || followsFeed())) {
-      var home = followsFeed() ? S.feedUrl.replace(/\/api\/feed\/.*$/, "") : "";
+    if (perm.canDeliver && ((S.shops || []).length || followsFeed() || HOME_URL)) {
+      var home = HOME_URL || (followsFeed() ? S.feedUrl.replace(/\/api\/feed\/.*$/, "") : "");
       html = html.replace("</div></header>", '<div class="shops">' +
         (home ? '<a href="' + esc(home) + '" style="background:var(--char);color:var(--paper);border-color:var(--char)">\u2190 MAIN DASHBOARD</a>' : "") +
         '<span>' + esc(THIS_SHOP) + "</span>" +
@@ -2587,7 +2592,7 @@
     open.forEach(function (b) { onHand += remaining(b); var st = status(b); if (st === "expired" || st === "today") alerts++; });
     live().forEach(function (b) { (b.sales || []).forEach(function (sl) { if (kindOf(sl) === "sale" && saleOn(sl) === t) sold += sl.qty; }); });
     var h = '<h2 class="sec">Shops</h2><p class="sub">Tap a shop to open its dashboard.</p><div class="shopgrid">';
-    h += '<button class="shopcard" type="button" data-shop="this"><div class="nm">' + esc(THIS_SHOP) + '</div><div class="deal">THIS DASHBOARD \u00b7 ' + (S.split.deesPct || 0) + '% TO DEE\'S</div><div class="nums">' +
+    h += '<button class="shopcard" type="button" data-shop="this"><div class="nm">' + esc(THIS_SHOP) + '</div><div class="deal">THIS DASHBOARD \u00b7 ' + (wholesale() ? "WHOLESALE" : (S.split.deesPct || 0) + "% TO DEE\'S") + '</div><div class="nums">' +
       '<div><b>' + onHand + '</b><span>ON THE SHELF</span></div><div><b>' + sold + '</b><span>SOLD TODAY</span></div>' +
       '<div><b' + (alerts ? ' style="color:var(--bad)"' : "") + '>' + alerts + '</b><span>LOTS TO CLEAR</span></div><div><b>' + toDecideNow() + '</b><span>TO SETTLE</span></div></div><div class="go">OPEN \u2192</div></button>';
     (S.shops || []).forEach(function (x) {
@@ -3069,7 +3074,7 @@
   /* ---------- money ---------- */
   /* ---------- one delivery ---------- */
   function weekTotals(start) {
-    var d = (S.split.deesPct || 0) / 100;
+    var d = splitD();
     var t = { start: start, out: 0, outCost: 0, sold: 0, revenue: 0, costSold: 0,
               given: 0, costGiven: 0, binned: 0, costBinned: 0,
               toDecide: 0, costToDecide: 0, left: 0, costLeft: 0, days: [], items: [], d: d };
@@ -3280,8 +3285,10 @@
 
     /* ---- the real money: by month, on actual ingredient buys ---- */
     h += '<div class="subhead">BY MONTH</div>';
-    h += '<p class="sub" style="margin-top:-2px">Smash pays Dee\'s <b>the full cost of every delivery</b> as it goes out. ' +
-      'At the end of the month <b>the profit is split 50/50</b> and Smash sends Dee\'s share. Record what Smash sends and the outstanding updates — ' +
+    h += wholesale()
+      ? '<p class="sub" style="margin-top:-2px"><b>Wholesale.</b> Smash pays Dee\'s <b>the agreed price for every piece delivered</b>, sold or not, and keeps everything it sells for. Nothing is split. Record what Smash sends and the outstanding updates; it turns <b>green</b> once it\'s fully paid.</p>'
+      : '<p class="sub" style="margin-top:-2px">Smash pays Dee\'s <b>the full cost of every delivery</b> as it goes out. ' +
+      'At the end of the month <b>the profit is split ' + Math.round(splitD() * 100) + '/' + Math.round((1 - splitD()) * 100) + '</b> and Smash sends Dee\'s share. Record what Smash sends and the outstanding updates — ' +
       'each part turns <b>green</b> once it\'s fully paid.</p>';
     var months = monthsActive();
     if (!months.length) {
@@ -3340,7 +3347,7 @@
             ' · <b style="color:' + duec + '">- ' + cur() + " " + money(dv.cost - dv.paid) + " left</b></span><span></span></div>";
         });
         h += '<div class="crow prof"><span><b>Total cost</b></span><span class="num v">' + cur() + " " + money(m.C) + "</span></div>";
-        h += '<div class="crow" style="color:#8A7A6C;font-size:11.5px;margin-top:2px"><span>Smash pays each delivery\'s cost in full when it goes out. The cost isn\'t split — only the profit is.</span><span></span></div>';
+        h += '<div class="crow" style="color:#8A7A6C;font-size:11.5px;margin-top:2px"><span>' + (wholesale() ? "Wholesale: Smash pays the agreed price for every piece delivered. Nothing is split." : "Smash pays each delivery\'s cost in full when it goes out. The cost isn\'t split — only the profit is.") + '</span><span></span></div>';
         h += "</div>";
 
         /* --- settlement: cost and Dee's profit, each red until paid --- */
@@ -3714,6 +3721,7 @@
         '<div class="field"><label>NOTE</label><input data-f="note" value="' + esc(it.note || "") + '" placeholder="4 pcs, weekends…"></div>' +
         '<div class="field"><label>SELL PRICE (' + cur() + ')</label><input data-f="price" type="number" min="0" step="0.01" value="' + it.price + '"></div>' +
         '<div class="field"><label>SHELF LIFE (DAYS)</label><input data-f="shelf" type="number" min="0" step="1" value="' + it.shelf + '"></div>' +
+        '<div class="field"><label>EMAIL ME BELOW (PIECES)</label><input data-f="low" type="number" min="0" step="1" value="' + (it.low || "") + '" placeholder="off"></div>' +
         '<div class="field"><label>ON THE MENU</label><select data-f="active"><option value="1"' + (it.active ? " selected" : "") + ">Yes</option><option value=\"0\"" + (!it.active ? " selected" : "") + ">No</option></select></div>" +
         '</div><div class="acts"><button class="btn dark sm" type="button" data-saveitem="' + it.id + '">SAVE ITEM</button>' +
         '<button class="btn danger sm" type="button" data-delitem="' + it.id + '">REMOVE</button></div></div>';
@@ -3743,9 +3751,13 @@
       '<div class="field"><label for="sp-basis">SPLIT ON</label><select id="sp-basis">' +
       '<option value="profit"' + (S.split.basis === "profit" ? " selected" : "") + ">Profit (after cost)</option>" +
       '<option value="revenue"' + (S.split.basis === "revenue" ? " selected" : "") + ">Revenue (before cost)</option>" +
+      '<option value="wholesale"' + (S.split.basis === "wholesale" ? " selected" : "") + ">Wholesale (fixed price per piece, no split)</option>" +
       "</select></div>" +
       '<div class="field"><label for="sp-cur">CURRENCY</label><input id="sp-cur" value="' + cur() + '"></div>' +
       "</div>" +
+      '<p class="hint" style="margin:0 0 10px">' + (wholesale()
+        ? "<b>Wholesale:</b> the shop pays the price you charge per piece (Recipes, \u201ccost we charge\u201d) for every piece delivered, sold or not, and keeps all of its sales. Dee\u2019s share is not used."
+        : "<b>Split:</b> the shop pays the cost of every delivery, then the profit on what sells is split by the share above.") + "</p>" +
       '<button class="btn dark sm" type="button" data-act="savesplit">SAVE</button></div>';
 
     h += '<div class="subhead">WHERE SALES COME FROM</div><div class="card">' +
@@ -4652,6 +4664,7 @@
       var t = n.items.filter(function (i) { return i.id === iid; })[0];
       t.name = g("name").trim(); t.note = g("note").trim();
       t.price = price; t.shelf = shelf; t.active = g("active") === "1";
+      var lw = parseInt(g("low"), 10); if (lw > 0) t.low = lw; else delete t.low;
     }, "Item saved.");
   }
 

@@ -717,6 +717,7 @@ async function giftFromStock(env, d, itemName, me, opts) {
   const addDays = (ds, n) => { const t = new Date(ds + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() + (+n || 0)); return t.toISOString().slice(0, 10); };
   for (let attempt = 0; attempt < 3; attempt++) {
     const board = await d.loadBoard(env);
+    const before = JSON.parse(JSON.stringify(board.state));
     const st = board.state;
     const it = (st.items || []).find((i) => i.name === itemName);
     if (!it) return false;
@@ -730,7 +731,7 @@ async function giftFromStock(env, d, itemName, me, opts) {
     if (!lot) return false;
     lot.sales = (lot.sales || []).concat([{ qty: 1, kind: "gift", by: me.id, at: new Date().toISOString(), on: today, ch: opts.ch || "Pass Card" }]);
     st.updatedAt = new Date().toISOString();
-    if ((await d.saveBoard(env, board.version, st)) != null) return true;
+    if ((await d.saveBoard(env, board.version, st)) != null) { if (d.lowCheck && d.later) d.later(d.lowCheck(before, st)); return true; }
   }
   return false;
 }
@@ -747,7 +748,7 @@ async function saleToStock(env, d, items, me, at) {
   const left = (b) => (+b.qty || 0) - (b.sales || []).reduce((a, s) => a + (+s.qty || 0), 0);
   for (let attempt = 0; attempt < 3; attempt++) {
     const board = await d.loadBoard(env);
-    const st = board.state;
+    const st = board.state, before = JSON.parse(JSON.stringify(st));
     const closed = new Set((st.weeks || []).map((w) => w.start));
     const ch = (Array.isArray(st.channels) && st.channels[0]) || "Window";
     const logged = [], short = [];
@@ -768,7 +769,7 @@ async function saleToStock(env, d, items, me, at) {
     });
     if (!logged.length) return { logged, short };
     st.updatedAt = new Date().toISOString();
-    if ((await d.saveBoard(env, board.version, st)) != null) return { logged, short, ch };
+    if ((await d.saveBoard(env, board.version, st)) != null) { if (d.lowCheck && d.later) d.later(d.lowCheck(before, st)); return { logged, short, ch }; }
   }
   return { logged: [], short: want.map(({ m, n }) => ({ name: m.stock, qty: n })) };
 }
