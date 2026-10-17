@@ -1038,6 +1038,40 @@
     if (used) { toast(name + " is still in " + used + " recipe line" + (used === 1 ? "" : "s") + ". Remove it from those recipes first.", true); return; }
     save(function (nx) { nx.pantry = (nx.pantry || []).filter(function (x) { return normIng(x.n) !== k; }); }, name + " deleted from the pantry.");
   }
+  /* recipes and pantry prices travel between shops as one small file: the kitchen
+     exports once, every shop imports. Items match by name; nothing else moves. */
+  function exportRecipes() {
+    var out = { kind: "dees-recipes", at: new Date().toISOString(), pantry: S.pantry || [], items: S.items.map(function (it) {
+      return { name: it.name, recipe: it.recipe || [], yieldPieces: it.yieldPieces, perPortion: it.perPortion, packaging: it.packaging, realPackaging: it.realPackaging, overhead: it.overhead, chargeCost: it.chargeCost, chargeTray: it.chargeTray };
+    }) };
+    try {
+      var url = URL.createObjectURL(new Blob([JSON.stringify(out, null, 1)], { type: "application/json" }));
+      var a = document.createElement("a"); a.href = url; a.download = "recipes-" + todayStr() + ".json"; a.rel = "noopener";
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 8000);
+      toast("Recipes and pantry exported.");
+    } catch (e) { toast("Could not save the file here.", true); }
+  }
+  function importRecipes(file) {
+    var rd = new FileReader();
+    rd.onload = function () {
+      var data; try { data = JSON.parse(rd.result); } catch (e) { toast("That file is not a recipes export.", true); return; }
+      if (!data || data.kind !== "dees-recipes" || !Array.isArray(data.items)) { toast("That file is not a recipes export.", true); return; }
+      var matched = [], skipped = [];
+      data.items.forEach(function (src) { var k = normIng(src.name); if (S.items.some(function (x) { return normIng(x.name) === k; })) matched.push(src.name); else skipped.push(src.name); });
+      save(function (nx) {
+        var by = {}; (data.pantry || []).forEach(function (r) { if (r && r.n) by[normIng(r.n)] = { n: String(r.n).trim(), pp: +r.pp || 0, pq: +r.pq > 0 ? +r.pq : 1, u: r.u || "" }; });
+        (nx.pantry || []).forEach(function (r) { if (!by[normIng(r.n)]) by[normIng(r.n)] = r; });
+        nx.pantry = Object.keys(by).sort().map(function (k) { return by[k]; });
+        data.items.forEach(function (src) {
+          var k = normIng(src.name), it = (nx.items || []).filter(function (x) { return normIng(x.name) === k; })[0];
+          if (!it) return;
+          it.recipe = (src.recipe || []).map(function (r) { var pan = by[normIng(r.n)]; return { n: r.n, q: +r.q || 0, u: r.u || "", pp: pan ? pan.pp : +r.pp || 0, pq: pan ? pan.pq : (+r.pq > 0 ? +r.pq : 1) }; });
+          ["yieldPieces", "perPortion", "packaging", "realPackaging", "overhead", "chargeCost", "chargeTray"].forEach(function (f) { if (src[f] != null && src[f] !== "") it[f] = src[f]; });
+        });
+      }, matched.length + " recipe" + (matched.length === 1 ? "" : "s") + " imported" + (skipped.length ? ". Not here, skipped: " + skipped.join(", ") : "."));
+    };
+    rd.readAsText(file);
+  }
   function chargeOf(it) {
     if (it && it.chargeCost != null && it.chargeCost !== "") return +it.chargeCost || 0;
     return unitCostOf(it);
@@ -2890,6 +2924,9 @@
       'Numbers update as you type; nothing is saved until you press save.</p>';
     if (!editable) h += '<div class="banner info">Only Dee\'s side and admins can change recipes.</div>';
     if (editable) h += pantryHtml();
+    if (editable) h += '<div class="acts" style="margin:0 0 14px"><button class="btn ghost sm" type="button" data-act="exportrecipes">EXPORT RECIPES &amp; PANTRY</button>' +
+      '<button class="btn ghost sm" type="button" data-act="importrecipes">IMPORT FROM A FILE</button><input id="rec-file" type="file" accept="application/json,.json" hidden></div>' +
+      '<p class="hint" style="margin:-6px 0 14px">Export from the kitchen\'s stock app, import into any shop\'s: items are matched by name, and their recipe, yield, packaging and overhead come across with the pantry prices.</p>';
 
     S.items.forEach(function (it) {
       var ro = editable ? "" : " disabled";
@@ -3961,6 +3998,8 @@
       mrecordwin: openMonthRecord,
       addrow2: addDeliveryRow,
       savepantry: savePantry,
+      exportrecipes: exportRecipes,
+      importrecipes: function () { var f = document.getElementById("rec-file"); if (!f) return; f.value = ""; f.onchange = function () { if (f.files && f.files[0]) importRecipes(f.files[0]); }; f.click(); },
       togglepantry: togglePantry,
       deliver: addDelivery,
       notifystock: function () { notice("Stock note", stockNotice()); },
