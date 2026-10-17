@@ -233,9 +233,9 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     "NEW HERE? GET A PASS CARD": "جديد؟ احصل على بطاقة باس",
     "Forgot your PIN? Ask at the truck window and they'll reset it.": "نسيت الرمز السري؟ اطلب من فريق الشاحنة إعادة تعيينه.",
     "Get your Pass Card": "احصل على بطاقة باس", "First name": "الاسم الأول", "Last name": "اسم العائلة", "Email": "البريد الإلكتروني",
-    "Choose a 4-digit PIN": "اختر رمزاً سرياً من 4 أرقام",
-    "I agree that Smash &amp; Pass keeps my name, number, email, what I buy and my reviews to run the Pass Card. To delete my card, I email smashandpassdxb@gmail.com.":
-      "أوافق على أن تحتفظ سماش آند باس باسمي ورقمي وبريدي ومشترياتي وتقييماتي لتشغيل بطاقة باس. لحذف بطاقتي أراسل smashandpassdxb@gmail.com.",
+    "Choose a 4-digit PIN": "اختر رمزاً سرياً من 4 أرقام", "Birth date": "تاريخ الميلاد", "SAVE": "حفظ", "Add your birth date.": "أضف تاريخ ميلادك.", "Pick your birth date.": "اختر تاريخ ميلادك.", "🎂 When's your birthday?": "🎂 متى عيد ميلادك؟", "Add it once and we'll remember you on your day.": "أضفه مرة واحدة وسنتذكرك في يومك.", "Saved. See you on your birthday 🎂": "تم الحفظ. نراك في عيد ميلادك 🎂",
+    "I agree that Smash &amp; Pass keeps my name, number, email, birth date, what I buy and my reviews to run the Pass Card. To delete my card, I email smashandpassdxb@gmail.com.":
+      "أوافق على أن تحتفظ سماش آند باس باسمي ورقمي وبريدي وتاريخ ميلادي ومشترياتي وتقييماتي لتشغيل بطاقة باس. لحذف بطاقتي أراسل smashandpassdxb@gmail.com.",
     "Send me offers on WhatsApp or email (optional).": "أرسلوا لي العروض عبر واتساب أو البريد (اختياري).",
     "CREATE MY CARD": "أنشئ بطاقتي", "I ALREADY HAVE ONE": "لدي بطاقة بالفعل",
     "Your visit · {d}": "زيارتك · {d}", "Food quality": "جودة الأكل", "The atmosphere": "الأجواء",
@@ -495,6 +495,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     var h = '<div class="hello"><h2>' + L("Hey {n}", { n: esc(c.first) }) + '</h2><button type="button" class="btn ghost" id="logout" style="flex:none;padding:8px 12px">' + L("LOG OUT") + "</button></div>";
     if (offline) h += '<div class="panel" style="border-color:var(--butter)"><p class="note" style="margin:0">' + L("📴 <b>No internet.</b> This is your saved card, and your QR still works at the window. Stamps and points update when you're back online.") + "</p></div>";
     /* the QR sits on top as a thumbnail; tapping it fills the screen for the truck to scan */
+    if (!c.birthday && !offline) h += '<div class="panel" style="border-color:var(--butter)"><div class="lbl">' + L("🎂 When's your birthday?") + '</div><p class="note" style="margin:0 0 8px">' + L("Add it once and we'll remember you on your day.") + '</p>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="bd-in" type="date" max="' + new Date().toISOString().slice(0, 10) + '" style="flex:1;min-width:160px;padding:9px;border:1px solid var(--line);border-radius:10px"><button type="button" class="btn pri" id="bd-save" style="padding:8px 14px">' + L("SAVE") + "</button></div></div>";
     h += '<button type="button" class="panel qr-top" id="qr-open" aria-label="' + L("Show my QR code full screen") + '">' +
       '<span class="qr-thumb"><img src="' + qrSrc() + '" alt=""></span>' +
       '<span class="qr-txt"><span class="lbl">' + L("Show your QR code") + "</span><b dir=\"ltr\">" + esc(fmtPhone(c.phone)) + "</b>" +
@@ -545,8 +547,9 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       '<div class="field"><label for="j-last">' + L("Last name") + '</label><input id="j-last" autocomplete="family-name"></div></div>' +
       phoneField("j-phone", L("Mobile number")) +
       '<div class="field"><label for="j-email">' + L("Email") + '</label><input id="j-email" type="email" autocomplete="email" required></div>' +
+      '<div class="field"><label for="j-bday">' + L("Birth date") + '</label><input id="j-bday" type="date" autocomplete="bday" max="' + new Date().toISOString().slice(0, 10) + '" required></div>' +
       '<div class="field"><label for="j-pin">' + L("Choose a 4-digit PIN") + '</label><input id="j-pin" inputmode="numeric" maxlength="4" type="password" autocomplete="new-password"></div>' +
-      '<label class="check"><input type="checkbox" id="j-ok"><span>' + L("I agree that Smash &amp; Pass keeps my name, number, email, what I buy and my reviews to run the Pass Card. To delete my card, I email smashandpassdxb@gmail.com.") + "</span></label>" +
+      '<label class="check"><input type="checkbox" id="j-ok"><span>' + L("I agree that Smash &amp; Pass keeps my name, number, email, birth date, what I buy and my reviews to run the Pass Card. To delete my card, I email smashandpassdxb@gmail.com.") + "</span></label>" +
       '<label class="check"><input type="checkbox" id="j-offers"><span>' + L("Send me offers on WhatsApp or email (optional).") + "</span></label>" +
       '<p class="err" id="j-err" hidden></p><button class="btn pri" type="submit">' + L("CREATE MY CARD") + "</button>" +
       '<button class="btn ghost" type="button" id="to-login">' + L("I ALREADY HAVE ONE") + "</button></form>";
@@ -679,9 +682,9 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     var byPhone = {}; O.customers.forEach(function (c) { byPhone[c.phone] = c; });
     h += '<div class="panel"><div class="lbl">Comments</div><div class="cm">' + (cms.map(function (v) { var c = byPhone[v.phone];
       return "<div>" + esc(v.comment) + "<small>" + esc(c ? c.first + " " + c.last : "") + " · " + niceDate(v.at) + " · food " + v.food + "/5 · atmosphere " + v.vibe + "/5</small></div>"; }).join("") || '<p class="note">No comments yet.</p>') + "</div></div>";
-    h += '<div class="panel"><div class="lbl">Customers</div><div class="tw"><table><thead><tr><th>FIRST</th><th>LAST</th><th>MOBILE</th><th>EMAIL</th><th class="r">VISITS</th><th class="r">🍔</th><th class="r">🍰</th><th>OFFERS</th><th>JOINED</th></tr></thead><tbody>' +
+    h += '<div class="panel"><div class="lbl">Customers</div><div class="tw"><table><thead><tr><th>FIRST</th><th>LAST</th><th>MOBILE</th><th>EMAIL</th><th class="r">VISITS</th><th class="r">🍔</th><th class="r">🍰</th><th>OFFERS</th><th>BIRTHDAY</th><th>JOINED</th></tr></thead><tbody>' +
       O.customers.map(function (c) { return "<tr><td>" + esc(c.first) + "</td><td>" + esc(c.last) + "</td><td>" + esc(c.phone) + "</td><td>" + esc(c.email) + '</td><td class="r">' + (per[c.phone] || 0) +
-        '</td><td class="r">' + c.burger + '</td><td class="r">' + c.dessert + "</td><td>" + (c.offers ? "yes" : "no") + "</td><td>" + niceDate(c.joined) + "</td></tr>"; }).join("") +
+        '</td><td class="r">' + c.burger + '</td><td class="r">' + c.dessert + "</td><td>" + (c.offers ? "yes" : "no") + "</td><td>" + (c.birthday ? esc(c.birthday) : "\u2013") + "</td><td>" + niceDate(c.joined) + "</td></tr>"; }).join("") +
       '</tbody></table></div><button type="button" class="btn ghost" id="copy-csv">COPY FOR EXCEL</button></div>';
     if (scans.length) h += '<div class="panel"><div class="lbl">Truck QR scans by day</div><div class="tw"><table><tbody>' +
       scans.slice(0, 30).map(function (s) { return "<tr><td>" + niceDate(s.day + "T12:00:00Z") + '</td><td class="r">' + s.n + "</td></tr>"; }).join("") + "</tbody></table></div></div>";
@@ -823,6 +826,10 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     }
     else if (t.hasAttribute("data-game")) openGame(t.getAttribute("data-game"));
     else if (t.hasAttribute("data-practice") && S.staff) openGame(t.getAttribute("data-practice"), true);
+    else if (t.id === "bd-save" && S.customer) {
+      var bdv = (document.getElementById("bd-in") || {}).value || ""; if (!bdv) return toast(L("Pick your birth date."));
+      t.disabled = true; api("/api/pass/birthday", { birthday: bdv }).then(function (r) { t.disabled = false; if (!r.ok) return toast(r.error || "Try again."); S.customer = Object.assign(S.customer, r.customer); render(); toast(L("Saved. See you on your birthday 🎂")); });
+    }
     else if (t.id === "qr-open" && S.customer) {
       var qb = document.getElementById("qrbig");
       qb.innerHTML = '<div class="qrbig-in"><p class="lbl" style="color:var(--carbon)">' + L("Show this at the window") + "</p>" +
@@ -852,8 +859,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       });
     }
     else if (t.id === "copy-csv" && owner) {
-      var rows = [["first", "last", "mobile", "email", "burger stamps", "dessert stamps", "offers", "joined"]].concat(owner.customers.map(function (c) {
-        return [c.first, c.last, c.phone, c.email, c.burger, c.dessert, c.offers ? "yes" : "no", c.joined.slice(0, 10)].map(function (x) { return '"' + String(x).replace(/"/g, '""') + '"'; }); }));
+      var rows = [["first", "last", "mobile", "email", "burger stamps", "dessert stamps", "offers", "birthday", "joined"]].concat(owner.customers.map(function (c) {
+        return [c.first, c.last, c.phone, c.email, c.burger, c.dessert, c.offers ? "yes" : "no", c.birthday || "", c.joined.slice(0, 10)].map(function (x) { return '"' + String(x).replace(/"/g, '""') + '"'; }); }));
       var csv = rows.map(function (r) { return r.join(","); }).join("\n");
       (navigator.clipboard ? navigator.clipboard.writeText(csv) : Promise.reject()).then(function () { toast("Copied. Paste into Excel."); }, function () { toast("Couldn't copy on this phone."); });
     }
@@ -1196,9 +1203,10 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       var ph = readPhone(f.id === "f-login" ? "l-phone" : "j-phone", f.id === "f-login" ? "l-err" : "j-err");
       if (!ph) return done();
       if (f.id === "f-join" && !val("j-email")) { showErr("j-err", "Add your email."); return done(); }
+      if (f.id === "f-join" && !val("j-bday")) { showErr("j-err", L("Add your birth date.")); return done(); }
     }
     if (f.id === "f-login") api("/api/pass/login", { phone: ph, pin: val("l-pin") }).then(function (r) { done(); if (!r.ok) return showErr("l-err", r.error); load(); });
-    if (f.id === "f-join") api("/api/pass/join", { first: val("j-first"), last: val("j-last"), phone: ph, email: val("j-email"), pin: val("j-pin"),
+    if (f.id === "f-join") api("/api/pass/join", { first: val("j-first"), last: val("j-last"), phone: ph, email: val("j-email"), birthday: val("j-bday"), pin: val("j-pin"),
       consent: document.getElementById("j-ok").checked, offers: document.getElementById("j-offers").checked }).then(function (r) { done(); if (!r.ok) return showErr("j-err", r.error); screen = "home"; load(); toast("Your Pass Card is ready"); });
     if (f.id === "f-review") {
       if (!rv.food || !rv.vibe) { done(); return showErr("r-err", "Pick a number for both food and atmosphere."); }

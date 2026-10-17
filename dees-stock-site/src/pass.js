@@ -117,6 +117,8 @@ async function ensureTables(env) {
   try { await env.DB.prepare("ALTER TABLE pass_customers ADD COLUMN device TEXT").run(); } catch (e) { /* already there */ }
   /* added later: 1 = the customer turned off order emails */
   try { await env.DB.prepare("ALTER TABLE pass_customers ADD COLUMN no_order_email INTEGER NOT NULL DEFAULT 0").run(); } catch (e) { /* already there */ }
+  /* added later: date of birth (YYYY-MM-DD), asked on sign-up */
+  try { await env.DB.prepare("ALTER TABLE pass_customers ADD COLUMN birthday TEXT").run(); } catch (e) { /* already there */ }
   for (const col of ["device TEXT", "browser TEXT", "joined INTEGER NOT NULL DEFAULT 0"]) {
     try { await env.DB.prepare("ALTER TABLE pass_scan_log ADD COLUMN " + col).run(); } catch (e) { /* already there */ }
   }
@@ -211,7 +213,7 @@ export async function handlePass(request, env, path, d) {
   const get = (phone) => env.DB.prepare("SELECT * FROM pass_customers WHERE phone = ?").bind(phone).first();
   const body = async () => (request.method === "POST" ? await request.json().catch(() => ({})) : {});
   const pub = (c) => c && ({ phone: c.phone, first: c.first, last: c.last, email: c.email || "", offers: !!c.offers,
-    burger: c.burger, dessert: c.dessert, bonus: !!c.bonus, joined: c.joined, surprise: c.surprise || null });
+    burger: c.burger, dessert: c.dessert, bonus: !!c.bonus, joined: c.joined, surprise: c.surprise || null, birthday: c.birthday || null });
   const completion = (phone, card) => env.DB.prepare("INSERT INTO pass_completions (phone, card, at, month) VALUES (?, ?, ?, ?)")
     .bind(phone, card, new Date().toISOString(), dubaiMonth());
   const pointsRow = (phone, delta, kind, note) => env.DB.prepare("INSERT INTO pass_points (phone, at, delta, kind, note) VALUES (?, ?, ?, ?, ?)")
@@ -328,6 +330,23 @@ export async function handlePass(request, env, path, d) {
     });
   }
 
+  const birthOk = (v) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || ""));
+    if (!m) return null;
+    const t = new Date(v + "T00:00:00Z");
+    if (isNaN(t) || t.toISOString().slice(0, 10) !== v) return null;
+    const today = dubaiDay(), y = +m[1];
+    return v <= today && y >= +today.slice(0, 4) - 110 ? v : null;
+  };
+  if (path === "/api/pass/birthday" && request.method === "POST") {
+    const phone = await customerId();
+    if (!phone) return fail("signed_out", 401);
+    const bd = birthOk((await body()).birthday);
+    if (!bd) return fail("Pick your birth date.");
+    /* set once: changing it later goes through the shop, so a birthday treat can't be moved around */
+    await env.DB.prepare("UPDATE pass_customers SET birthday = ? WHERE phone = ? AND (birthday IS NULL OR birthday = '')").bind(bd, phone).run();
+    return ok({ customer: await withStats(await get(phone)) });
+  }
   if (path === "/api/pass/join" && request.method === "POST") {
     const b = await body();
     const phone = normPhone(b.phone), first = clean(b.first, 40), last = clean(b.last, 40),
@@ -337,6 +356,8 @@ export async function handlePass(request, env, path, d) {
     if (!email) return fail("Add your email.");
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail("That email doesn't look right.");
     if (!/^\d{4}$/.test(pin)) return fail("Your PIN needs exactly 4 digits.");
+    const birthday = birthOk(b.birthday);
+    if (!birthday) return fail("Add your birth date.");
     if (b.consent !== true) return fail("Tick the box to agree, so we can keep your stamps.");
     if (await get(phone)) return fail("This number already has a Pass Card. Log in instead.", 409);
     /* one Pass Card per phone: a long-lived cookie marks the phone that made a card */
@@ -346,8 +367,8 @@ export async function handlePass(request, env, path, d) {
     /* one Pass Card per email too (compared without capitals or spaces) */
     if (await env.DB.prepare("SELECT 1 AS x FROM pass_customers WHERE lower(trim(email)) = ? LIMIT 1").bind(email.toLowerCase()).first())
       return fail("This email already has a Pass Card. Log in with that card's number, or use another email.", 409);
-    await env.DB.prepare("INSERT INTO pass_customers (phone, first, last, email, pin, offers, joined, device) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-      .bind(phone, first, last, email || null, await pinOf(phone, pin), b.offers === true ? 1 : 0, new Date().toISOString(), device).run();
+    await env.DB.prepare("INSERT INTO pass_customers (phone, first, last, email, pin, offers, joined, device, birthday) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(phone, first, last, email || null, await pinOf(phone, pin), b.offers === true ? 1 : 0, new Date().toISOString(), device, birthday).run();
     const res = ok({}, { "set-cookie": await issue(phone) });
     res.headers.append("set-cookie", "pd=" + device + "; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=" + 2 * 365 * 86400);
     const ps = d.cookies(request).ps;
