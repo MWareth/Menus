@@ -2287,6 +2287,8 @@
         var e = expiresOn(b);
         if (!byItem[k].soonest || e < byItem[k].soonest) byItem[k].soonest = e;
       });
+      if (perm.canSetup && !readOnly) h += '<div class="acts" style="margin:0 0 10px"><button class="btn ghost sm" type="button" data-act="recostlots">UPDATE MY REAL COST ON THE SHELF</button></div>' +
+        '<p class="hint" style="margin:-4px 0 12px">Changed an ingredient price? This puts today\'s recipe cost on every lot still out, for MY P&amp;L. What the shop pays stays as agreed.</p>';
       h += '<div class="subhead">BY ITEM</div><div class="tw"><table><thead><tr><th>ITEM</th>' +
         '<th class="r">ON HAND</th><th class="r">COST</th>' +
         '<th class="r">AT MENU</th><th class="r">ENTRIES</th><th>FIRST TO EXPIRE</th>' +
@@ -3676,6 +3678,21 @@
       mrecordwin: openMonthRecord,
       addrow2: addDeliveryRow,
       savepantry: savePantry,
+      recostlots: function () {
+        /* today's real cost per lot still out; lots in a closed week keep theirs */
+        var want = {};
+        S.batches.forEach(function (b) {
+          if (b.voided || weekClosed(b.drop || b.id)) return;
+          var now = realEachOf(item(b.itemId));
+          if (now == null) return;
+          now = Math.round(now * 100) / 100;
+          if (b.realEach == null || Math.abs(+b.realEach - now) > 0.004) want[b.id] = now;
+        });
+        var moved = Object.keys(want).length;
+        if (!moved) { toast("Every lot already has today's cost."); return; }
+        save(function (nx) { (nx.batches || []).forEach(function (b) { if (want[b.id] != null) b.realEach = want[b.id]; }); },
+          "Real cost updated on " + moved + " lot" + (moved === 1 ? "" : "s") + ".");
+      },
       exportrecipes: exportRecipes,
       importrecipes: function () { var f = document.getElementById("rec-file"); if (!f) return; f.value = ""; f.onchange = function () { if (f.files && f.files[0]) importRecipes(f.files[0]); }; f.click(); },
       togglepantry: togglePantry,
