@@ -521,7 +521,7 @@ export async function handlePass(request, env, path, d) {
       if (!c) return fail("No Pass Card with that number. Ask them to sign up with the QR on the truck.", 404);
       const last = await env.DB.prepare("SELECT at FROM pass_visits WHERE phone = ? ORDER BY at DESC LIMIT 1").bind(phone).first();
       const welcome = !c.surprise ? await pickSurprise(env, d) : null;
-      return ok({ customer: await withStats(c), lastVisit: last ? last.at : null, welcome });
+      return ok({ customer: await withStats(c), lastVisit: last ? last.at : null, welcome, stock: await stockLeft(env, d) });
     }
 
     if (path === "/api/pass/staff/stamp" && request.method === "POST") {
@@ -539,6 +539,13 @@ export async function handlePass(request, env, path, d) {
       });
       /* one stamp per card per order: any burgers = 1 burger stamp, any desserts = 1 dessert stamp */
       if (!burger && !dessert) return fail("Pick at least one item.");
+      if (b.offline !== true) {
+        const left = await stockLeft(env, d);
+        /* a first visit also takes the welcome dessert off the same shelf */
+        if (!c.surprise) { const pick = await pickSurprise(env, d); if (pick.kind === "dessert") PASS_MENU.forEach((m) => { if (m.stock === pick.stock && left[m.id] > 0) left[m.id] -= 1; }); }
+        const short = shortOf(items, left);
+        if (short.length) return fail(short.join(", ") + " on the shelf. Take it off the order, or add the delivery on the stock page first.", 409);
+      }
       /* an offline stamp may be sent twice (retry after a dropped reply): its id makes the second one a no-op */
       const qid = typeof b.qid === "string" && /^[a-z0-9-]{8,40}$/.test(b.qid) ? b.qid : null;
       if (qid && await env.DB.prepare("SELECT 1 AS x FROM pass_points WHERE phone = ? AND kind = 'order' AND note LIKE ?").bind(phone, "%#" + qid).first())
@@ -598,6 +605,7 @@ export async function handlePass(request, env, path, d) {
       const phone = normPhone(b.phone), card = b.card === "dessert" ? "dessert" : "burger";
       const m = MENU_BY_ID.get(b.item);
       if (!m || m.card !== card) return fail("Pick the free item.");
+      if (m.stock && !((await stockLeft(env, d))[m.id] > 0)) return fail(m.name + " is sold out. Pick another free item.", 409);
       const res = await env.DB.prepare("UPDATE pass_customers SET " + card + " = " + card + " - ? WHERE phone = ? AND " + card + " >= ?")
         .bind(NEED, phone, NEED).run();
       if (!(res.meta && res.meta.changes)) return fail("That card isn't full yet.", 409);
@@ -612,6 +620,7 @@ export async function handlePass(request, env, path, d) {
       const b = await body();
       const phone = normPhone(b.phone), r = REWARDS.find((x) => x.id === b.reward), m = MENU_BY_ID.get(b.item);
       if (!r || !m || m.card !== r.card) return fail("Pick the item they're taking.");
+      if (m.stock && !((await stockLeft(env, d))[m.id] > 0)) return fail(m.name + " is sold out. Pick another item.", 409);
       const c = validPhone(phone) ? await get(phone) : null;
       if (!c) return fail("Customer not found.", 404);
       /* spend only if the balance covers it (checked in the same statement, so two taps can't both go through) */
@@ -740,6 +749,21 @@ async function giftFromStock(env, d, itemName, me, opts) {
    twice: each piece comes off the oldest open lot of that item still in date,
    spilling into the next lot when one runs out. Anything not found in stock is
    returned so the truck can log it by hand. */
+/* pieces still on the shelf for every menu item that comes off the stock, counted the way
+   saleToStock takes them: live lots, not voided, not in a closed week, not past their date */
+async function stockLeft(env, d) {
+  const st = (await d.loadBoard(env)).state, on = dubaiDay();
+  const addDays = (ds, n) => { const t = new Date(ds + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() + (+n || 0)); return t.toISOString().slice(0, 10); };
+  const closed = new Set((st.weeks || []).map((w) => w.start)), out = {};
+  PASS_MENU.forEach((m) => {
+    if (!m.stock) return;
+    const it = (st.items || []).find((i) => i.name === m.stock);
+    out[m.id] = !it ? 0 : (st.batches || []).filter((b) => b.itemId === it.id && !b.voided && !closed.has(b.drop || b.id) && addDays(b.madeOn, b.shelf) >= on)
+      .reduce((a, b) => a + Math.max(0, (+b.qty || 0) - (b.sales || []).reduce((x, s) => x + (+s.qty || 0), 0)), 0);
+  });
+  return out;
+}
+const shortOf = (items, left) => Object.entries(items).map(([id, n]) => { const m = MENU_BY_ID.get(id); return m && m.stock && n > (left[id] || 0) ? (left[id] ? "Only " + left[id] + " " + m.name + " left" : m.name + " is sold out") : null; }).filter(Boolean);
 async function saleToStock(env, d, items, me, at) {
   const want = Object.entries(items).map(([id, n]) => ({ m: MENU_BY_ID.get(id), n })).filter((x) => x.m && x.m.stock);
   if (!want.length) return { logged: [], short: [] };
