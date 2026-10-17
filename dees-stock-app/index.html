@@ -986,9 +986,22 @@
     }); });
     return order.map(function (k) { return map[k]; }).sort(function (a, b) { return a.n.localeCompare(b.n); });
   }
+  var pantryShown = null;
+  function pantryOpen() {
+    if (pantryShown === null) { try { pantryShown = localStorage.getItem("pantryOpen") === "1"; } catch (e) { pantryShown = false; } }
+    return pantryShown;
+  }
+  function togglePantry() {
+    pantryShown = !pantryOpen();
+    try { localStorage.setItem("pantryOpen", pantryShown ? "1" : "0"); } catch (e) {}
+    render();
+  }
   function pantryHtml() {
-    var rows = pantryList();
-    var h = '<div class="subhead">PANTRY · INGREDIENT PRICES THIS MONTH</div><div class="card">' +
+    var rows = pantryList(), open = pantryOpen();
+    var head = '<button type="button" data-act="togglepantry" aria-expanded="' + open + '" style="display:flex;width:100%;justify-content:space-between;align-items:center;background:none;border:0;padding:0;cursor:pointer;font:inherit;text-align:left" class="subhead">' +
+      '<span>PANTRY · INGREDIENT PRICES THIS MONTH <span style="font-weight:600;letter-spacing:0">(' + rows.length + ')</span></span><span aria-hidden="true">' + (open ? "▲ HIDE" : "▼ SHOW") + "</span></button>";
+    if (!open) return head;
+    var h = head + '<div class="card">' +
       '<p class="hint" style="margin-bottom:10px">Set a pack price once here and every recipe that uses the ingredient updates: cost, profit and the P&amp;L. Orders already sent out keep the cost they went out at.</p>' +
       '<div class="tw"><table><thead><tr><th>INGREDIENT</th><th>PACK PRICE (' + cur() + ')</th><th>PACK QTY</th><th>UNIT</th><th class="r">USED IN</th><th></th></tr></thead><tbody>';
     rows.forEach(function (r) {
@@ -3948,6 +3961,7 @@
       mrecordwin: openMonthRecord,
       addrow2: addDeliveryRow,
       savepantry: savePantry,
+      togglepantry: togglePantry,
       deliver: addDelivery,
       notifystock: function () { notice("Stock note", stockNotice()); },
       savechannels: function () {
