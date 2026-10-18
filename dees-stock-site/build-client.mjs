@@ -276,7 +276,7 @@ const html = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#4A2C2A">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -290,6 +290,11 @@ const html = `<!doctype html>
 <style>
 ${css}
 </style>
+<style id="no-zoom">html{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}</style>
+<script>/* no zooming anywhere: iPhones ignore user-scalable=no, so pinches are stopped here too */
+(function () { var stop = function (e) { e.preventDefault(); };
+  document.addEventListener("gesturestart", stop, { passive: false }); document.addEventListener("gesturechange", stop, { passive: false });
+  document.addEventListener("touchmove", function (e) { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false }); })();</script>
 </head>
 <body>
 <div id="app"></div>

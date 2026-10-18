@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#101010">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -175,6 +175,11 @@ td{padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
 .toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--paper);color:var(--carbon);font-weight:900;padding:11px 18px;border-radius:999px;max-width:90vw;z-index:9;font-size:14px}
 details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700}
 </style>
+<style id="no-zoom">html{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}</style>
+<script>/* no zooming anywhere: iPhones ignore user-scalable=no, so pinches are stopped here too */
+(function () { var stop = function (e) { e.preventDefault(); };
+  document.addEventListener("gesturestart", stop, { passive: false }); document.addEventListener("gesturechange", stop, { passive: false });
+  document.addEventListener("touchmove", function (e) { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false }); })();</script>
 </head>
 <body>
 <div class="wrap">
