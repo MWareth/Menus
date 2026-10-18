@@ -184,6 +184,16 @@ function filled(card, phone, before, added) {
 }
 
 /** Everything the Pass Card needs from the stock worker, passed in to avoid a circular import. */
+/* the shop's Google review link, set by the admin on the owner page; the customer page shows a
+   "Drop us a Google review" button only when there is one. Google has no way to post for them. */
+const GOOGLE_HOSTS = /^(g\.page|maps\.app\.goo\.gl|goo\.gl|(www\.|maps\.|search\.)?google\.(com|ae)(\.[a-z]{2})?)$/i;
+function googleUrlOk(u) {
+  try { const x = new URL(String(u || "").trim()); return x.protocol === "https:" && GOOGLE_HOSTS.test(x.hostname) ? x.toString() : null; } catch (e) { return null; }
+}
+async function googleReviewLink(env) {
+  const r = await env.DB.prepare("SELECT v FROM meta WHERE k = 'google_review'").first().catch(() => null);
+  return (r && r.v) || "";
+}
 export async function handlePass(request, env, path, d) {
   await ensureTables(env);
   const secret = await d.sessionSecret(env);
@@ -309,7 +319,7 @@ export async function handlePass(request, env, path, d) {
         pending: visits[0] && visits[0].food == null ? visits[0] : null };   /* only the latest visit asks for a review */
     }
     return ok({ customer: card, staff: s ? { name: s.name, role: s.role } : null, need: NEED, menu: PASS_MENU, countries: COUNTRIES,
-      rewards: REWARDS, achievements: ACHIEVEMENTS, games: GAMES, gameMax: GAME_MAX, pointsPerStamp: POINTS_PER_STAMP });
+      googleReview: await googleReviewLink(env), rewards: REWARDS, achievements: ACHIEVEMENTS, games: GAMES, gameMax: GAME_MAX, pointsPerStamp: POINTS_PER_STAMP });
   }
 
   if (path === "/api/pass/qr.svg" && request.method === "GET") {
@@ -658,6 +668,15 @@ export async function handlePass(request, env, path, d) {
 
     /* admin only: remove a customer completely (card, stamps, visits, free items, points, games, records) */
     /* admin: send one test email to ALERT_TO now and report exactly what Gmail answered */
+    if (path === "/api/pass/staff/google" && request.method === "POST") {
+      if (me.role !== "admin") return fail("Only the admin can change the Google review link.", 403);
+      const raw = String((await body()).url || "").trim();
+      if (raw && !googleUrlOk(raw)) return fail("That isn't a Google link. Paste the link from Google Maps or your Google Business Profile.");
+      const v = raw ? googleUrlOk(raw) : "";
+      await env.DB.prepare("INSERT INTO meta (k, v) VALUES ('google_review', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind(v).run();
+      return ok({ url: v });
+    }
+
     if (path === "/api/pass/staff/mailtest" && request.method === "POST") {
       if (me.role !== "admin") return fail("Only the admin can send a test email.", 403);
       const has = { SMTP_USER: !!env.SMTP_USER, SMTP_PASS: !!env.SMTP_PASS, ALERT_TO: !!env.ALERT_TO };

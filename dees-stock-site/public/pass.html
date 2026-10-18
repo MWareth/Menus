@@ -195,6 +195,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   var app = document.getElementById("app");
   var S = { customer: null, staff: null, need: 9, menu: [] };
   var welcomeP = null, lb = null;
+  var askGoogle = null;   /* after a review: the words to copy into Google, until they post or say not now */
   var shelf = null;   /* pieces left per stock item, from the last customer lookup; null offline */
   var screen = "home", basket = {}, found = null, rv = { food: 0, vibe: 0, card: "burger" }, redeemFor = null, owner = null;
   var MENU = {}, moreOpen = false;
@@ -233,7 +234,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     "NEW HERE? GET A PASS CARD": "جديد؟ احصل على بطاقة باس",
     "Forgot your PIN? Ask at the truck window and they'll reset it.": "نسيت الرمز السري؟ اطلب من فريق الشاحنة إعادة تعيينه.",
     "Get your Pass Card": "احصل على بطاقة باس", "First name": "الاسم الأول", "Last name": "اسم العائلة", "Email": "البريد الإلكتروني",
-    "Choose a 4-digit PIN": "اختر رمزاً سرياً من 4 أرقام", "Birth date": "تاريخ الميلاد", "SAVE": "حفظ", "Add your birth date.": "أضف تاريخ ميلادك.", "Pick your birth date.": "اختر تاريخ ميلادك.", "🎂 When's your birthday?": "🎂 متى عيد ميلادك؟", "Add it once and we'll remember you on your day.": "أضفه مرة واحدة وسنتذكرك في يومك.", "Saved. See you on your birthday 🎂": "تم الحفظ. نراك في عيد ميلادك 🎂",
+    "Choose a 4-digit PIN": "اختر رمزاً سرياً من 4 أرقام", "Birth date": "تاريخ الميلاد", "⭐ Drop us a Google review": "⭐ اترك لنا تقييماً على Google", "⭐ Thank you! Share it on Google too?": "⭐ شكراً لك! هل تشاركه على Google أيضاً؟", "It helps other people find us. Your words are copied: on Google, tap the stars and paste.": "يساعد الآخرين على إيجادنا. نسخنا كلماتك: على Google اختر النجوم ثم الصق.", "POST ON GOOGLE": "انشر على Google", "Not now": "ليس الآن", "SAVE": "حفظ", "Add your birth date.": "أضف تاريخ ميلادك.", "Pick your birth date.": "اختر تاريخ ميلادك.", "🎂 When's your birthday?": "🎂 متى عيد ميلادك؟", "Add it once and we'll remember you on your day.": "أضفه مرة واحدة وسنتذكرك في يومك.", "Saved. See you on your birthday 🎂": "تم الحفظ. نراك في عيد ميلادك 🎂",
     "I agree that Smash &amp; Pass keeps my name, number, email, birth date, what I buy and my reviews to run the Pass Card. To delete my card, I email smashandpassdxb@gmail.com.":
       "أوافق على أن تحتفظ سماش آند باس باسمي ورقمي وبريدي وتاريخ ميلادي ومشترياتي وتقييماتي لتشغيل بطاقة باس. لحذف بطاقتي أراسل smashandpassdxb@gmail.com.",
     "Send me offers on WhatsApp or email (optional).": "أرسلوا لي العروض عبر واتساب أو البريد (اختياري).",
@@ -495,6 +496,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     var h = '<div class="hello"><h2>' + L("Hey {n}", { n: esc(c.first) }) + '</h2><button type="button" class="btn ghost" id="logout" style="flex:none;padding:8px 12px">' + L("LOG OUT") + "</button></div>";
     if (offline) h += '<div class="panel" style="border-color:var(--butter)"><p class="note" style="margin:0">' + L("📴 <b>No internet.</b> This is your saved card, and your QR still works at the window. Stamps and points update when you're back online.") + "</p></div>";
     /* the QR sits on top as a thumbnail; tapping it fills the screen for the truck to scan */
+    if (askGoogle && S.googleReview) h += '<div class="panel" style="border-color:var(--butter)"><div class="lbl">' + L("⭐ Thank you! Share it on Google too?") + '</div><p class="note" style="margin:0 0 10px">' + L("It helps other people find us. Your words are copied: on Google, tap the stars and paste.") + '</p>' +
+      '<a class="btn pri" id="gr-share" href="' + esc(S.googleReview) + '" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none">' + L("POST ON GOOGLE") + '</a><button type="button" class="linkbtn" id="gr-later" style="margin-top:8px">' + L("Not now") + "</button></div>";
     if (!c.birthday && !offline) h += '<div class="panel" style="border-color:var(--butter)"><div class="lbl">' + L("🎂 When's your birthday?") + '</div><p class="note" style="margin:0 0 8px">' + L("Add it once and we'll remember you on your day.") + '</p>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="bd-in" type="date" max="' + new Date().toISOString().slice(0, 10) + '" style="flex:1;min-width:160px;padding:9px;border:1px solid var(--line);border-radius:10px"><button type="button" class="btn pri" id="bd-save" style="padding:8px 14px">' + L("SAVE") + "</button></div></div>";
     h += '<button type="button" class="panel qr-top" id="qr-open" aria-label="' + L("Show my QR code full screen") + '">' +
@@ -527,6 +530,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       more += "</div>";
     }
     more += '<button type="button" class="linkbtn" id="howto-open">' + L("ℹ️ HOW IT WORKS") + "</button>";
+    if (S.googleReview) h += '<a class="btn ghost" id="gr-go" href="' + esc(S.googleReview) + '" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;margin:0 0 12px">' + L("⭐ Drop us a Google review") + "</a>";
     h += '<details class="more" id="more"' + (moreOpen ? " open" : "") + "><summary>" + L("More: your level, leaderboards, achievements & visits") + "</summary>" + more + "</details>";
     h += '<p class="note" style="text-align:center;margin:4px 0 12px">' + L("Want your Pass Card and data deleted? Email {e} from the email on your card.",
       { e: '<a href="mailto:smashandpassdxb@gmail.com?subject=Delete%20my%20Pass%20Card" style="color:var(--butter)">smashandpassdxb@gmail.com</a>' }) + "</p>";
@@ -651,6 +655,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     /* admin-only tools sit at the very bottom of the page */
     var tools = S.staff.role === "admin" ? '<div class="panel"><div class="lbl">🛟 Backup</div><p class="note">A copy of everything (customers, stamps, points and the stock) is saved automatically every night at 2am. You can also download one any time and keep it on your phone or Google Drive.</p>' +
       '<a class="btn ghost" href="/api/pass/backup" download style="text-align:center;text-decoration:none">DOWNLOAD BACKUP</a></div>' +
+      '<div class="panel"><div class="lbl">⭐ Google reviews</div><p class="note">Paste your shop\'s Google review link. In Google Maps, open your business, tap <b>Ask for reviews</b> (or <b>Get more reviews</b>) and copy the link. Any Google Maps link to your shop also works. Customers then see a <b>Drop us a Google review</b> button. Leave it empty to hide the button.</p>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="gr-url" value="' + esc(S.googleReview || "") + '" placeholder="https://g.page/r/…" style="flex:1;min-width:200px;padding:9px;border:1px solid var(--line);border-radius:10px"><button type="button" class="btn pri" id="gr-save" style="padding:8px 14px">SAVE</button></div></div>' +
       '<div class="panel"><div class="lbl">✉️ Email</div><p class="note">Sends one test email to your alert address (ALERT_TO) and shows what Gmail answered.</p>' +
       '<button class="btn ghost" type="button" data-mailtest>SEND TEST EMAIL</button><p class="note" id="mailtest-out"></p></div>' : "";
     var h = practiceHtml() +
@@ -776,6 +782,14 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   document.addEventListener("click", function (e) {
     var a = e.target.closest("a[data-nav]");
     if (a) { e.preventDefault(); found = null; redeemFor = null; go(a.getAttribute("href")); return; }
+    /* Google review links: copy the customer's words, then let the link open Google in a new tab */
+    var g = e.target.closest("a#gr-share, a#gr-go");
+    if (g) {
+      var words = g.id === "gr-share" && askGoogle ? askGoogle.text : "";
+      if (words && navigator.clipboard) navigator.clipboard.writeText(words).catch(function () {});
+      if (g.id === "gr-share") { askGoogle = null; setTimeout(render, 400); }
+      return;
+    }
     var t = e.target.closest("button"); if (!t) return;
     if (t.id === "st-out") { api("/api/logout", {}).then(function () { found = null; owner = null; store("pc_staff", null); screen = "home"; go("/pass"); }); return; }
     if (t.id === "to-join") { screen = "join"; render(); }
@@ -826,6 +840,11 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     }
     else if (t.hasAttribute("data-game")) openGame(t.getAttribute("data-game"));
     else if (t.hasAttribute("data-practice") && S.staff) openGame(t.getAttribute("data-practice"), true);
+    else if (t.id === "gr-later") { askGoogle = null; render(); }
+    else if (t.id === "gr-save") {
+      t.disabled = true; api("/api/pass/staff/google", { url: (document.getElementById("gr-url") || {}).value || "" }).then(function (r) {
+        t.disabled = false; if (!r.ok) return toast(r.error || "Try again."); S.googleReview = r.url; render(); toast(r.url ? "Google review link saved." : "Google review button hidden."); });
+    }
     else if (t.id === "bd-save" && S.customer) {
       var bdv = (document.getElementById("bd-in") || {}).value || ""; if (!bdv) return toast(L("Pick your birth date."));
       t.disabled = true; api("/api/pass/birthday", { birthday: bdv }).then(function (r) { t.disabled = false; if (!r.ok) return toast(r.error || "Try again."); S.customer = Object.assign(S.customer, r.customer); render(); toast(L("Saved. See you on your birthday 🎂")); });
@@ -1210,8 +1229,10 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       consent: document.getElementById("j-ok").checked, offers: document.getElementById("j-offers").checked }).then(function (r) { done(); if (!r.ok) return showErr("j-err", r.error); screen = "home"; load(); toast("Your Pass Card is ready"); });
     if (f.id === "f-review") {
       if (!rv.food || !rv.vibe) { done(); return showErr("r-err", "Pick a number for both food and atmosphere."); }
-      api("/api/pass/review", { food: rv.food, vibe: rv.vibe, comment: val("r-text"), card: rv.card }).then(function (r) {
+      var rvText = val("r-text");
+      api("/api/pass/review", { food: rv.food, vibe: rv.vibe, comment: rvText, card: rv.card }).then(function (r) {
         done(); if (!r.ok) return showErr("r-err", r.error);
+        askGoogle = { text: rvText || "" };
         screen = "home"; rv = { food: 0, vibe: 0, card: "burger" }; load();
         toast(r.bonus ? "Thanks! Bonus stamp added to your " + (r.bonus === "burger" ? "savory" : r.bonus) + " card" : "Thanks for the review");   /* both lines are in AR */
       });
