@@ -583,7 +583,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     if (!S.staff) return needStaff();
     if (redeemFor && found) return redeemPanel();
     var h = '<form class="panel" id="f-find" novalidate><div class="lbl">Find the customer</div>' +
-      '<div class="row"><div class="field" style="flex:2 1 180px"><label for="s-q">Mobile number</label><input id="s-q" inputmode="tel" placeholder="05X XXX XXXX or +966…"></div>' +
+      '<div class="row"><div class="field" style="flex:2 1 180px"><label for="s-q">Mobile number</label><input id="s-q" inputmode="tel" placeholder="05X XXX XXXX or +971…"></div>' +
       '<button class="btn pri" type="submit" style="align-self:flex-end;flex:1 1 90px">FIND</button></div>' +
       '<p class="note">Faster: open the phone camera and scan the customer\'s QR. It opens their card here.</p><p class="err" id="s-err" hidden></p></form>';
     if (!found) return h + practiceHtml();
@@ -647,7 +647,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   function alertsHtml() {
     if (!alerts) { if (alerts !== false) { alerts = false; api("/api/pass/staff/alerts").then(function (r) { alerts = r.ok ? r : null; render(); }); } return ""; }
     var A = alerts.alerts || {}, f = function (k, label, what) {
-      return '<div class="field"><label for="al-' + k + '">' + label + '</label><input id="al-' + k + '" value="' + esc((A[k] || []).join(", ")) + '" placeholder="' + esc(alerts.fallback ? "empty = " + alerts.fallback : "name@email.com, other@email.com") + '" autocomplete="off" autocapitalize="none" spellcheck="false" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:10px"></div><p class="note" style="margin:4px 0 12px">' + what + "</p>"; };
+      return '<div class="field"><label for="al-' + k + '">' + label + '</label><input id="al-' + k + '" value="' + esc((A[k] || []).join(", ")) + '" placeholder="Add an email" autocomplete="off" autocapitalize="none" spellcheck="false" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:10px"></div><p class="note" style="margin:4px 0 12px">' + what + "</p>"; };
     return '<div class="panel"><div class="lbl">🔔 Email alerts</div><p class="note">Who gets told, and about what. One or more emails per alert, with commas between them. Empty = the main alert address.' + (alerts.mailReady ? "" : " <b>Email isn't set up yet in Cloudflare, so nothing is sent.</b>") + "</p>" +
       f("orders", "🧾 Every order", "Each stamped order at the truck: a copy of the customer's thank you email, or a short notice if they have no email.") +
       f("sales", "🍰 Dessert sales", "Each dessert sold, from the truck or the stock app.") +
@@ -1201,7 +1201,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       return ccList(id, t.value);
     }
     if (!t.id || !document.getElementById(t.id + "-cc")) return;
-    /* a full number pasted or autofilled (+966…, 00966…) moves its code to the country box */
+    /* a full number pasted or autofilled (+971…, 00971…) moves its code to the country box */
     var raw = t.value.trim(), dd = raw.replace(/\D/g, "");
     if (raw.charAt(0) === "+" || dd.indexOf("00") === 0) {
       if (dd.indexOf("00") === 0) dd = dd.slice(2);
