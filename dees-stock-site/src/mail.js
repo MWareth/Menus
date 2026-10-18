@@ -104,9 +104,13 @@ export async function sendMail(env, { to, bcc, subject, text, html, fromName }) 
 
 /* ---------- the emails ---------- */
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const shell = (inner) => '<!doctype html><html><body style="margin:0;background:#101010;font-family:Arial,Helvetica,sans-serif;color:#FFF9EE">' +
-  '<div style="max-width:520px;margin:0 auto;padding:24px 18px">' +
-  '<p style="margin:0 0 4px;font-size:12px;letter-spacing:3px;font-weight:bold;color:#FFF9EE">SMASH &amp; PASS</p>' +
+/* the Smash & Pass logo comes from this site (public/smash-logo.png), found from the email's own link */
+const originOf = (link) => { try { return new URL(link).origin; } catch (e) { return ""; } };
+const shell = (inner, link) => '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head><body style="margin:0;background:#101010;font-family:Arial,Helvetica,sans-serif;color:#FFF9EE">' +
+  '<div style="height:6px;background:#FFD21C"></div>' +
+  '<div style="max-width:520px;margin:0 auto;padding:22px 18px 28px">' +
+  (originOf(link) ? '<img src="' + esc(originOf(link) + "/smash-logo.png") + '" width="150" alt="Smash &amp; Pass" style="display:block;border:0;height:auto;margin:0 0 12px">'
+    : '<p style="margin:0 0 4px;font-size:12px;letter-spacing:3px;font-weight:bold;color:#FFF9EE">SMASH &amp; PASS</p>') +
   '<p style="margin:0 0 18px;font-size:30px;font-weight:bold;color:#FFD21C">THE PASS CARD</p>' + inner +
   "</div></body></html>";
 export const dubaiTime = (d) => new Date(d || Date.now()).toLocaleString("en-GB", { timeZone: "Asia/Dubai", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -127,7 +131,7 @@ export function orderEmail({ first, items, card, need, points, gameMin, link, un
     row("⚡ Smash Points", points) + "</table></div>" +
     '<p style="margin:0 0 16px;color:#FFD21C;font-weight:bold">🎮 Your games are open for ' + gameMin + " minutes. Play while you wait!</p>" +
     '<p style="margin:0 0 22px"><a href="' + esc(link) + '" style="display:inline-block;background:#FFD21C;color:#101010;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:12px">OPEN MY PASS CARD</a></p>' +
-    '<p style="margin:0;font-size:12px;color:#8A857B">You get this because you have a Smash &amp; Pass Pass Card. <a href="' + esc(unsub) + '" style="color:#B3AEA3">Stop order emails</a></p>');
+    '<p style="margin:0;font-size:12px;color:#8A857B">You get this because you have a Smash &amp; Pass Pass Card. <a href="' + esc(unsub) + '" style="color:#B3AEA3">Stop order emails</a></p>', link);
   const text = "Thanks " + first + "! Your order is on your Pass Card.\n\nYour order: " + items +
     "\nSavory card: " + (card.burger % need) + "/" + need + "\nDee'sert card: " + (card.dessert % need) + "/" + need +
     (freeB ? "\nFree burgers waiting: " + freeB : "") + (freeD ? "\nFree desserts waiting: " + freeD : "") +
@@ -140,6 +144,6 @@ export function alertEmail({ title, lines, link }) {
   const html = shell('<p style="font-size:20px;font-weight:bold;margin:0 0 12px">' + esc(title) + "</p>" +
     '<div style="background:#1E1E1E;border-radius:14px;padding:14px 16px;margin-bottom:16px">' +
     lines.map((l) => '<p style="margin:0 0 6px">' + esc(l) + "</p>").join("") + "</div>" +
-    (link ? '<p style="margin:0"><a href="' + esc(link) + '" style="color:#FFD21C">Open the dashboard</a></p>' : ""));
+    (link ? '<p style="margin:0"><a href="' + esc(link) + '" style="color:#FFD21C">Open the dashboard</a></p>' : ""), link);
   return { subject: title, html, text: title + "\n\n" + lines.join("\n") + (link ? "\n\n" + link : "") };
 }
