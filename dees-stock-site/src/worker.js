@@ -998,7 +998,8 @@ async function saleAlert(env, before, after, me, origin) {
   const lines = fresh.map((f) => f.qty + "× " + f.name + (f.ch ? " · " + f.ch : "") + " · " + dubaiTime(f.at) + " · logged by " + f.by);
   const n = fresh.reduce((a, f) => a + f.qty, 0);
   const mail = alertEmail({ title: "🍰 " + n + " dessert" + (n === 1 ? "" : "s") + " sold", lines, link: origin + "/" });
-  await sendMail(env, { to: env.ALERT_TO, fromName: "Dee's Stock alerts", ...mail });
+  const set = ((after.alerts || {}).sales || []), list = set.length ? set : String(env.ALERT_TO || "").split(/[,;]/).map((x) => x.trim()).filter(Boolean);
+  if (list.length) await sendMail(env, { to: list[0], bcc: list.slice(1).join(","), fromName: "Dee's Stock alerts", ...mail });
 }
 
 /* ============ the Worker ============ */

@@ -290,6 +290,16 @@ export async function handlePass(request, env, path, d) {
   const shortName = (x) => x.first + " " + String(x.last || "").charAt(0).toUpperCase() + ".";
   const fail = (error, status = 400) => d.json({ ok: false, error }, status);
   const ok = (x, headers) => d.json({ ok: true, ...x }, 200, headers);
+  /* who gets each kind of alert email: set per kind on the owner page (Email alerts), else the ALERT_TO setting */
+  const alertList = async (kind) => {
+    const set = (((await d.loadBoard(env)).state.alerts || {})[kind]) || [];
+    return set.length ? set : String(env.ALERT_TO || "").split(/[,;]/).map((x) => x.trim()).filter(Boolean);
+  };
+  const alertMail = async (kind, fromName, mail, list) => {
+    if (!mailReady(env) || !d.later) return;
+    list = list || (await alertList(kind));
+    if (list.length) d.later(sendMail(env, { to: list[0], bcc: list.slice(1).join(","), fromName, ...mail }));
+  };
 
   /* ---- the truck poster: count every scan, then open the card page ---- */
   if (path === "/t" || path === "/scan") {
@@ -430,6 +440,11 @@ export async function handlePass(request, env, path, d) {
     await env.DB.batch(stmts);
     const earned = await award(phone, ["first_review"].concat(c.bonus ? [] : []));
     await checkOrderAchievements(phone);   /* the bonus stamp can finish a card */
+    const cm = clean(b.comment, 500);
+    await alertMail("reviews", "Smash & Pass reviews", alertEmail({
+      title: (Math.min(food, vibe) < 4 ? "⚠️ " : "⭐ ") + "New review: " + food + "★ food, " + vibe + "★ atmosphere · " + c.first + " " + String(c.last || "").charAt(0) + ".",
+      lines: [cm ? "\u201c" + cm + "\u201d" : "No comment.", "Phone: " + c.phone].concat(Math.min(food, vibe) < 4 ? ["Under 4 stars: worth a call today."] : []),
+      link: new URL(request.url).origin + "/pass/owner" }));
     return ok({ bonus, achievements: earned });
   }
 
@@ -608,24 +623,35 @@ export async function handlePass(request, env, path, d) {
       ]);
       const earned = await checkOrderAchievements(phone);
       const after = await withStats(await get(phone));
-      /* the customer's order email, sent after the reply so the truck never waits for it */
+      /* the customer's order email, sent after the reply so the truck never waits for it.
+         The "Every order" list gets a hidden copy of it, or, when the customer has no email, a short order notice. */
+      const origin = new URL(request.url).origin;
+      const itemsText = Object.entries(items).map(([k, n]) => n + "× " + MENU_BY_ID.get(k).name).join(", ");
+      const ordersTo = mailReady(env) ? await alertList("orders") : [];
       const copied = mailReady(env) && c.email && !c.no_order_email && d.later;
-      /* the owner's dessert alert, unless the BCC of the customer's email already tells them */
-      if (!copied && sold.logged.length && mailReady(env) && env.ALERT_TO && d.later) {
-        const n = sold.logged.reduce((a, x) => a + x.qty, 0);
-        d.later(sendMail(env, { to: env.ALERT_TO, fromName: "Dee's Stock alerts", ...alertEmail({
-          title: "🍰 " + n + " dessert" + (n === 1 ? "" : "s") + " sold",
-          lines: sold.logged.map((x) => x.qty + "× " + x.name + " · " + sold.ch + " · " + dubaiTime(at) + " · Pass Card, stamped by " + me.name),
-          link: new URL(request.url).origin + "/" }) }));
-      }
       if (copied) {
-        const origin = new URL(request.url).origin;
         const mail = orderEmail({
           first: c.first, need: NEED, card: { burger: after.burger, dessert: after.dessert }, points: after.points, gameMin: GAME_WINDOW_MIN,
-          items: Object.entries(items).map(([k, n]) => n + "× " + MENU_BY_ID.get(k).name).join(", "),
+          items: itemsText,
           link: origin + "/pass", unsub: origin + "/api/pass/unsub?p=" + encodeURIComponent(phone) + "&t=" + (await d.hmac(secret, "unsub:" + phone)).slice(0, 24)
         });
-        d.later(sendMail(env, { to: c.email, bcc: env.ALERT_TO, fromName: "Smash & Pass", ...mail }));
+        d.later(sendMail(env, { to: c.email, bcc: ordersTo.join(","), fromName: "Smash & Pass", ...mail }));
+      } else if (ordersTo.length) {
+        await alertMail("orders", "Smash & Pass orders", alertEmail({
+          title: "🧾 New order · " + c.first + " " + String(c.last || "").charAt(0) + ". · " + itemsText,
+          lines: [itemsText, "Savory card: " + (after.burger % NEED) + "/" + NEED + " · Dee'sert card: " + (after.dessert % NEED) + "/" + NEED + " · " + after.points + " points",
+            "Stamped by " + me.name + " · " + dubaiTime(at)].concat(sold.logged.length
+            ? ["🍰 Dessert sale logged from the Pass Card: " + sold.logged.map((x) => x.qty + "× " + x.name).join(", ")] : []),
+          link: origin + "/pass/owner" }), ordersTo);
+      }
+      /* the dessert sale alert, for anyone on the "Dessert sales" list who didn't already get the order */
+      if (sold.logged.length && mailReady(env)) {
+        const salesTo = (await alertList("sales")).filter((a) => !ordersTo.some((o) => o.toLowerCase() === a.toLowerCase()));
+        const n = sold.logged.reduce((a, x) => a + x.qty, 0);
+        if (salesTo.length) await alertMail("sales", "Dee's Stock alerts", alertEmail({
+          title: "🍰 " + n + " dessert" + (n === 1 ? "" : "s") + " sold",
+          lines: sold.logged.map((x) => x.qty + "× " + x.name + " · " + sold.ch + " · " + dubaiTime(at) + " · Pass Card, stamped by " + me.name),
+          link: origin + "/" }), salesTo);
       }
       return ok({ customer: after, added: { burger, dessert }, welcome, completed: done.map((x) => x[1]),
         points: (burger + dessert) * POINTS_PER_STAMP, achievements: earned, stock: { logged: sold.logged, short: sold.short } });
@@ -668,6 +694,23 @@ export async function handlePass(request, env, path, d) {
 
     /* admin only: remove a customer completely (card, stamps, visits, free items, points, games, records) */
     /* admin: send one test email to ALERT_TO now and report exactly what Gmail answered */
+    /* admin: who gets which alert email */
+    if (path === "/api/pass/staff/alerts") {
+      if (me.role !== "admin") return fail("Only the admin can change alert emails.", 403);
+      const board = await d.loadBoard(env), st = board.state;
+      if (request.method === "POST") {
+        const b = await body(), next = {}, okA = (a) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a);
+        for (const k of ["orders", "sales", "reviews", "stock"]) {   /* stock: the low-stock emails from the dashboard */
+          const l = String(b[k] || "").split(/[\s,;]+/).filter(Boolean);
+          const bad = l.find((a) => !okA(a)); if (bad) return fail(bad + " doesn't look like an email address.");
+          next[k] = [...new Set(l.map((a) => a.toLowerCase()))].slice(0, 10);
+        }
+        st.alerts = { ...(st.alerts || {}), ...next };
+        if (!(await d.saveBoard(env, board.version, st))) return fail("Someone else saved at the same time. Try again.", 409);
+      }
+      return ok({ alerts: st.alerts || {}, fallback: env.ALERT_TO ? String(env.ALERT_TO) : "", mailReady: mailReady(env) });
+    }
+
     if (path === "/api/pass/staff/google" && request.method === "POST") {
       if (me.role !== "admin") return fail("Only the admin can change the Google review link.", 403);
       const raw = String((await body()).url || "").trim();

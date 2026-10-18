@@ -637,6 +637,19 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   }
 
   /* ---------------- owner ---------------- */
+  /* admin: who gets which alert email (empty = the ALERT_TO address in Cloudflare) */
+  var alerts = null;
+  function alertsHtml() {
+    if (!alerts) { if (alerts !== false) { alerts = false; api("/api/pass/staff/alerts").then(function (r) { alerts = r.ok ? r : null; render(); }); } return ""; }
+    var A = alerts.alerts || {}, f = function (k, label, what) {
+      return '<div class="field"><label for="al-' + k + '">' + label + '</label><input id="al-' + k + '" value="' + esc((A[k] || []).join(", ")) + '" placeholder="' + esc(alerts.fallback ? "empty = " + alerts.fallback : "name@email.com, other@email.com") + '" autocomplete="off" autocapitalize="none" spellcheck="false" style="width:100%;padding:9px;border:1px solid var(--line);border-radius:10px"></div><p class="note" style="margin:4px 0 12px">' + what + "</p>"; };
+    return '<div class="panel"><div class="lbl">🔔 Email alerts</div><p class="note">Who gets told, and about what. One or more emails per alert, with commas between them. Empty = the main alert address.' + (alerts.mailReady ? "" : " <b>Email isn't set up yet in Cloudflare, so nothing is sent.</b>") + "</p>" +
+      f("orders", "🧾 Every order", "Each stamped order at the truck: a copy of the customer's thank you email, or a short notice if they have no email.") +
+      f("sales", "🍰 Dessert sales", "Each dessert sold, from the truck or the stock app.") +
+      f("reviews", "⭐ Reviews", "Every review, with the stars, the comment and the customer's phone.") +
+      f("stock", "📦 Low stock", "When a dessert drops below its warning number.") +
+      '<button type="button" class="btn pri" id="al-save">SAVE ALERT EMAILS</button></div>';
+  }
   function viewOwner() {
     if (!S.staff) return needStaff();
     if (!owner) return '<div class="panel"><p class="note">Loading…</p></div>';
@@ -657,6 +670,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       '<a class="btn ghost" href="/api/pass/backup" download style="text-align:center;text-decoration:none">DOWNLOAD BACKUP</a></div>' +
       '<div class="panel"><div class="lbl">⭐ Google reviews</div><p class="note">Paste your shop\'s Google review link. In Google Maps, open your business, tap <b>Ask for reviews</b> (or <b>Get more reviews</b>) and copy the link. Any Google Maps link to your shop also works. Customers then see a <b>Drop us a Google review</b> button. Leave it empty to hide the button.</p>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="gr-url" value="' + esc(S.googleReview || "") + '" placeholder="https://g.page/r/…" style="flex:1;min-width:200px;padding:9px;border:1px solid var(--line);border-radius:10px"><button type="button" class="btn pri" id="gr-save" style="padding:8px 14px">SAVE</button></div></div>' +
+      alertsHtml() +
       '<div class="panel"><div class="lbl">✉️ Email</div><p class="note">Sends one test email to your alert address (ALERT_TO) and shows what Gmail answered.</p>' +
       '<button class="btn ghost" type="button" data-mailtest>SEND TEST EMAIL</button><p class="note" id="mailtest-out"></p></div>' : "";
     var h = practiceHtml() +
@@ -841,6 +855,12 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     else if (t.hasAttribute("data-game")) openGame(t.getAttribute("data-game"));
     else if (t.hasAttribute("data-practice") && S.staff) openGame(t.getAttribute("data-practice"), true);
     else if (t.id === "gr-later") { askGoogle = null; render(); }
+    else if (t.id === "al-save") {
+      var v = function (k) { return (document.getElementById("al-" + k) || {}).value || ""; };
+      t.disabled = true;
+      api("/api/pass/staff/alerts", { orders: v("orders"), sales: v("sales"), reviews: v("reviews"), stock: v("stock") })
+        .then(function (r) { t.disabled = false; if (!r.ok) return toast(r.error || "Try again."); alerts = r; render(); toast("Alert emails saved."); });
+    }
     else if (t.id === "gr-save") {
       t.disabled = true; api("/api/pass/staff/google", { url: (document.getElementById("gr-url") || {}).value || "" }).then(function (r) {
         t.disabled = false; if (!r.ok) return toast(r.error || "Try again."); S.googleReview = r.url; render(); toast(r.url ? "Google review link saved." : "Google review button hidden."); });
