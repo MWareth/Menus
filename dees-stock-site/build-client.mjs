@@ -282,6 +282,13 @@ const html = `<!doctype html>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Dee's Stock">
 <title>Dee's Stock</title>
+<meta name="description" content="Dee's Stock — staff &amp; owner dashboard.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Dee's Stock">
+<meta property="og:title" content="Dee's Stock">
+<meta property="og:description" content="Dee's Stock — staff &amp; owner dashboard.">
+<meta property="og:image" content="/icon-512.png">
+<meta name="twitter:card" content="summary">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
