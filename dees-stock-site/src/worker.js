@@ -1046,8 +1046,12 @@ export default {
     if (url.pathname === "/recover") {
       return harden(await env.ASSETS.fetch(new Request(new URL("/recover.html", url), request)));
     }
+    /* the card used to live at /pass: saved links and home-screen icons still open */
     if (url.pathname === "/pass" || url.pathname.startsWith("/pass/")) {
-      return harden(await env.ASSETS.fetch(new Request(new URL("/pass", url), request)));
+      return Response.redirect(new URL("/tap" + url.pathname.slice(5) + url.search, url).toString(), 301);
+    }
+    if (url.pathname === "/tap" || url.pathname.startsWith("/tap/")) {
+      return harden(await env.ASSETS.fetch(new Request(new URL("/tap", url), request)));
     }
 
     if (url.pathname.startsWith("/api/")) {

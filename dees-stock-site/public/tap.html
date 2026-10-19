@@ -395,7 +395,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     if (!c.code) return "";
     if (qrMemo[c.code]) return qrMemo[c.code];
     if (typeof qrcode !== "function") return "/api/pass/qr.svg?c=" + encodeURIComponent(c.code);
-    var q = qrcode(0, "M"); q.addData(location.origin + "/pass/s/" + c.code); q.make();
+    var q = qrcode(0, "M"); q.addData(location.origin + "/tap/s/" + c.code); q.make();
     var svg = q.createSvgTag({ cellSize: 4, margin: 2, scalable: true })
       .replace(/fill="white"/g, 'fill="#FFD21C"').replace(/fill="black"/g, 'fill="#101010"');
     return (qrMemo[c.code] = "data:image/svg+xml;base64," + btoa(svg));
@@ -441,9 +441,9 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   window.addEventListener("online", syncQueue);
   function route() {
     var p = location.pathname.replace(/\/+$/, "");
-    if (p.indexOf("/pass/s/") === 0) return { name: "scan", code: decodeURIComponent(p.slice(8)) };
-    if (p === "/pass/truck") return { name: "truck" };
-    if (p === "/pass/owner") return { name: "owner" };
+    if (p.indexOf("/tap/s/") === 0) return { name: "scan", code: decodeURIComponent(p.slice(7)) };
+    if (p === "/tap/truck") return { name: "truck" };
+    if (p === "/tap/owner") return { name: "owner" };
     return { name: "card" };
   }
   function go(path) { history.pushState(null, "", path); load(); }
@@ -739,8 +739,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   }
 
   /* ---------------- render + load ---------------- */
-  /* one link for everyone: on /pass a crew login goes straight to its dashboard */
-  function crewHome() { return S.staff && (S.staff.role === "admin" || S.staff.role === "dees") ? "/pass/owner" : "/pass/truck"; }
+  /* one link for everyone: on /tap a crew login goes straight to its dashboard */
+  function crewHome() { return S.staff && (S.staff.role === "admin" || S.staff.role === "dees") ? "/tap/owner" : "/tap/truck"; }
   function render() {
     var r = route();
     var bar = document.getElementById("staffbar");
@@ -754,14 +754,14 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     document.title = crew ? "Truck crew · Pass Card" : "The Pass Card · Smash & Pass";
     if (crew && S.staff) {
       bar.hidden = false;
-      bar.innerHTML = "<span>" + esc(S.staff.name) + " ·</span>" + [["/pass/truck", "TRUCK"], ["/pass/owner", "OWNER"]].map(function (l) {
-        var cur = (r.name === "truck" || r.name === "scan") && l[0] === "/pass/truck" || r.name === "owner" && l[0] === "/pass/owner";
+      bar.innerHTML = "<span>" + esc(S.staff.name) + " ·</span>" + [["/tap/truck", "TRUCK"], ["/tap/owner", "OWNER"]].map(function (l) {
+        var cur = (r.name === "truck" || r.name === "scan") && l[0] === "/tap/truck" || r.name === "owner" && l[0] === "/tap/owner";
         return '<a href="' + l[0] + '" data-nav' + (cur ? ' aria-current="page"' : "") + ">" + l[1] + "</a>"; }).join("") +
         '<button type="button" class="linkbtn" id="st-out">LOG OUT</button>';
     } else { bar.hidden = true; bar.innerHTML = ""; }
     if (r.name === "card") app.innerHTML = viewCard();
     else if (r.name === "owner") app.innerHTML = viewOwner();
-    else if (r.name === "scan" && !S.staff) app.innerHTML = '<div class="panel"><div class="lbl">A Pass Card</div><p class="note">This is a customer\'s Pass Card code. Show it at the Smash &amp; Pass window to collect stamps.</p><a class="btn pri" href="/pass" data-nav style="text-align:center;text-decoration:none">OPEN MY OWN CARD</a></div>';
+    else if (r.name === "scan" && !S.staff) app.innerHTML = '<div class="panel"><div class="lbl">A Pass Card</div><p class="note">This is a customer\'s Pass Card code. Show it at the Smash &amp; Pass window to collect stamps.</p><a class="btn pri" href="/tap" data-nav style="text-align:center;text-decoration:none">OPEN MY OWN CARD</a></div>';
     else app.innerHTML = viewTruck();
     initScratch();
   }
@@ -817,7 +817,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       return;
     }
     var t = e.target.closest("button"); if (!t) return;
-    if (t.id === "st-out") { api("/api/logout", {}).then(function () { found = null; owner = null; store("pc_staff", null); screen = "home"; go("/pass"); }); return; }
+    if (t.id === "st-out") { api("/api/logout", {}).then(function () { found = null; owner = null; store("pc_staff", null); screen = "home"; go("/tap"); }); return; }
     if (t.id === "to-join") { screen = "join"; render(); }
     else if (t.id === "to-login") { screen = "home"; render(); }
     else if (t.id === "to-crew") { screen = "crew"; render(); }

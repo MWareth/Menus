@@ -310,7 +310,7 @@ export async function handlePass(request, env, path, d) {
     const ins = await env.DB.prepare("INSERT INTO pass_scan_log (at, src, device, browser) VALUES (?, ?, ?, ?)")
       .bind(new Date().toISOString(), src, dev.device, dev.browser).run();   /* every scan with its time and the kind of phone */
     const scanId = ins.meta && ins.meta.last_row_id;
-    const h = new Headers({ location: "/pass", "cache-control": "no-store" });
+    const h = new Headers({ location: "/tap", "cache-control": "no-store" });
     /* a day-long cookie ties a later sign-up back to this scan (no personal data, just the row number) */
     if (scanId) h.append("set-cookie", "ps=" + scanId + "; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400");
     return new Response(null, { status: 302, headers: h });
@@ -340,7 +340,7 @@ export async function handlePass(request, env, path, d) {
     const want = url.searchParams.get("c");
     if (want && !d.sameString(want, code)) return fail("This QR belongs to another card. Reload the page.", 409);
     const qr = qrcode(0, "M");
-    qr.addData(url.origin + "/pass/s/" + code);
+    qr.addData(url.origin + "/tap/s/" + code);
     qr.make();
     /* brand colours: black squares on Smash yellow (dark on light, so every camera still reads it) */
     const svg = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true })
@@ -444,7 +444,7 @@ export async function handlePass(request, env, path, d) {
     await alertMail("reviews", "Smash & Pass reviews", alertEmail({
       title: (Math.min(food, vibe) < 4 ? "⚠️ " : "⭐ ") + "New review: " + food + "★ food, " + vibe + "★ atmosphere · " + c.first + " " + String(c.last || "").charAt(0) + ".",
       lines: [cm ? "\u201c" + cm + "\u201d" : "No comment.", "Phone: " + c.phone].concat(Math.min(food, vibe) < 4 ? ["Under 4 stars: worth a call today."] : []),
-      link: new URL(request.url).origin + "/pass/owner" }));
+      link: new URL(request.url).origin + "/tap/owner" }));
     return ok({ bonus, achievements: earned });
   }
 
@@ -633,7 +633,7 @@ export async function handlePass(request, env, path, d) {
         const mail = orderEmail({
           first: c.first, need: NEED, card: { burger: after.burger, dessert: after.dessert }, points: after.points, gameMin: GAME_WINDOW_MIN,
           items: itemsText,
-          link: origin + "/pass", unsub: origin + "/api/pass/unsub?p=" + encodeURIComponent(phone) + "&t=" + (await d.hmac(secret, "unsub:" + phone)).slice(0, 24)
+          link: origin + "/tap", unsub: origin + "/api/pass/unsub?p=" + encodeURIComponent(phone) + "&t=" + (await d.hmac(secret, "unsub:" + phone)).slice(0, 24)
         });
         d.later(sendMail(env, { to: c.email, bcc: ordersTo.join(","), fromName: "Smash & Pass", ...mail }));
       } else if (ordersTo.length) {
@@ -642,7 +642,7 @@ export async function handlePass(request, env, path, d) {
           lines: [itemsText, "Savory card: " + (after.burger % NEED) + "/" + NEED + " · Dee'sert card: " + (after.dessert % NEED) + "/" + NEED + " · " + after.points + " points",
             "Stamped by " + me.name + " · " + dubaiTime(at)].concat(sold.logged.length
             ? ["🍰 Dessert sale logged from the Pass Card: " + sold.logged.map((x) => x.qty + "× " + x.name).join(", ")] : []),
-          link: origin + "/pass/owner" }), ordersTo);
+          link: origin + "/tap/owner" }), ordersTo);
       }
       /* the dessert sale alert, for anyone on the "Dessert sales" list who didn't already get the order */
       if (sold.logged.length && mailReady(env)) {

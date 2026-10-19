@@ -1,7 +1,7 @@
 {
   "name": "The Pass Card · Smash & Pass",
   "short_name": "Pass Card",
-  "start_url": "/pass",
+  "start_url": "/tap",
   "scope": "/",
   "display": "standalone",
   "background_color": "#101010",
