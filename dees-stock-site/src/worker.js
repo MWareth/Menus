@@ -754,7 +754,7 @@ function shopSummary(state) {
     if (live && left > 0) { onHand += left; if (end <= today) toClear++; }
     if ((b.madeOn || "").slice(0, 7) === mk) { delivered += +b.qty || 0; if (b.unitCost != null) cost += (+b.qty || 0) * (+b.unitCost || 0); }
     sales.forEach((s) => {
-      if (s.kind) return;
+      if (s.kind && s.kind !== "sale") return;   /* gifts and waste aren't sales; an undo is a "sale" line with a minus qty, so it takes the sale back */
       const on = s.on || String(s.at || "").slice(0, 10);
       if (on === today) soldToday += +s.qty || 0;
       if (on.slice(0, 7) === mk) { soldMonth += +s.qty || 0; takings += (+s.qty || 0) * (+b.unitPrice || 0); }
