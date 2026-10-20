@@ -3405,6 +3405,10 @@
       '<hr style="border:0;border-top:1px solid var(--line);margin:14px 0">' +
       '<p class="hint" style="margin:0 0 8px"><b>Automatic emails</b> (thank-yous, sale and low-stock alerts) go out from the Gmail set in Cloudflare. Check it works:</p>' +
       '<button class="btn ghost sm" type="button" data-act="mailtest">SEND TEST EMAIL</button><p class="hint" id="mailtest-out" style="margin-top:8px"></p></div>';
+    h += '<div class="subhead">BACKUP</div><div class="card">' +
+      '<p class="hint" style="margin:0 0 10px">A copy of everything here (items, lots, orders, settle, recipes, pantry, running costs and the team) is saved automatically every night. Download one any time and keep it somewhere safe.</p>' +
+      '<a class="btn ghost sm" href="/api/pass/backup" download style="text-decoration:none">DOWNLOAD BACKUP</a>' +
+      "</div>";
 
     var oldOnes = S.batches.filter(function (b) {
       return daysBetween(todayStr(), expiresOn(b)) < -30;
