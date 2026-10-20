@@ -297,7 +297,7 @@ const html = `<!doctype html>
 <style>
 ${css}
 </style>
-<style id="no-zoom">html{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}</style>
+<style id="no-zoom">html{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}input,select,textarea{font-size:16px!important}</style>
 <script>/* no zooming anywhere: iPhones ignore user-scalable=no, so pinches are stopped here too */
 (function () { var stop = function (e) { e.preventDefault(); };
   document.addEventListener("gesturestart", stop, { passive: false }); document.addEventListener("gesturechange", stop, { passive: false });
