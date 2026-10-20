@@ -1031,12 +1031,24 @@ export default {
     const later = (p) => { const q = Promise.resolve(p).catch((e) => console.error("background task failed", e && e.message)); if (ctx && ctx.waitUntil) ctx.waitUntil(q); };
     const url = new URL(request.url);
 
+    /* after a move: the old address sends every visit (and every saved link, QR poster and shop link) to the new one */
+    if (env.MOVED_TO && /^https:\/\/[a-z0-9.-]+$/i.test(env.MOVED_TO) && !url.pathname.startsWith("/__")) {
+      /* phones that saved the card offline: the old service worker lets go and opens the new address */
+      if (url.pathname === "/sw.js") return new Response(
+        "self.addEventListener('install', function (e) { self.skipWaiting(); });\n" +
+        "self.addEventListener('activate', function (e) { e.waitUntil(self.registration.unregister().then(function () { return self.clients.matchAll({ type: 'window' }); })" +
+        ".then(function (cs) { cs.forEach(function (c) { var u = new URL(c.url); c.navigate(" + JSON.stringify(env.MOVED_TO) + " + u.pathname + u.search).catch(function () {}); }); })); });\n",
+        { headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-store" } });
+      return Response.redirect(env.MOVED_TO + url.pathname + url.search, 308);
+    }
+
     /* the Pass Card: its own API, its own page, and the truck poster's counter */
     if (url.pathname.startsWith("/api/pass/") || url.pathname === "/t" || url.pathname === "/scan") {
       try {
         await ready(env);
         return harden(await handlePass(request, env, url.pathname, {
           json, hmac, sameString, cookies, sessionSecret, loadBoard, saveBoard, whoAmI, later,
+          repairNames: Object.keys(REPAIRS),
           lowCheck: (before, after) => Promise.all([lowStockCheck(env, before, after, url.origin), reportUp(env, after, url.origin)])
         }));
       } catch (err) {

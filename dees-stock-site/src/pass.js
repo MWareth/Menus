@@ -556,7 +556,7 @@ export async function handlePass(request, env, path, d) {
     return ok({ customer: await withStats(await get(phone)) });
   }
 
-  if (path.startsWith("/api/pass/staff/") || path === "/api/pass/owner" || path === "/api/pass/backup") {
+  if (path.startsWith("/api/pass/staff/") || path === "/api/pass/owner" || path === "/api/pass/backup" || path === "/api/pass/restore") {
     const me = await staff();
     if (!me) return fail("staff_only", 401);
 
@@ -761,6 +761,12 @@ export async function handlePass(request, env, path, d) {
         "content-disposition": 'attachment; filename="dees-stock-backup-' + dubaiDay() + '.json"', "cache-control": "no-store" } });
     }
 
+    if (path === "/api/pass/restore" && request.method === "POST") {
+      if (me.role !== "admin") return fail("Only the admin can load a backup.", 403);
+      let snap; try { snap = JSON.parse(await request.text()); } catch (e) { return fail("That file is not a backup (not JSON)."); }
+      try { return ok(await restore(env, d, snap)); } catch (e) { return fail(e.message || "Couldn't load the backup.", 400); }
+    }
+
     if (path === "/api/pass/owner" && request.method === "GET") {
       const all = async (sql) => (await env.DB.prepare(sql).all()).results || [];
       const customers = (await all("SELECT * FROM pass_customers ORDER BY joined DESC")).map(pub);
@@ -777,7 +783,9 @@ export async function handlePass(request, env, path, d) {
   return fail("not_found", 404);
 }
 
-/* Everything worth keeping, in one object: the stock board and every Pass Card table. */
+/* Everything worth keeping, in one object: the stock board, every Pass Card table and the settings.
+   The site's signing key goes in too: customer PINs and the codes in their QR cards are made with it,
+   so a site loaded from this file keeps every PIN and every printed card working. */
 export async function snapshot(env, d) {
   await ensureTables(env);
   const board = await d.loadBoard(env);
@@ -785,7 +793,45 @@ export async function snapshot(env, d) {
   for (const t of ["pass_customers", "pass_visits", "pass_redeems", "pass_completions", "pass_points", "pass_plays", "pass_scans", "pass_scan_log"]) {
     tables[t] = (await env.DB.prepare("SELECT * FROM " + t).all()).results || [];
   }
-  return { app: "dees-stock", at: new Date().toISOString(), board: { version: board.version, state: board.state }, pass: tables };
+  const meta = (await env.DB.prepare("SELECT k, v FROM meta WHERE k LIKE 'repair:%' OR k LIKE 'pass-%' OR k = 'google_review' OR k = 'session_secret'").all()).results || [];
+  return { app: "dees-stock", at: new Date().toISOString(), board: { version: board.version, state: board.state }, pass: tables, meta };
+}
+
+/* Load a backup file into this site: the stock board, every Pass Card table and the settings are replaced.
+   Used once, to move the site to a new address; the file comes from DOWNLOAD BACKUP on the old one. */
+export async function restore(env, d, snap) {
+  if (!snap || snap.app !== "dees-stock" || !snap.board || !snap.board.state || !snap.pass) throw new Error("That file is not a Dee's Stock backup.");
+  await ensureTables(env);
+  const board = await d.loadBoard(env);
+  const state = snap.board.state;
+  if (!Array.isArray(state.items) || !Array.isArray(state.team)) throw new Error("The backup has no stock board in it.");
+  const cols = {};
+  for (const t of Object.keys(snap.pass)) {
+    if (!/^pass_[a-z_]+$/.test(t)) throw new Error("Unexpected table in the backup: " + t);
+    const info = (await env.DB.prepare("PRAGMA table_info(" + t + ")").all()).results || [];
+    if (!info.length) throw new Error("Unknown table in the backup: " + t);
+    cols[t] = new Set(info.map((c) => c.name));
+  }
+  const stmts = [];
+  for (const t of Object.keys(snap.pass)) {
+    stmts.push(env.DB.prepare("DELETE FROM " + t));
+    for (const row of snap.pass[t]) {
+      const keys = Object.keys(row).filter((k) => cols[t].has(k));
+      if (!keys.length) continue;
+      stmts.push(env.DB.prepare("INSERT INTO " + t + " (" + keys.join(", ") + ") VALUES (" + keys.map(() => "?").join(", ") + ")")
+        .bind(...keys.map((k) => row[k] === undefined ? null : row[k])));
+    }
+  }
+  for (const m of (snap.meta || [])) {
+    if (typeof m.k === "string" && /^(repair:|pass-|google_review$|session_secret$)/.test(m.k)) stmts.push(env.DB.prepare("INSERT OR REPLACE INTO meta (k, v) VALUES (?, ?)").bind(m.k, String(m.v)));
+  }
+  /* the old site had every one-off repair applied already; never run them again on the restored board */
+  for (const name of (d.repairNames || [])) stmts.push(env.DB.prepare("INSERT OR IGNORE INTO meta (k, v) VALUES (?, ?)").bind("repair:" + name, new Date().toISOString()));
+  for (let i = 0; i < stmts.length; i += 40) await env.DB.batch(stmts.slice(i, i + 40));
+  const version = await d.saveBoard(env, board.version, state);
+  if (version == null) throw new Error("Somebody saved the board at the same moment. Try again.");
+  let rows = 0; for (const t of Object.keys(snap.pass)) rows += snap.pass[t].length;
+  return { version, rows, customers: (snap.pass.pass_customers || []).length, items: state.items.length };
 }
 
 /* Nightly: keep a copy of everything in the backups table, last 30 nights. */
