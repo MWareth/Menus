@@ -47,9 +47,11 @@ IG = ('<svg class="ig" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="
       '<circle cx="12" cy="12" r="4.6" fill="none" stroke="#17140F" stroke-width="2.4"/><circle cx="17.6" cy="6.4" r="1.5" fill="#17140F"/></svg>')
 
 def sticker(name):
+    """fills the whole square: QR and logo on top, the name beside it, the two dates across the width, a full-width FREE bar at the foot"""
     return (f'<div class="tk"><div class="top"><div class="qcol"><div class="pill">SCAN ME</div><img class="q" src="{qr}"></div>'
             f'<div class="side"><img class="lg" src="{logo}"><span class="emo">{EMOJI.get(name, "")}</span><div class="prod">{name}</div></div></div>'
-            f'<div class="dt"><span>MADE</span> {a.made}</div><div class="dt best"><span>EXP</span> {a.exp}</div><div class="cta">10th one FREE 🎁</div></div>')
+            f'<div class="dates"><div class="dt"><span>MADE</span> {a.made}</div><div class="dt best"><span>EXP</span> {a.exp}</div></div>'
+            f'<div class="cta">10th one FREE 🎁</div></div>')
 
 TAB_MID = f'<img src="{logo}">' if SH.get("tabLogo", True) else ""   # Slate: plain fold strip, no logo
 TAB = (f'<div class="tab"><div class="p l">{IG}<span>FOLLOW US</span></div><div class="p m">{TAB_MID}</div>'
@@ -68,18 +70,19 @@ html = f"""<!doctype html><html><head><meta charset="utf-8">
 body{{background:#fff;font-family:Cairo,sans-serif;color:#1C1917}}
 .sheet{{position:relative;width:210mm;height:297mm;overflow:hidden;page-break-after:always;break-after:page}}
 .grid{{position:absolute;left:0;right:0;top:8mm;display:grid;grid-template-columns:repeat(5,34mm);grid-auto-rows:34mm;gap:2mm;justify-content:center}}
-.tk{{width:34mm;height:34mm;border:0.3mm dashed #C9BCA4;border-radius:1.8mm;display:flex;flex-direction:column;justify-content:center;gap:0.5mm;padding:1.5mm;overflow:hidden}}
-.top{{display:flex;align-items:center;gap:1.3mm}}
-.qcol{{display:flex;flex-direction:column;align-items:stretch;flex:none}}
-.pill{{font-family:'Baloo 2',sans-serif;font-weight:800;background:{SH["accent"]};color:{SH["ink"]};text-align:center;line-height:1;letter-spacing:.04em;font-size:5.4pt;padding:0.7mm 0 0.5mm;border-radius:1mm 1mm 0 0}}
-.q{{display:block;width:15mm;height:15mm;border:0.5mm solid {SH["accent"]};border-top:0;border-radius:0 0 1mm 1mm}}
-.side{{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:0.8mm}}
-.lg{{height:{"6.5mm" if a.shop == "slate" else "4mm"};width:auto;max-width:100%;object-fit:contain}}
-.emo{{font-size:8.5pt;line-height:1;white-space:nowrap}}
-.prod{{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:6.6pt;color:#4A2C2A;line-height:1.05}}
-.dt{{font-size:5.4pt;color:#2B1E1A;font-weight:700;white-space:nowrap;line-height:1.1}}
+.tk{{width:34mm;height:34mm;border:0.3mm dashed #C9BCA4;border-radius:1.8mm;display:flex;flex-direction:column;justify-content:space-between;gap:0.6mm;padding:1.2mm;overflow:hidden}}
+.top{{display:flex;align-items:stretch;gap:1.2mm;flex:1;min-height:0}}
+.qcol{{display:flex;flex-direction:column;align-items:stretch;flex:none;width:16mm}}
+.pill{{font-family:'Baloo 2',sans-serif;font-weight:800;background:{SH["accent"]};color:{SH["ink"]};text-align:center;line-height:1;letter-spacing:.04em;font-size:6pt;padding:0.8mm 0 0.6mm;border-radius:1mm 1mm 0 0}}
+.q{{display:block;width:16mm;height:16mm;border:0.5mm solid {SH["accent"]};border-top:0;border-radius:0 0 1mm 1mm}}
+.side{{flex:1;min-width:0;display:flex;flex-direction:column;align-items:stretch;justify-content:space-between;gap:0.5mm}}
+.lg{{height:{"7mm" if a.shop == "slate" else "5.5mm"};width:100%;object-fit:contain;object-position:left}}
+.emo{{font-size:11pt;line-height:1;white-space:nowrap}}
+.prod{{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:7pt;color:#4A2C2A;line-height:1.05}}
+.dates{{display:flex;flex-direction:column;gap:0.3mm}}
+.dt{{font-size:6.2pt;color:#2B1E1A;font-weight:700;white-space:nowrap;line-height:1.1}}
 .dt span{{font-weight:900;color:#9A8A7C}}.dt.best{{color:#8A5A06}}.dt.best span{{color:#B7791A}}
-.cta{{font-size:5.3pt;font-weight:900;color:#B3261E;white-space:nowrap;line-height:1.1}}
+.cta{{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:6.4pt;color:{SH["ink"]};background:{SH["accent"]};text-align:center;white-space:nowrap;line-height:1;padding:1mm 0 0.8mm;border-radius:1mm}}
 .tabs{{position:absolute;left:0;right:0;top:226.97mm;display:grid;grid-template-columns:repeat(4,48mm);grid-auto-rows:9mm;gap:2mm;justify-content:center}}
 .tab{{width:48mm;height:9mm;background:#fff;border:0.25mm dashed #CFC6B6;border-radius:1mm;display:grid;grid-template-columns:20mm 8mm 20mm;overflow:hidden}}
 .p{{display:flex;align-items:center;justify-content:center;gap:0.9mm;white-space:nowrap;color:#17140F;min-width:0;overflow:hidden}}
