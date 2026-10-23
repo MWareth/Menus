@@ -48,8 +48,8 @@ IG = ('<svg class="ig" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="
 
 def sticker(name):
     """fills the whole square: QR and logo on top, the name beside it, the two dates across the width, a full-width FREE bar at the foot"""
-    return (f'<div class="tk"><div class="top"><div class="qcol"><div class="pill">SCAN ME</div><img class="q" src="{qr}"></div>'
-            f'<div class="side"><img class="lg" src="{logo}"><span class="emo">{EMOJI.get(name, "")}</span><div class="prod">{name}</div></div></div>'
+    return (f'<div class="tk"><div class="top"><div class="qcol"><img class="lg" src="{logo}"><img class="q" src="{qr}"></div>'
+            f'<div class="side"><div class="pill">SCAN ME</div><span class="emo">{EMOJI.get(name, "")}</span><div class="prod">{name}</div></div></div>'
             f'<div class="dates"><div class="dt"><span>MADE</span> {a.made}</div><div class="dt best"><span>EXP</span> {a.exp}</div></div>'
             f'<div class="cta">10th one FREE 🎁</div></div>')
 
@@ -73,13 +73,13 @@ body{{background:#fff;font-family:Cairo,sans-serif;color:#1C1917}}
 .tk{{width:34mm;height:34mm;border:0.3mm dashed #C9BCA4;border-radius:1.8mm;display:flex;flex-direction:column;justify-content:space-between;gap:0.6mm;padding:1.2mm;overflow:hidden}}
 .top{{display:flex;align-items:stretch;gap:1.2mm;flex:1;min-height:0}}
 .qcol{{display:flex;flex-direction:column;align-items:stretch;flex:none;width:16mm}}
-.pill{{font-family:'Baloo 2',sans-serif;font-weight:800;background:{SH["accent"]};color:{SH["ink"]};text-align:center;line-height:1;letter-spacing:.04em;font-size:6pt;padding:0.8mm 0 0.6mm;border-radius:1mm 1mm 0 0}}
-.q{{display:block;width:16mm;height:16mm;border:0.5mm solid {SH["accent"]};border-top:0;border-radius:0 0 1mm 1mm}}
+.pill{{font-family:'Baloo 2',sans-serif;font-weight:800;background:{SH["accent"]};color:{SH["ink"]};text-align:center;line-height:1;letter-spacing:.04em;font-size:6pt;padding:0.9mm 0 0.7mm;border-radius:1mm}}
+.q{{display:block;width:16mm;height:16mm;border:0.5mm solid {SH["accent"]};border-radius:1mm}}
 .side{{flex:1;min-width:0;display:flex;flex-direction:column;align-items:stretch;justify-content:space-between;gap:0.5mm}}
-.lg{{height:{"7mm" if a.shop == "slate" else "5.5mm"};width:100%;object-fit:contain;object-position:left}}
+.lg{{height:{"7mm" if a.shop == "slate" else "5.5mm"};width:16mm;object-fit:contain;object-position:center;margin-bottom:0.5mm}}
 .emo{{font-size:11pt;line-height:1;white-space:nowrap}}
 .prod{{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:7pt;color:#4A2C2A;line-height:1.05}}
-.dates{{display:flex;flex-direction:column;gap:0.3mm}}
+.dates{{display:flex;flex-direction:column;gap:0.3mm;margin-top:0.6mm}}
 .dt{{font-size:6.2pt;color:#2B1E1A;font-weight:700;white-space:nowrap;line-height:1.1}}
 .dt span{{font-weight:900;color:#9A8A7C}}.dt.best{{color:#8A5A06}}.dt.best span{{color:#B7791A}}
 .cta{{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:6.4pt;color:{SH["ink"]};background:{SH["accent"]};text-align:center;white-space:nowrap;line-height:1;padding:1mm 0 0.8mm;border-radius:1mm}}
