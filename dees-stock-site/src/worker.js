@@ -508,7 +508,29 @@ export const REPAIRS = {
       if (keep.length !== b.sales.length) { b.sales = keep; changed = true; }
     });
     return changed;
-  }
+  },
+  /* 23 Oct: Dee's Double Chocolate Cookie, with its recipe. Added once, by name; Dee edits the yield,
+     price and charge on the Recipes tab. Brown sugar and baking soda are new pantry lines priced from
+     the shelf (check them on Pantry). */
+  "double-chocolate-cookie": (state) => {
+    state.items = state.items || [];
+    if (state.items.some((it) => /^double chocolate cookie$/i.test(String(it.name || "").trim()))) return false;
+    state.items.push({ id: "i-cookie", name: "Double Chocolate Cookie", note: "cookie", price: 0, shelf: 3, active: true,
+      batchWord: "batch", portionWord: "cookie", yieldPieces: 24, perPortion: 1, packaging: 0.25, recipe: [
+        { n: "Butter", q: 227, u: "g", pp: 17, pq: 200 },
+        { n: "Sugar", q: 100, u: "g", pp: 5.5, pq: 1000 },
+        { n: "Brown sugar", q: 266, u: "g", pp: 8.5, pq: 1000 },
+        { n: "Eggs", q: 2, u: "pcs", pp: 23.75, pq: 30 },
+        { n: "Vanilla", q: 1, u: "pack", pp: 5, pq: 1 },
+        { n: "Flour", q: 300, u: "g", pp: 13, pq: 1000 },
+        { n: "Cocoa powder", q: 45, u: "g", pp: 15.3, pq: 100 },
+        { n: "Baking soda", q: 6, u: "g", pp: 4.5, pq: 200 },
+        { n: "Salt", q: 6, u: "g", pp: 3, pq: 1000 },
+        { n: "Hershey's choc. chips", q: 383, u: "g", pp: 29, pq: 285 },
+        { n: "Baking sheet", q: 1, u: "sheet", pp: 2, pq: 1 }
+      ] });
+    return true;
+  },
 };
 
 /** Apply every repair not yet recorded in `done`; says which ones ran and whether the board moved. */
