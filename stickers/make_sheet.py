@@ -51,10 +51,12 @@ IG = ('<svg class="ig" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="
 
 SHORT = lambda d: re.sub(r"\s+\d{4}$", "", str(d or "").strip())
 
+LONG = lambda n: " long" if len(n) > 16 else ""   # long names wrap onto two lines
+
 def sticker(name):
     """design C: logo and the dessert along the top, a big QR with a SCAN ME button beside it,
     MADE and EXP one line each, a dark FREE bar across the foot"""
-    return (f'<div class="tk"><div class="top"><img class="lg" src="{logo}"><div class="nm"><span class="emo">{EMOJI.get(name, "")}</span> {name}</div></div>'
+    return (f'<div class="tk"><div class="top"><img class="lg" src="{logo}"><div class="nm{LONG(name)}"><span class="emo">{EMOJI.get(name, "")}</span> {name}</div></div>'
             f'<div class="mid"><img class="q" src="{qr}"><div class="side"><div class="scan">SCAN<br>ME</div>'
             f'<div class="dts"><div><i>MADE</i> {SHORT(a.made)}</div><div class="exp"><i>EXP</i> {SHORT(a.exp)}</div></div></div></div>'
             f'<div class="free">10th one FREE 🎁</div></div>')
@@ -83,6 +85,8 @@ body{{background:#fff;font-family:Cairo,sans-serif;color:#1C1917}}
 .lg{{height:{"6mm" if a.shop == "slate" else "5.2mm"};width:auto;max-width:11mm;object-fit:contain;flex:none}}
 .nm{{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:7.2pt;color:#17140F;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}}
 .emo{{font-size:7pt}}
+.nm.long{{white-space:normal;font-size:6.4pt;line-height:1.02;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}}
+.nm.long .emo{{font-size:6pt}}
 .mid{{display:flex;gap:1.4mm;margin-top:1mm;flex:1;min-height:0}}
 .q{{width:17mm;height:17mm;display:block;flex:none;border:0.5mm solid {SH["accent"]};border-radius:1mm}}
 .side{{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between}}
