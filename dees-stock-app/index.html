@@ -4545,7 +4545,7 @@
      plain name, because the hand-drawn PDF font cannot draw emoji. Matched by
      name so it works on the live board with no reseed; an item's own `emoji`
      wins if one is ever set. */
-  var ITEM_EMOJI = { "San Sebastian": "🧀", "Brownie Bag": "🍫", "Lazy Cake": "🎂",
+  var ITEM_EMOJI = { "Chocolate Chip Cookie": "🍪", "Double Chocolate Cookie": "🍪🍫", "San Sebastian": "🧀", "Brownie Bag": "🍫", "Lazy Cake": "🎂",
                      "Crème Brûlée": "🍮", "Mini Pavlova": "🍓", "Chocolate Cake": "🍰" };
   function itemEmoji(it) { return (it && it.emoji) || (it && ITEM_EMOJI[it.name]) || ""; }
   function itemLabel(it) { if (!it) return "Deleted item"; var e = itemEmoji(it); return (e ? e + " " : "") + it.name; }

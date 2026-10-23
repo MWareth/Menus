@@ -19,7 +19,7 @@ import argparse, re, base64, io, os, qrcode, qrcode.image.svg
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 URL = "https://dees-stock.deestreats2026.workers.dev/t"
-EMOJI = {"San Sebastian": "🍰", "Brownie Bag": "🍫", "Chocolate Cake": "🍫🍰", "Crème Brûlée": "🍮", "Mini Pavlova": "🍓", "Lazy Cake": "🍫"}
+EMOJI = {"Chocolate Chip Cookie": "🍪", "Double Chocolate Cookie": "🍪🍫", "San Sebastian": "🍰", "Brownie Bag": "🍫", "Chocolate Cake": "🍫🍰", "Crème Brûlée": "🍮", "Mini Pavlova": "🍓", "Lazy Cake": "🍫"}
 SHOPS = {   # per shop: where the QR goes, the logo, the accent colour and the text on it, the lid-tab handle
   "smash": {"url": URL, "logo": os.path.join(HERE, "..", "smash-n-pass-brand-deck", "logo.png"), "accent": "#FFD21C", "ink": "#17140F", "handle": "@SmashAndPass.DXB"},
   "slate": {"url": "https://slate.tapntreat1.workers.dev/t", "logo": "/home/user/tapntreat/clients/slate/public/logo.png", "accent": "#8F352D", "ink": "#FFFFFF", "handle": "@slatedxb", "barInk": "#FFFFFF", "tabLogo": False, "handlePt": 8.6},
