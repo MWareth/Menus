@@ -31,9 +31,9 @@ ap.add_argument("--made"); ap.add_argument("--exp")
 ap.add_argument("--out", default="Dees-Smash-stickers")
 ap.add_argument("--tabs-only", action="store_true"); ap.add_argument("--no-tabs", action="store_true")
 ap.add_argument("--shop", default="smash", choices=sorted(SHOPS)); ap.add_argument("--handle")
-ap.add_argument("items", nargs="*", help='"Name:count"')
+ap.add_argument("items", nargs="*", help='"Name:count" or "Name:count:days" (its own shelf life: EXP = MADE + days)')
 a = ap.parse_args()
-if not a.tabs_only and not (a.made and a.exp and a.items):
+if not a.tabs_only and not (a.made and a.items and (a.exp or all(len(x.split(":")) == 3 for x in a.items))):
     ap.error("give --made, --exp and at least one \"Name:count\" (or --tabs-only)")
 
 b64 = lambda p: base64.b64encode(open(p, "rb").read()).decode()
@@ -53,22 +53,32 @@ SHORT = lambda d: re.sub(r"\s+\d{4}$", "", str(d or "").strip())
 
 LONG = lambda n: " long" if len(n) > 16 else ""   # long names wrap onto two lines
 
-def sticker(name):
+import datetime
+def plus_days(made, days):   # "23 Oct 2026" + 4 -> "27 Oct 2026"
+    d = datetime.datetime.strptime(made.strip(), "%d %b %Y") + datetime.timedelta(days=days)
+    return d.strftime("%-d %b %Y")
+
+def sticker(name, exp=None):
     """design C: logo and the dessert along the top, a big QR with a SCAN ME button beside it,
     MADE and EXP one line each, a dark FREE bar across the foot"""
     return (f'<div class="tk"><div class="top"><img class="lg" src="{logo}"><div class="nm{LONG(name)}"><span class="emo">{EMOJI.get(name, "")}</span> {name}</div></div>'
             f'<div class="mid"><img class="q" src="{qr}"><div class="side"><div class="scan">SCAN<br>ME</div>'
-            f'<div class="dts"><div><i>MADE</i> {SHORT(a.made)}</div><div class="exp"><i>EXP</i> {SHORT(a.exp)}</div></div></div></div>'
+            f'<div class="dts"><div><i>MADE</i> {SHORT(a.made)}</div><div class="exp"><i>EXP</i> {SHORT(exp or a.exp)}</div></div></div></div>'
             f'<div class="free">10th one FREE 🎁</div></div>')
 
 TAB_MID = f'<img src="{logo}">' if SH.get("tabLogo", True) else ""   # Slate: plain fold strip, no logo
 TAB = (f'<div class="tab"><div class="p l">{IG}<span>FOLLOW US</span></div><div class="p m">{TAB_MID}</div>'
        f'<div class="p r"><span>{HANDLE}</span></div></div>')
 
-names = [] if a.tabs_only else [n for spec in a.items for n in [spec.rsplit(":", 1)[0]] * int(spec.rsplit(":", 1)[1])]
+def spec_of(x):   # "Name:count" or "Name:count:days"
+    parts = x.split(":")
+    if len(parts) >= 3 and parts[-1].strip().isdigit() and parts[-2].strip().isdigit():
+        return ":".join(parts[:-2]), int(parts[-2]), plus_days(a.made, int(parts[-1]))
+    return x.rsplit(":", 1)[0], int(x.rsplit(":", 1)[1]), None
+names = [] if a.tabs_only else [(n, e) for x in a.items for n, c, e in [spec_of(x)] for _ in range(c)]
 pages = [names[i:i + PER_PAGE] for i in range(0, len(names), PER_PAGE)] or [[]]
 tabs = "" if a.no_tabs else f'<div class="tabs">{TAB * 24}</div>'
-body = "".join(f'<div class="sheet"><div class="grid">{"".join(sticker(n) for n in pg)}</div>{tabs}</div>' for pg in pages)
+body = "".join(f'<div class="sheet"><div class="grid">{"".join(sticker(n, e) for n, e in pg)}</div>{tabs}</div>' for pg in pages)
 
 html = f"""<!doctype html><html><head><meta charset="utf-8">
 <style>

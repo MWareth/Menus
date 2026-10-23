@@ -1,4 +1,4 @@
-// node stickers/render.mjs <name>  ->  <name>.pdf + <name>-sheet.png (first page)
+// node stickers/render.mjs <name>  ->  <name>.pdf, <name>-sheet.png (first page) and <name>-page-1.png, -page-2.png … (every A4 page as a photo)
 import pkg from "/opt/node22/lib/node_modules/playwright/index.js";
 const { chromium } = pkg;
 const name = process.argv[2] || "Dees-Smash-stickers";
@@ -8,6 +8,8 @@ await p.goto("file://" + process.cwd() + "/" + name + ".html", { waitUntil: "net
 await p.waitForTimeout(800);
 await p.pdf({ path: name + ".pdf", format: "A4", printBackground: true, preferCSSPageSize: true });
 await p.screenshot({ path: name + "-sheet.png", clip: { x: 0, y: 0, width: 794, height: 1123 } });
+const sheets = await p.$$(".sheet");
+for (let i = 0; i < sheets.length; i++) await sheets[i].screenshot({ path: name + "-page-" + (i + 1) + ".png" });
 const over = await p.evaluate(() => [...document.querySelectorAll(".tk>*,.p")].filter((e) => e.scrollWidth > e.clientWidth + 1).length);
-console.log(name + ": " + (await p.$$(".tk")).length + " stickers, " + (await p.$$(".tab")).length + " tabs, overflow: " + over);
+console.log(name + ": " + (await p.$$(".tk")).length + " stickers on " + sheets.length + " A4 page(s), " + (await p.$$(".tab")).length + " tabs, overflow: " + over);
 await b.close();
