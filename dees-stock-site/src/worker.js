@@ -531,6 +531,35 @@ export const REPAIRS = {
       ] });
     return true;
   },
+  /* 23 Oct: the plain Chocolate Chip Cookie: the double chocolate dough with 3 cups of flour (360 g) and no cocoa. */
+  "chocolate-chip-cookie": (state) => {
+    state.items = state.items || [];
+    if (state.items.some((it) => /^chocolate chip cookie$/i.test(String(it.name || "").trim()))) return false;
+    state.items.push({ id: "i-cookie-cc", name: "Chocolate Chip Cookie", note: "cookie", price: 0, shelf: 3, active: true,
+      batchWord: "batch", portionWord: "cookie", yieldPieces: 24, perPortion: 1, packaging: 0.25, recipe: [
+        { n: "Butter", q: 227, u: "g", pp: 17, pq: 200 },
+        { n: "Sugar", q: 100, u: "g", pp: 5.5, pq: 1000 },
+        { n: "Brown sugar", q: 266, u: "g", pp: 8.5, pq: 1000 },
+        { n: "Eggs", q: 2, u: "pcs", pp: 23.75, pq: 30 },
+        { n: "Vanilla", q: 1, u: "pack", pp: 5, pq: 1 },
+        { n: "Flour", q: 360, u: "g", pp: 13, pq: 1000 },
+        { n: "Baking soda", q: 6, u: "g", pp: 4.5, pq: 200 },
+        { n: "Salt", q: 6, u: "g", pp: 3, pq: 1000 },
+        { n: "Hershey's choc. chips", q: 383, u: "g", pp: 29, pq: 285 },
+        { n: "Baking sheet", q: 1, u: "sheet", pp: 2, pq: 1 }
+      ] });
+    return true;
+  },
+  /* 23 Oct: the Double Chocolate Cookie swaps 1 of the 3 cups of flour for cocoa: 240 g flour, 90 g cocoa.
+     Only changed while its flour and cocoa are still the first 300 g and 45 g. */
+  "double-cookie-2-flour-1-cocoa": (state) => {
+    const it = (state.items || []).find((i) => /^double chocolate cookie$/i.test(String(i.name || "").trim()));
+    if (!it) return false;
+    const fl = (it.recipe || []).find((r) => /^flour$/i.test(r.n)), co = (it.recipe || []).find((r) => /^cocoa powder$/i.test(r.n));
+    if (!fl || !co || +fl.q !== 300 || +co.q !== 45) return false;
+    fl.q = 240; co.q = 90;
+    return true;
+  },
 };
 
 /** Apply every repair not yet recorded in `done`; says which ones ran and whether the board moved. */
