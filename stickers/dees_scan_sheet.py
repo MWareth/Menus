@@ -16,7 +16,7 @@ buf = io.BytesIO(); q.make_image(fill_color=(84, 53, 33), back_color="white").co
 qr = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
 ST = (f'<div class="A"><img class="lg" src="{logo}"><div class="qw"><img src="{qr}"></div>'
       '<div class="t">SCAN &amp; WIN A TREAT 🎁</div><div class="s">Collect stamps · your 10th is FREE</div>'
-      '<div class="ar">امسح واربح حلا · العاشر مجاناً</div></div>')
+      '<div class="ar">اختم 9 والـ10 علينا</div></div>')
 SQ = ST.replace('class="A"', 'class="A sq"')
 N = 24 if a.six else 12
 PAGE = (ST * N + SQ * N) if a.mix else ST * 15
