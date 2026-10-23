@@ -2071,10 +2071,37 @@
 
     app.innerHTML = html;
     if (tab === "setup") foldSetup();
+    if (tab === "setup" || tab === "recipes") foldCards();
     wire();
   }
   /* Setup is long: every section folds under its heading, closed by default, and each
      phone remembers which ones were left open. */
+  /* every item on Recipes and Setup → Items folds to its name; tapping the name opens it. Open ones are
+     remembered on this phone; a brand-new item (no name yet) starts open. */
+  function foldCards() {
+    var open = {}; try { open = JSON.parse(localStorage.getItem("cards.open") || "{}"); } catch (e) { open = {}; }
+    app.querySelectorAll("main [data-recipe], main [data-item]").forEach(function (card) {
+      if (card.getAttribute("data-folded")) return; card.setAttribute("data-folded", "1");
+      var key = card.getAttribute("data-recipe") ? "r:" + card.getAttribute("data-recipe") : "i:" + card.getAttribute("data-item");
+      var head = card.querySelector(".recipe-h"), nm = card.querySelector('input[data-f="name"]');
+      if (!head) {
+        head = document.createElement("div"); head.className = "recipe-h";
+        var h3 = document.createElement("h3"); h3.textContent = (nm && nm.value) || "New item"; head.appendChild(h3);
+        var pr = card.querySelector('input[data-f="price"]');
+        if (pr && +pr.value) { var p = document.createElement("span"); p.className = "hint"; p.style.margin = "0"; p.textContent = cur() + " " + pr.value; head.appendChild(p); }
+        card.insertBefore(head, card.firstChild);
+      }
+      var arrow = document.createElement("span"); arrow.className = "foldarrow"; arrow.style.marginLeft = "auto"; head.appendChild(arrow);
+      head.classList.add("foldhead"); head.style.flexWrap = "nowrap"; head.style.alignItems = "center"; head.setAttribute("role", "button"); head.setAttribute("tabindex", "0");
+      var t3 = head.querySelector("h3"); if (t3) { t3.style.flex = "1"; t3.style.minWidth = "0"; }
+      var body = [].slice.call(card.children).filter(function (n) { return n !== head; });
+      var set = function (on) { body.forEach(function (n) { n.hidden = !on; }); head.style.marginBottom = on ? "" : "0"; head.setAttribute("aria-expanded", on ? "true" : "false"); arrow.textContent = on ? "\u25B2 HIDE" : "\u25BC SHOW"; };
+      set(!!open[key] || (nm && !nm.value));
+      var flip = function () { var on = !body.length || body[0].hidden; set(on); open[key] = on; try { localStorage.setItem("cards.open", JSON.stringify(open)); } catch (e) {} };
+      head.onclick = flip;
+      head.onkeydown = function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flip(); } };
+    });
+  }
   function foldSetup() {
     var open = {}; try { open = JSON.parse(localStorage.getItem("setup.open") || "{}"); } catch (e) {}
     app.querySelectorAll("main .subhead").forEach(function (hd) {
