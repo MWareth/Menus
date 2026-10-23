@@ -560,6 +560,14 @@ export const REPAIRS = {
     fl.q = 240; co.q = 90;
     return true;
   },
+  /* 23 Oct: cookies keep 5 days (the rest stay at 3). Only while still at the 3 days they were added with. */
+  "cookies-shelf-5-days": (state) => {
+    let changed = false;
+    (state.items || []).forEach((it) => {
+      if (/^(double chocolate|chocolate chip) cookie$/i.test(String(it.name || "").trim()) && +it.shelf === 3) { it.shelf = 5; changed = true; }
+    });
+    return changed;
+  },
 };
 
 /** Apply every repair not yet recorded in `done`; says which ones ran and whether the board moved. */

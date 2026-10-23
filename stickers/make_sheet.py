@@ -29,6 +29,7 @@ PER_PAGE = 30
 ap = argparse.ArgumentParser()
 ap.add_argument("--made"); ap.add_argument("--exp")
 ap.add_argument("--out", default="Dees-Smash-stickers")
+ap.add_argument("--size", default="auto", choices=["auto", "34", "30"], help="sticker size in mm; auto = 34 mm, or 30 mm when that keeps the order on fewer A4 pages")
 ap.add_argument("--tabs-only", action="store_true"); ap.add_argument("--no-tabs", action="store_true")
 ap.add_argument("--shop", default="smash", choices=sorted(SHOPS)); ap.add_argument("--handle")
 ap.add_argument("items", nargs="*", help='"Name:count" or "Name:count:days" (its own shelf life: EXP = MADE + days)')
@@ -76,6 +77,11 @@ def spec_of(x):   # "Name:count" or "Name:count:days"
         return ":".join(parts[:-2]), int(parts[-2]), plus_days(a.made, int(parts[-1]))
     return x.rsplit(":", 1)[0], int(x.rsplit(":", 1)[1]), None
 names = [] if a.tabs_only else [(n, e) for x in a.items for n, c, e in [spec_of(x)] for _ in range(c)]
+# 34 mm: 5 across x 6 rows (30 a page). 30 mm: 6 across x 8 rows (48), or x 6 rows above the lid tabs (36).
+SMALL_PER = 36 if not a.no_tabs else 48
+SMALL = a.size == "30" or (a.size == "auto" and -(-len(names) // SMALL_PER) < -(-len(names) // PER_PAGE))
+PER_PAGE = SMALL_PER if SMALL else PER_PAGE
+SIZE, COLS = (30, 6) if SMALL else (34, 5)
 pages = [names[i:i + PER_PAGE] for i in range(0, len(names), PER_PAGE)] or [[]]
 tabs = "" if a.no_tabs else f'<div class="tabs">{TAB * 24}</div>'
 body = "".join(f'<div class="sheet"><div class="grid">{"".join(sticker(n, e) for n, e in pg)}</div>{tabs}</div>' for pg in pages)
@@ -89,7 +95,8 @@ html = f"""<!doctype html><html><head><meta charset="utf-8">
 *{{box-sizing:border-box;margin:0;padding:0}}@page{{size:A4;margin:0}}
 body{{background:#fff;font-family:Cairo,sans-serif;color:#1C1917}}
 .sheet{{position:relative;width:210mm;height:297mm;overflow:hidden;page-break-after:always;break-after:page}}
-.grid{{position:absolute;left:0;right:0;top:8mm;display:grid;grid-template-columns:repeat(5,34mm);grid-auto-rows:34mm;gap:2mm;justify-content:center}}
+.grid{{position:absolute;left:0;right:0;top:8mm;display:grid;grid-template-columns:repeat({COLS},{SIZE}mm);grid-auto-rows:{SIZE}mm;gap:2mm;justify-content:center}}
+.grid .tk{{zoom:{SIZE / 34:.4f}}}   /* the 34 mm design, scaled as a whole */
 .tk{{width:34mm;height:34mm;border:0.3mm dashed #C9BCA4;border-radius:1.8mm;display:flex;flex-direction:column;padding:1.4mm 1.4mm 0;overflow:hidden;background:#fff}}
 .top{{display:flex;align-items:center;gap:1.2mm;height:5.4mm;flex:none}}
 .lg{{height:{"6mm" if a.shop == "slate" else "5.2mm"};width:auto;max-width:11mm;object-fit:contain;flex:none}}
@@ -114,4 +121,4 @@ body{{background:#fff;font-family:Cairo,sans-serif;color:#1C1917}}
 .ig{{width:3.4mm;height:3.4mm;display:block;flex:none}}
 </style></head><body>{body}</body></html>"""
 open(a.out + ".html", "w", encoding="utf-8").write(html)
-print(f"{a.out}.html: {len(names)} stickers on {len(pages)} page(s), {'no' if a.no_tabs else 24 * len(pages)} lid tabs")
+print(f"{a.out}.html: {len(names)} stickers ({SIZE} mm) on {len(pages)} page(s), {'no' if a.no_tabs else 24 * len(pages)} lid tabs")
