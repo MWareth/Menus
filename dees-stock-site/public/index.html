@@ -1165,7 +1165,7 @@
         (o.strong ? "<b>" : "") + val + (o.strong ? "</b>" : "") + "</td></tr>";
     };
     var bg = "font-family:'Baloo 2',sans-serif;font-weight:800";
-    var card = '<div style="max-width:520px;margin:4px 0 18px;border-radius:18px;overflow:hidden;border:1px solid #EADFCD">' +
+    var card = '<div class="mm-card" style="max-width:520px;margin:4px 0 18px;border-radius:18px;overflow:hidden;border:1px solid #EADFCD">' +
       '<div style="background:#4A2C2A;color:#fff;padding:14px 18px">' +
         '<div style="' + bg + ';font-size:17px">Dee\'s Treats <span style="color:#FFD21C">×</span> <span style="color:#F02820">Smash &amp; Pass</span></div>' +
         '<div style="font-size:12px;color:#E7D9C9;font-weight:600;margin-top:2px">' + esc(monthName(mk)) + ' · settlement</div>' +
@@ -1181,7 +1181,7 @@
         '</div>' +
         '<div style="display:flex;justify-content:space-between;padding:11px 2px 2px;font-size:14px;border-top:1px solid #EADFCD;margin-top:11px"><span style="font-weight:800;color:#3A2A24">Smash still owes</span><span style="font-weight:900;color:' + (m.outstanding > 0.005 ? "#C0271C" : "#2F7D4F") + '">' + cur() + " " + money(Math.max(0, m.outstanding)) + '</span></div>' +
       '</div></div>';
-    var h = card;
+    var h = card + '<div class="mm-tabs">';
     h += '<div class="tw"><table><thead><tr><th>THIS MONTH</th><th class="r">' + cur() + "</th></tr></thead><tbody>";
     h += row("Takings" + (m.soldN ? " · " + count(m.soldN, "piece") + " sold" : ""), cur() + " " + money(m.R));
     h += row("Less cost to make", (m.C ? "- " : "") + cur() + " " + money(m.C));
@@ -1197,8 +1197,95 @@
     h += row("Paid so far", (m.paid > 0.005 ? "- " : "") + cur() + " " + money(m.paid));
     h += row("Outstanding", (m.outstanding > 0.005 ? "- " : "") + cur() + " " + money(Math.max(0, m.outstanding)),
       { strong: true, color: m.outstanding > 0.005 ? duec : okc });
-    h += "</tbody></table></div>";
+    h += "</tbody></table></div></div>";
     return h;
+  }
+  /* printing the record and the year view: A4, a month (or a year) to a page, nothing cut in half */
+  var PRINT_FIT = " @page{size:A4;margin:10mm}" +
+    " @media print{html,body{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
+    " header.bar{position:static!important;box-shadow:none!important;padding:0 0 4px!important}.wrap{max-width:none!important;padding:0!important}main{padding:4px 0 0!important}" +
+    " .sub{font-size:10px!important;margin:0 0 6px!important}.monthhead{font-size:15px!important;margin:2px 0 6px!important}" +
+    " .mrec{break-before:page;page-break-before:always}.mrec:first-of-type{break-before:auto;page-break-before:auto}" +
+    " .tw{overflow:visible!important;margin-bottom:6px!important;box-shadow:none!important}table{min-width:0!important}th,td{padding:3px 6px!important;font-size:10px!important;line-height:1.3!important}th{font-size:8.5px!important}" +
+    " .noprint{display:none!important}.bar .logo{width:70px!important;height:28px!important}.brandline{font-size:15px!important;margin:2px 0 0!important}.who{font-size:10px!important}" +
+    " tr{break-inside:avoid;page-break-inside:avoid}.pill{font-size:8.5px!important;padding:0 4px!important}" +
+    " .mrec-money{display:grid;grid-template-columns:230px minmax(0,1fr);gap:10px;align-items:start;break-inside:avoid;page-break-inside:avoid;margin-top:6px}" +
+    " .mrec-money .mm-card{max-width:none!important;margin:0!important;zoom:.82}.mrec-money .tw{margin-bottom:4px!important}}";
+  /* ============ the year view ============
+     Every month of a year next to each other, so the numbers can be compared at a glance: what went out, what
+     sold, what was given away or binned, the takings, the cost, the profit and how it was shared. */
+  function yearMonths() {
+    var by = {}; monthsWithOrders().forEach(function (mk) { var y = mk.slice(0, 4); (by[y] = by[y] || []).push(mk); });
+    Object.keys(by).forEach(function (y) { by[y].sort(); });
+    return by;
+  }
+  function yearViewHtml(y, mks) {
+    var T = mks.map(function (mk) { return monthTotals(mk); }), R = mks.map(function (mk) { return monthRecord(mk); });
+    var short = function (mk) { return new Date(mk + "-15T12:00:00Z").toLocaleDateString("en-GB", { month: "short" }); };
+    var sum = function (a) { return a.reduce(function (x, v) { return x + (+v || 0); }, 0); };
+    var pct = function (a, b) { return b ? Math.round(a / b * 100) + "%" : "—"; };
+    var chg = function (a, b) { if (!b) return "—"; var c = Math.round((a - b) / Math.abs(b) * 100); return (c > 0 ? "▲ " : c < 0 ? "▼ " : "") + Math.abs(c) + "%"; };
+    var out = R.map(function (r) { return r.t.out; }), sold = R.map(function (r) { return r.t.sold; }), given = R.map(function (r) { return r.t.given; }),
+      binned = R.map(function (r) { return r.t.binned; }), left = R.map(function (r) { return r.t.left; });
+    var tk = T.map(function (m) { return m.R; }), co = T.map(function (m) { return m.C; }), pr = T.map(function (m) { return m.P; });
+    var ds = T.map(function (m) { return m.dees; }), ss = T.map(function (m) { return m.truck; }), pd = T.map(function (m) { return m.paid; }), os = T.map(function (m) { return Math.max(0, m.outstanding); });
+    var row = function (label, vals, total, o) { o = o || {};
+      return "<tr" + (o.cls ? ' class="' + o.cls + '"' : "") + "><td>" + (o.strong ? "<b>" + label + "</b>" : label) + "</td>" + vals.map(function (v) { return '<td class="r num">' + (o.strong ? "<b>" + v + "</b>" : v) + "</td>"; }).join("") +
+        '<td class="r num yv-tot"><b>' + total + "</b></td></tr>"; };
+    var mny = function (a) { return a.map(function (v) { return money(v); }); };
+    var head = "<thead><tr><th>" + y + "</th>" + mks.map(function (mk) { return '<th class="r">' + short(mk).toUpperCase() + "</th>"; }).join("") + '<th class="r">TOTAL</th></tr></thead>';
+    var h = '<section class="mrec yv"><div class="monthhead">' + y + ' <span class="hint" style="font-weight:700">· ' + esc(count(mks.length, "month")) + "</span></div>" +
+      '<div class="tw"><table>' + head + "<tbody>" +
+      '<tr class="yv-sec"><td colspan="' + (mks.length + 2) + '">PIECES</td></tr>' +
+      row("Sent out", out, sum(out)) + row("Sold", sold, sum(sold)) + row("Given away", given, sum(given)) + row("Binned", binned, sum(binned)) + row("Still left", left, sum(left)) +
+      row("Sell-through", out.map(function (v, i) { return pct(sold[i], v); }), pct(sum(sold), sum(out))) +
+      '<tr class="yv-sec"><td colspan="' + (mks.length + 2) + '">MONEY (' + cur() + ")</td></tr>" +
+      row("Takings", mny(tk), money(sum(tk))) + row("Cost to make", mny(co), money(sum(co))) + row("Profit", mny(pr), money(sum(pr)), { strong: true, cls: "yv-hi" }) +
+      row("Profit rate", pr.map(function (v, i) { return pct(v, tk[i]); }), pct(sum(pr), sum(tk))) +
+      row("Takings vs month before", tk.map(function (v, i) { return i ? chg(v, tk[i - 1]) : "—"; }), "") +
+      row("Profit vs month before", pr.map(function (v, i) { return i ? chg(v, pr[i - 1]) : "—"; }), "") +
+      '<tr class="yv-sec"><td colspan="' + (mks.length + 2) + '">SHARE AND SETTLEMENT (' + cur() + ")</td></tr>" +
+      row("Dee's share", mny(ds), money(sum(ds))) + row("Smash &amp; Pass share", mny(ss), money(sum(ss))) +
+      row("Paid", mny(pd), money(sum(pd))) + row("Outstanding", mny(os), money(sum(os)), { strong: true }) +
+      "</tbody></table></div>";
+    /* by item: pieces sold, and the profit (takings less cost) */
+    var items = {}, order = [];
+    R.forEach(function (r, i) { r.rows.forEach(function (x) { var k = x.item + (x.samples ? " (samples)" : ""); if (!items[k]) { items[k] = mks.map(function () { return { sold: 0, out: 0, tk: 0, co: 0 }; }); order.push(k); }
+      var c = items[k][i]; c.sold += x.sold; c.out += x.out; c.tk += x.takings; c.co += x.cost || 0; }); });
+    order.sort();
+    var itab = function (title, cell, tot) { return '<div class="tw"><table><thead><tr><th>' + title + "</th>" + mks.map(function (mk) { return '<th class="r">' + short(mk).toUpperCase() + "</th>"; }).join("") + '<th class="r">TOTAL</th></tr></thead><tbody>' +
+      order.map(function (k) { return "<tr><td>" + esc(k) + "</td>" + items[k].map(function (c) { return '<td class="r num">' + cell(c) + "</td>"; }).join("") + '<td class="r num yv-tot"><b>' + tot(items[k]) + "</b></td></tr>"; }).join("") + "</tbody></table></div>"; };
+    h += '<div class="yv-items">' + itab("SOLD / SENT OUT", function (c) { return c.out ? c.sold + " / " + c.out : "—"; }, function (a) { return sum(a.map(function (c) { return c.sold; })) + " / " + sum(a.map(function (c) { return c.out; })); }) +
+      itab("PROFIT BY ITEM (" + cur() + ")", function (c) { return c.out ? money(c.tk - c.co) : "—"; }, function (a) { return money(sum(a.map(function (c) { return c.tk - c.co; }))); }) + "</div>";
+    return h + "</section>";
+  }
+  function openYearView() {
+    var css = "";
+    Array.prototype.forEach.call(document.querySelectorAll("style"), function (st) { css += st.textContent + "\n"; });
+    var by = yearMonths(), years = Object.keys(by).sort().reverse();
+    var body = years.map(function (y) { return yearViewHtml(y, by[y]); }).join("");
+    var html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+      "<title>Dee's Stock — Year view</title>" +
+      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Cairo:wght@400;600;700;900&display=swap">' +
+      "<style>" + css + " main{padding:24px 0 60px} .tw{margin-bottom:16px} .wrap{max-width:1180px}" +
+      " .yv td:first-child{white-space:nowrap} .yv-sec td{background:#F6EFE4;font-size:11px;font-weight:900;letter-spacing:.12em;color:#7A6455;padding-top:9px}" +
+      " .yv-hi td{background:#FFF6D6} .yv-tot{background:#FBF7F0} .yv-items{display:grid;grid-template-columns:minmax(0,1fr);gap:0 14px} @media (min-width:900px){.yv-items{grid-template-columns:1fr 1fr}}" +
+      " @media print{.noprint{display:none}}" + PRINT_FIT + " @page{size:A4 landscape;margin:9mm} @media print{.yv-items{grid-template-columns:1fr 1fr!important}.yv th,.yv td{padding:2px 6px!important;font-size:9.5px!important}.sub{display:none!important}.yv-sec td{padding-top:4px!important}}</style></head><body>" +
+      '<header class="bar"><div class="wrap"><div class="logo" role="img" aria-label="Dee\'s Treats"></div>' +
+      '<div class="brandline">Year view</div>' +
+      '<div class="who"><span>Month by month · as of ' + esc(niceDate(todayStr())) + "</span></div></div></header>" +
+      '<main><div class="wrap">' +
+      '<p class="sub">Each month counts the orders that <b>went out</b> in it, whenever their pieces were sold, given away or binned, the same as the month record.</p>' +
+      '<div class="acts noprint" style="margin:0 0 18px;display:flex;gap:10px;flex-wrap:wrap">' +
+      '<button class="btn ghost sm" type="button" onclick="var w=window;w.close();setTimeout(function(){if(!w.closed){if(document.referrer){location.href=document.referrer;}else{history.back();}}},250)">&larr; BACK</button>' +
+      '<button class="btn dark sm" type="button" onclick="window.print()">PRINT / SAVE AS PDF</button></div>' +
+      (body || '<div class="empty">No orders logged yet.</div>') +
+      "</div></main></body></html>";
+    var w = null;
+    try { w = window.open("", "_blank"); } catch (e) {}
+    if (!w) { toast("Your browser blocked the window — allow pop-ups for this site and try again.", true); return; }
+    w.document.open(); w.document.write(html); w.document.close();
   }
   /* The record in its own window: the same tables, the page's own styling,
      nothing else on it. A plain document, so it prints cleanly. */
@@ -1208,17 +1295,17 @@
     var body = "";
     monthsWithOrders().forEach(function (mk) {
       var rec = monthRecord(mk);
-      body += '<div class="monthhead">' + esc(monthName(mk)) +
+      body += '<section class="mrec"><div class="monthhead">' + esc(monthName(mk)) +
         ' <span class="hint" style="font-weight:700">\u00b7 ' + esc(count(rec.rows.length, "order line")) + "</span></div>" +
         monthRecordTable(rec) +
-        monthRecordMoney(mk);
+        '<div class="mrec-money">' + monthRecordMoney(mk) + "</div></section>";
     });
     var close = "<" + "/script>";
     var html = '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
       '<meta name="viewport" content="width=device-width,initial-scale=1">' +
       "<title>Dee's Stock \u2014 Month record</title>" +
       '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Cairo:wght@400;600;700;900&display=swap">' +
-      "<style>" + css + " main{padding:24px 0 60px} .tw{margin-bottom:16px} @media print{.noprint{display:none}}</style></head><body>" +
+      "<style>" + css + " main{padding:24px 0 60px} .tw{margin-bottom:16px} @media print{.noprint{display:none}}" + PRINT_FIT + "</style></head><body>" +
       '<header class="bar"><div class="wrap"><div class="logo" role="img" aria-label="Dee\'s Treats"></div>' +
       '<div class="brandline">Month record</div>' +
       '<div class="who"><span>Every order, every piece \u00b7 as of ' + esc(niceDate(todayStr())) + "</span></div></div></header>" +
@@ -3064,7 +3151,7 @@
         'At the end of the month, <b>SEND</b> copies it, WhatsApps it or emails it to Smash &amp; Pass.</p>';
       if (!recMonths.length) h += '<p class="hint">No orders logged yet.</p>';
       else {
-        h += '<div class="acts"><button class="btn pri sm" type="button" data-act="mrecordwin">OPEN MONTH RECORD</button>';
+        h += '<div class="acts"><button class="btn pri sm" type="button" data-act="mrecordwin">OPEN MONTH RECORD</button><button class="btn ghost sm" type="button" data-act="yearwin">OPEN YEAR VIEW</button>';
         recMonths.forEach(function (mk) {
           h += '<button class="btn ghost sm" type="button" data-mrecord="' + mk + '">SEND ' +
             esc(monthName(mk).toUpperCase()) + "</button>";
@@ -3758,6 +3845,7 @@
         }, cat + " cost logged.");
       },
       mrecordwin: openMonthRecord,
+      yearwin: openYearView,
       addrow2: addDeliveryRow,
       savepantry: savePantry,
       mailtest: function () {
