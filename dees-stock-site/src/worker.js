@@ -568,6 +568,20 @@ export const REPAIRS = {
     });
     return changed;
   },
+  /* 26 Oct: Smash sells the cookies at AED 13, not 9. Both cookies get the new price, and so does every
+     cookie lot already out that isn't in a closed week, so the cookies already sold count at AED 13 too. */
+  "cookies-sell-at-13": (state) => {
+    const isCookie = (it) => /^(double chocolate|chocolate chip) cookie$/i.test(String((it || {}).name || "").trim());
+    const items = new Map((state.items || []).map((it) => [it.id, it]));
+    const closed = new Set((state.weeks || []).map((w) => w.start));
+    let changed = false;
+    (state.items || []).forEach((it) => { if (isCookie(it) && +it.price !== 13) { it.price = 13; changed = true; } });
+    (state.batches || []).forEach((b) => {
+      if (b.voided || !isCookie(items.get(b.itemId)) || closed.has(b.drop || b.id)) return;
+      if (+b.unitPrice !== 13) { b.unitPrice = 13; changed = true; }
+    });
+    return changed;
+  },
 };
 
 /** Apply every repair not yet recorded in `done`; says which ones ran and whether the board moved. */
