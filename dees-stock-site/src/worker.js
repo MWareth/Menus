@@ -582,6 +582,32 @@ export const REPAIRS = {
     });
     return changed;
   },
+  /* 28 Oct: from the next delivery the cookies are made with Nutella (350 g from a 1 kg jar at AED 49) instead of
+     Hershey's chips, and a batch makes 35. They sell at AED 10, 2 for 18, 3 for 25. The cookies already out
+     move to AED 10 too; what already sold keeps the money it brought in. Lots already delivered keep their cost. */
+  "cookies-nutella-35-bundles": (state) => {
+    const isCookie = (it) => /^(double chocolate|chocolate chip) cookie$/i.test(String((it || {}).name || "").trim());
+    let changed = false;
+    (state.items || []).forEach((it) => {
+      if (!isCookie(it)) return;
+      (it.recipe || []).forEach((r, i) => {
+        if (/hershey/i.test(String(r.n || ""))) { it.recipe[i] = { n: "Nutella", q: 350, u: "g", pp: 49, pq: 1000 }; changed = true; }
+      });
+      if (+it.yieldPieces !== 35) { it.yieldPieces = 35; changed = true; }
+      if (+it.price !== 10) { it.price = 10; changed = true; }
+      if (JSON.stringify(it.deals) !== "[[2,18],[3,25]]") { it.deals = [[2, 18], [3, 25]]; changed = true; }
+    });
+    if (changed && Array.isArray(state.pantry) && !state.pantry.some((p) => /^nutella$/i.test(String(p.n || "").trim())))
+      state.pantry.push({ n: "Nutella", pp: 49, pq: 1000, u: "g" });
+    const items = new Map((state.items || []).map((it) => [it.id, it]));
+    const closed = new Set((state.weeks || []).map((w) => w.start));
+    (state.batches || []).forEach((b) => {
+      if (b.voided || !isCookie(items.get(b.itemId)) || closed.has(b.drop || b.id) || +b.unitPrice === 10) return;
+      (b.sales || []).forEach((s) => { if ((!s.kind || s.kind === "sale") && s.amt == null) s.amt = (+s.qty || 0) * (+b.unitPrice || 0); });
+      b.unitPrice = 10; changed = true;
+    });
+    return changed;
+  },
 };
 
 /** Apply every repair not yet recorded in `done`; says which ones ran and whether the board moved. */
@@ -702,6 +728,17 @@ function mergeSave(stored, incoming, me) {
     incoming.batches.forEach((b) => {
       const t = byId.get(b && b.id);
       if (t && Array.isArray(b.sales)) {
+        /* a bundle's amount: kept as stored on lines already saved; on a new line only an amount that is one of
+           the item's own bundles (2 for 18, 3 for 25, or minus that for an undo) is accepted */
+        const deals = (((out.items || []).find((i) => i.id === t.itemId) || {}).deals || []);
+        const had = new Map((t.sales || []).filter((s) => s && s.amt != null).map((s) => [String(s.at) + "|" + s.qty, +s.amt]));
+        const amtOf = (s) => {
+          const k = String(s.at) + "|" + s.qty;
+          if (had.has(k)) return had.get(k);
+          const a = +s.amt;
+          if (s.amt == null || !isFinite(a)) return undefined;
+          return deals.some((d) => Array.isArray(d) && Math.abs(s.qty) === +d[0] && Math.abs(a) === +d[1] && Math.sign(a) === Math.sign(s.qty)) ? a : undefined;
+        };
         t.sales = b.sales
           .filter((s) => s && typeof s.qty === "number" && isFinite(s.qty))
           .map((s) => ({
@@ -711,7 +748,8 @@ function mergeSave(stored, incoming, me) {
             kind: s.kind === "gift" || s.kind === "waste" ? s.kind : undefined,
             fix: s.fix === true ? true : undefined,
             undo: s.undo === true ? true : undefined,
-            revIdx: typeof s.revIdx === "number" ? s.revIdx : undefined
+            revIdx: typeof s.revIdx === "number" ? s.revIdx : undefined,
+            amt: s.kind === "gift" || s.kind === "waste" ? undefined : amtOf(s)
           }));
       }
     });
@@ -830,7 +868,7 @@ function shopSummary(state) {
       if (s.kind && s.kind !== "sale") return;   /* gifts and waste aren't sales; an undo is a "sale" line with a minus qty, so it takes the sale back */
       const on = s.on || String(s.at || "").slice(0, 10);
       if (on === today) soldToday += +s.qty || 0;
-      if (on.slice(0, 7) === mk) { soldMonth += +s.qty || 0; takings += (+s.qty || 0) * (+b.unitPrice || 0); }
+      if (on.slice(0, 7) === mk) { soldMonth += +s.qty || 0; takings += s.amt != null ? +s.amt : (+s.qty || 0) * (+b.unitPrice || 0); }
     });
   });
   const ws = state.split && state.split.basis === "wholesale", d = ws ? 0 : (+((state.split || {}).deesPct) || 0) / 100;

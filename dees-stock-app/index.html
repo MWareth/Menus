@@ -1191,6 +1191,12 @@
     return t;
   }
   function sold(b) { return tally(b, "sale"); }
+  /* the money a sale line brought in: a bundle (2 FOR 18, 3 FOR 25) carries its own amount,
+     everything else is pieces × the lot's price */
+  function saleAmt(b, s) { return s.amt != null ? +s.amt : s.qty * (b.unitPrice || 0); }
+  function takingsOf(b) { return (b.sales || []).reduce(function (a, s) { return kindOf(s) === "sale" ? a + saleAmt(b, s) : a; }, 0); }
+  /* an item's bundles, e.g. [[2, 18], [3, 25]]: 2 for 18, 3 for 25 */
+  function dealsOf(it) { return (it && Array.isArray(it.deals) ? it.deals : []).filter(function (d) { return Array.isArray(d) && d[0] >= 2 && d[1] > 0; }); }
   function given(b) { return tally(b, "gift"); }
   function binned(b) { return tally(b, "waste"); }
   function movedOut(b) { return tally(b, null); }
@@ -1323,7 +1329,7 @@
         var k = s.ch || order[0];
         if (!map[k]) map[k] = { units: 0, revenue: 0 };
         map[k].units += s.qty;
-        map[k].revenue += s.qty * (b.unitPrice || 0);
+        map[k].revenue += saleAmt(b, s);
       });
     });
     Object.keys(map).forEach(function (k) { if (order.indexOf(k) < 0) order.push(k); });
@@ -1365,7 +1371,7 @@
       var left = remaining(b), gone = status(b) === "expired";
       t.unitsOut += b.qty;
       t.unitsSold += s;
-      t.revenue += s * (b.unitPrice || 0);
+      t.revenue += takingsOf(b);
       t.unitsGiven += g;
       t.unitsWasted += w;
       if (gone) t.unitsToDecide += left; else t.unitsLeft += left;
@@ -1507,7 +1513,7 @@
                   samples: !!b.samples,
                   out: b.qty, sold: sold(b), given: given(b), binned: binned(b),
                   left: Math.max(0, remaining(b)), price: b.unitPrice || 0,
-                  takings: sold(b) * (b.unitPrice || 0),
+                  takings: takingsOf(b),
                   cost: b.unitCost == null ? null : b.qty * b.unitCost,
                   expired: status(b) === "expired" && remaining(b) > 0 };
         rows.push(r);
@@ -3009,8 +3015,11 @@
       h += '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>';
       var acts = "";
       if (withSell && !b.voided && left > 0 && perm.canSell && !readOnly) {
+        var dl = dealsOf(item(b.itemId));
         acts += '<button class="btn pri sm" type="button" data-sell="' + b.id + '" data-n="1">SOLD 1</button>' +
-          '<button class="btn dark sm" type="button" data-sell="' + b.id + '" data-n="2">SOLD 2</button>' +
+          (dl.some(function (d) { return d[0] === 2; }) ? "" : '<button class="btn dark sm" type="button" data-sell="' + b.id + '" data-n="2">SOLD 2</button>') +
+          dl.filter(function (d) { return d[0] <= left; }).map(function (d) {
+            return '<button class="btn dark sm" type="button" data-sell="' + b.id + '" data-n="' + d[0] + '" data-amt="' + d[1] + '">' + d[0] + " FOR " + (Math.round(d[1] * 100) / 100) + "</button>"; }).join("") +
           '<button class="btn ghost sm" type="button" data-sellmany="' + b.id + '">OTHER…</button>' +
           '<button class="btn ghost sm" type="button" data-gift="' + b.id + '">GAVE AWAY</button>' +
           '<button class="btn danger sm" type="button" data-waste="' + b.id + '">BINNED</button>';
@@ -3269,8 +3278,8 @@
         var k = kindOf(s), q = s.qty;
         if (k === "gift") { t.given += q; t.costGiven += q * c; g.given += q; g.usedCost += q * c; }
         else if (k === "waste") { t.binned += q; t.costBinned += q * c; g.binned += q; g.usedCost += q * c; }
-        else { t.sold += q; t.revenue += q * (b.unitPrice || 0); t.costSold += q * c;
-               g.sold += q; g.revenue += q * (b.unitPrice || 0); g.usedCost += q * c; }
+        else { t.sold += q; t.revenue += saleAmt(b, s); t.costSold += q * c;
+               g.sold += q; g.revenue += saleAmt(b, s); g.usedCost += q * c; }
       });
       var lft = remaining(b);
       if (lft > 0) {
@@ -3843,7 +3852,7 @@
           : x.kind === "gift" ? w + " given away" + (x.ch ? " · " + x.ch : "")
           : x.kind === "waste" ? w + " written off"
           : x.kind ? w + " " + x.kind
-          : w + " sold" + (x.ch ? " · " + x.ch : "") + (x.pass ? " · Pass Card" : "");
+          : w + " sold" + (x.amt != null ? " for " + cur() + " " + money(Math.abs(x.amt)) : "") + (x.ch ? " · " + x.ch : "") + (x.pass ? " · Pass Card" : "");
         ev.push({ at: x.at, by: x.by, what: what, kind: x.kind || (x.fix ? "fix" : "sale") });
       });
     });
@@ -3889,6 +3898,7 @@
         '<div class="field"><label>NAME</label><input data-f="name" value="' + esc(it.name) + '"></div>' +
         '<div class="field"><label>NOTE</label><input data-f="note" value="' + esc(it.note || "") + '" placeholder="4 pcs, weekends…"></div>' +
         '<div class="field"><label>SELL PRICE (' + cur() + ')</label><input data-f="price" type="number" min="0" step="0.01" value="' + it.price + '"></div>' +
+        '<div class="field"><label>BUNDLES (PIECES=PRICE)</label><input data-f="deals" value="' + esc(dealsOf(it).map(function (d) { return d[0] + "=" + d[1]; }).join(", ")) + '" placeholder="2=18, 3=25"></div>' +
         '<div class="field"><label>SHELF LIFE (DAYS)</label><input data-f="shelf" type="number" min="0" step="1" value="' + it.shelf + '"></div>' +
         '<div class="field"><label>EMAIL ME BELOW (PIECES)</label><input data-f="low" type="number" min="0" step="1" value="' + (it.low || "") + '" placeholder="off"></div>' +
         '<div class="field"><label>ON THE MENU</label><select data-f="active"><option value="1"' + (it.active ? " selected" : "") + ">Yes</option><option value=\"0\"" + (!it.active ? " selected" : "") + ">No</option></select></div>" +
@@ -3987,7 +3997,7 @@
     var sdEl = document.getElementById("s-date");
     if (sdEl) sdEl.onchange = function () { setSaleDate(sdEl.value); };
     app.querySelectorAll("[data-sell]").forEach(function (b) {
-      b.onclick = function () { logSale(b.getAttribute("data-sell"), +b.getAttribute("data-n")); };
+      b.onclick = function () { logSale(b.getAttribute("data-sell"), +b.getAttribute("data-n"), null, b.hasAttribute("data-amt") ? +b.getAttribute("data-amt") : null); };
     });
     var MOVE = {
       sellmany: { kind: "sale",  title: "How many sold?",       ok: "LOG SALE",  body: "" },
@@ -4062,7 +4072,8 @@
               var t = nx.batches.filter(function (x) { return x.id === bt.id; })[0];
               t.sales = t.sales || [];
               t.sales.push({ qty: -mv.qty, kind: k, on: saleOn(mv), by: me.id,
-                             at: new Date().toISOString(), undo: true, revIdx: idx });
+                             at: new Date().toISOString(), undo: true, revIdx: idx,
+                             amt: mv.amt != null ? -mv.amt : undefined });
             }, count(mv.qty, bPortion(bt)) + " " + word + " undone.");
           });
       };
@@ -4604,7 +4615,7 @@
     set("margin", margin == null ? "—" : (Math.round(margin * 10) / 10) + "%", margin == null ? "" : margin >= 0 ? "good" : "bad");
   }
 
-  function logSale(bid, n, kind) {
+  function logSale(bid, n, kind, amt) {
     var b = S.batches.filter(function (x) { return x.id === bid; })[0];
     if (!b) return;
     if (n > remaining(b)) { toast("Only " + count(remaining(b), bPortion(b)) + " left in that lot.", true); return; }
@@ -4619,12 +4630,13 @@
     var word = count(n, bPortion(b));
     var msg = kind === "gift" ? word + " given away on " + niceDate(on) + " — logged."
             : kind === "waste" ? word + " written off on " + niceDate(on) + " — logged."
-            : word + " sold at " + ch.toLowerCase() + " on " + niceDate(on) + " — logged.";
+            : word + " sold" + (amt != null ? " for " + cur() + " " + money(amt) : "") + " at " + ch.toLowerCase() + " on " + niceDate(on) + " — logged.";
     save(function (nx) {
       var t = nx.batches.filter(function (x) { return x.id === bid; })[0];
       t.sales = t.sales || [];
       var entry = { qty: n, by: me.id, at: new Date().toISOString(), on: on };
       if (kind === "sale") entry.ch = ch; else entry.kind = kind;
+      if (kind === "sale" && amt != null) entry.amt = amt;   /* a bundle: the money it really brought in */
       t.sales.push(entry);
     }, msg);
   }
@@ -4860,10 +4872,21 @@
     if (!g("name").trim()) { toast("Item needs a name.", true); return; }
     if (isNaN(price) || price < 0) { toast("Price must be zero or more.", true); return; }
     if (isNaN(shelf) || shelf < 0) { toast("Shelf life must be zero or more days.", true); return; }
+    /* bundles: "2=18, 3=25" → [[2, 18], [3, 25]] */
+    var deals = [], badDeal = false;
+    String(g("deals") || "").split(",").forEach(function (p) {
+      if (!p.trim()) return;
+      var m = p.match(/^\s*(\d+)\s*=\s*(\d+(?:\.\d+)?)\s*$/);
+      if (!m || +m[1] < 2 || !(+m[2] > 0) || deals.some(function (d) { return d[0] === +m[1]; })) { badDeal = true; return; }
+      deals.push([+m[1], Math.round(+m[2] * 100) / 100]);
+    });
+    if (badDeal) { toast("Bundles look like 2=18, 3=25: how many pieces, then the price for all of them.", true); return; }
+    deals.sort(function (a, b) { return a[0] - b[0]; });
     save(function (n) {
       var t = n.items.filter(function (i) { return i.id === iid; })[0];
       t.name = g("name").trim(); t.note = g("note").trim();
       t.price = price; t.shelf = shelf; t.active = g("active") === "1";
+      if (deals.length) t.deals = deals; else delete t.deals;
       var lw = parseInt(g("low"), 10); if (lw > 0) t.low = lw; else delete t.low;
     }, "Item saved.");
   }
