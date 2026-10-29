@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Slate Card print, loud</title>
+<style>
+@font-face{font-family:Lilita;src:url(fonts/LilitaOne.ttf)}
+@font-face{font-family:Cairo;font-weight:400;src:url(fonts/cairo-latin-400-normal.woff2)}
+@font-face{font-family:Cairo;font-weight:700;src:url(fonts/cairo-latin-700-normal.woff2)}
+@font-face{font-family:Cairo;font-weight:900;src:url(fonts/cairo-latin-900-normal.woff2)}
+@font-face{font-family:CairoAr;font-weight:700;src:url(fonts/cairo-arabic-700-normal.woff2)}
+/* Slate, loud: carbon and paper, Slate red turned up for dark grounds, sand for the one sticker */
+:root{--carbon:#161312;--coal:#231E1C;--paper:#FFF7EE;--red:#E5483A;--brick:#8F352D;--sand:#F2D3A8;--smoke:#B9AFA8}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#fff;font-family:Cairo,"Noto Color Emoji",sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.lil{font-family:Lilita,sans-serif;font-weight:400;line-height:.92;letter-spacing:.005em}
+.ar{font-family:CairoAr,Cairo,sans-serif;direction:rtl;font-weight:700}
+.chip{background:var(--paper);border-radius:3mm;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1.2mm 0 rgba(0,0,0,.35)}
+.chip img{display:block;mix-blend-mode:multiply}
+.sticker{position:absolute;border-radius:50%;background:var(--sand);color:var(--carbon);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;font-family:Lilita,sans-serif;line-height:.95;box-shadow:0 1.4mm 0 rgba(0,0,0,.4)}
+.qrwrap{background:#fff;border-radius:3mm;padding:2.4mm;border:.9mm solid var(--carbon);box-shadow:0 1.2mm 0 var(--red)}
+.qrwrap img{display:block}
+.pill{display:inline-block;background:var(--red);color:var(--paper);font-family:Lilita,sans-serif;border-radius:999px;line-height:1}
+.sheet{display:grid;justify-content:center;align-content:center;background:#fff}
+.cut{outline:.2mm dashed #BDB4AC}
+.scrawl{position:absolute;pointer-events:none}
+
+/* ---------- A5 counter sign ---------- */
+.counter{width:148mm;height:210mm;background:var(--carbon);color:var(--paper);position:relative;overflow:hidden;padding:11mm 11mm 9mm;display:flex;flex-direction:column}
+.counter:before{content:"";position:absolute;right:-40mm;top:-25mm;width:120mm;height:120mm;border-radius:50%;background:radial-gradient(circle,rgba(229,72,58,.28),rgba(229,72,58,0) 65%)}
+.counter .top{display:flex;align-items:center;justify-content:space-between;position:relative}
+.counter .chip{padding:2mm 3.2mm;transform:rotate(-4deg)}
+.counter .chip img{height:12mm}
+.counter .kick{font-weight:900;font-size:8.5pt;letter-spacing:.24em;color:var(--sand)}
+.counter h1{font-size:46pt;margin-top:6mm;position:relative}
+.counter h1 span{color:var(--red)}
+.counter .sticker{width:30mm;height:30mm;right:8mm;top:40mm;transform:rotate(12deg);font-size:13pt;z-index:2}
+.counter .sticker small{font-family:Cairo;font-weight:900;font-size:6.5pt;letter-spacing:.12em;margin-top:1mm}
+.card{background:var(--paper);color:var(--carbon);border-radius:4mm;padding:3.6mm 4mm 3.2mm;margin-top:5.5mm;position:relative;transform:rotate(-1.2deg);box-shadow:0 1.6mm 0 var(--red)}
+.card .hd{display:flex;justify-content:space-between;align-items:baseline}
+.card .hd b{font-family:Lilita;font-weight:400;font-size:12pt;letter-spacing:.02em}
+.card .hd span{font-weight:900;font-size:7.5pt;letter-spacing:.14em;color:var(--brick)}
+.slots{display:grid;grid-template-columns:repeat(10,1fr);gap:1.4mm;margin-top:2.4mm}
+.slot{aspect-ratio:1;border-radius:50%;border:.5mm dashed #C9BBAE;display:flex;align-items:center;justify-content:center;font-size:12pt;line-height:1}
+.slot.on{border:0;background:#F6E7D6}
+.slot.free{border:0;background:var(--red);color:var(--paper);font-family:Lilita;font-size:7pt;letter-spacing:.02em;transform:rotate(-8deg)}
+.card .ft{font-size:8pt;margin-top:2.2mm;color:#6B5E57;font-weight:700}
+.perks{margin:5.5mm 0 6mm;display:flex;flex-direction:column;gap:1.8mm;font-size:11pt;font-weight:700;line-height:1.2}
+.perks b{color:var(--sand);font-weight:900}
+.perks .e{display:inline-block;width:7mm}
+.join{margin-top:auto;display:flex;align-items:center;gap:5.5mm}
+.join .qrwrap img{width:33mm;height:33mm}
+.join .t .lil{font-size:27pt}
+.join .t .lil span{color:var(--red)}
+.join .t .pill{font-size:10pt;padding:1.6mm 4mm;margin-top:2.4mm}
+.join .t .ar{font-size:10pt;color:var(--smoke);margin-top:2.2mm;text-align:left}
+.counter .foot{margin-top:5mm;font-size:8.5pt;color:var(--smoke);font-weight:700;letter-spacing:.02em;display:flex;justify-content:space-between}
+
+/* ---------- table card ---------- */
+.table{width:96mm;height:136mm;background:var(--carbon);color:var(--paper);position:relative;overflow:hidden;padding:8mm 7mm 6.5mm;display:flex;flex-direction:column;align-items:center;text-align:center}
+.table:before{content:"";position:absolute;left:-30mm;bottom:-35mm;width:95mm;height:95mm;border-radius:50%;background:radial-gradient(circle,rgba(229,72,58,.25),rgba(229,72,58,0) 65%)}
+.table .chip{padding:1.6mm 2.6mm;transform:rotate(-3deg)}
+.table .chip img{height:9mm}
+.table h2{font-size:30pt;margin-top:4.5mm;position:relative}
+.table h2 span{color:var(--red)}
+.table .sticker{width:22mm;height:22mm;right:5mm;top:62mm;transform:rotate(14deg);font-size:9pt;z-index:2}
+.table .qrwrap{margin-top:5mm;position:relative}
+.table .qrwrap img{width:33mm;height:33mm}
+.table .pill{font-size:12pt;padding:1.8mm 5mm;margin-top:4mm;position:relative}
+.table .sub{font-size:9pt;font-weight:700;color:var(--smoke);margin-top:2.6mm;line-height:1.35;position:relative}
+.table .sub b{color:var(--sand)}
+.table .ar{margin-top:auto;font-size:9pt;color:var(--sand);position:relative}
+
+/* ---------- handout ---------- */
+.hand{width:85mm;height:55mm;background:var(--red);color:var(--paper);position:relative;overflow:hidden;display:flex;align-items:center;gap:4mm;padding:4.5mm 4.5mm 4.5mm 5mm}
+.hand:before{content:"";position:absolute;right:-18mm;top:-22mm;width:58mm;height:58mm;border-radius:50%;background:rgba(255,255,255,.08)}
+.hand .qrwrap{flex:none;box-shadow:0 1mm 0 var(--carbon);padding:1.8mm}
+.hand .qrwrap img{width:27mm;height:27mm}
+.hand .t{position:relative;min-width:0}
+.hand .lil{font-size:15.5pt}
+.hand .lil span{color:var(--carbon)}
+.hand .l2{font-size:7.6pt;font-weight:700;line-height:1.3;margin-top:1.8mm}
+.hand .chip{position:absolute;right:3mm;bottom:3mm;padding:.9mm 1.6mm;transform:rotate(5deg);box-shadow:0 .7mm 0 rgba(0,0,0,.3)}
+.hand .chip img{height:5.6mm}
+.hand .tag{display:inline-block;background:var(--carbon);color:var(--sand);font-family:Lilita;font-size:8pt;padding:1mm 2.6mm;border-radius:999px;margin-top:2mm;transform:rotate(-2deg)}
+</style>
+</head>
+<body>
+<template id="t-counter">
+  <div class="counter">
+    <div class="top"><span class="chip"><img src="logo.png" alt="Slate Kitchen &amp; Cafe"></span><span class="kick">THE SLATE CARD</span></div>
+    <h1 class="lil">STAMP IT<br>TILL YOU<br><span>MAKE IT.</span></h1>
+    <div class="sticker">10TH<br>ONE'S<br>ON US<small>NO CAP</small></div>
+    <div class="card">
+      <div class="hd"><b>YOUR CARD</b><span>9 STAMPS = 1 FREE</span></div>
+      <div class="slots">%SLOTS%</div>
+      <div class="ft">Two cards: Breakfast &amp; Savory, and Desserts. Double the free food.</div>
+    </div>
+    <div class="perks">
+      <div><span class="e">🎁</span><b>10% off</b> your first order</div>
+      <div><span class="e">💸</span><b>Points on every dirham</b> = money off</div>
+      <div><span class="e">🎮</span><b>A game + a scratch card</b> every order</div>
+    </div>
+    <div class="join">
+      <div class="qrwrap"><img src="qr.svg" alt="QR code"></div>
+      <div class="t">
+        <div class="lil">SCAN.<br>JOIN.<br><span>EAT.</span></div>
+        <div class="pill">SCAN TO JOIN</div>
+        <div class="ar">امسح الكود وانضم مجاناً</div>
+      </div>
+    </div>
+    <div class="foot"><span>No app. No paper card. Just your phone.</span><span>free to join</span></div>
+  </div>
+</template>
+<template id="t-table">
+  <div class="table">
+    <span class="chip"><img src="logo.png" alt="Slate Kitchen &amp; Cafe"></span>
+    <h2 class="lil">BRUNCH,<br>BUT MAKE<br>IT <span>FREE.</span></h2>
+    <div class="sticker">BUY 9<br>10TH<br>FREE</div>
+    <div class="qrwrap"><img src="qr.svg" alt="QR code"></div>
+    <div class="pill">SCAN TO JOIN</div>
+    <div class="sub"><b>10% off</b> your first order<br>+ a game and a scratch card every visit</div>
+    <div class="ar">اشتري 9 والعاشرة علينا</div>
+  </div>
+</template>
+<template id="t-hand">
+  <div class="hand">
+    <div class="qrwrap"><img src="qr.svg" alt="QR code"></div>
+    <div class="t">
+      <div class="lil">YOU'RE 9<br>STAMPS AWAY<br><span>FROM FREE FOOD.</span></div>
+      <div class="l2">Scan to join the Slate Card.<br>10% off your first order.</div>
+      <div class="tag">NO APP NEEDED</div>
+    </div>
+    <span class="chip"><img src="logo.png" alt="Slate"></span>
+  </div>
+</template>
+<div id="out"></div>
+<script>
+  var STAMPS = ["🥞", "🍳", "🥑", "🍔", "🍮", "🍰"];
+  function slots() { var h = ""; for (var i = 0; i < 9; i++) h += i < STAMPS.length ? '<span class="slot on">' + STAMPS[i] + "</span>" : '<span class="slot"></span>'; return h + '<span class="slot free">FREE</span>'; }
+  function tpl(id) { return document.getElementById("t-" + id).innerHTML.replace("%SLOTS%", slots()); }
+  /* #counter, #table, #hand: one piece; #table-sheet, #hand-sheet: A4 with 6 mm gaps; #counter-sheet: the A5 sign on A4 */
+  var v = (location.hash || "#counter").slice(1), out = document.getElementById("out"), css = document.createElement("style");
+  if (/-sheet$/.test(v)) {
+    var one = v.replace("-sheet", ""), n = { table: 4, hand: 8, counter: 1 }[one], cols = one === "counter" ? 1 : 2;
+    var h = ""; for (var i = 0; i < n; i++) h += '<div class="cut">' + tpl(one) + "</div>";
+    out.innerHTML = '<div class="sheet" style="width:210mm;height:297mm;grid-template-columns:repeat(' + cols + ',auto);gap:6mm">' + h + "</div>";
+    css.textContent = "@page{size:210mm 297mm;margin:0}";
+  } else {
+    out.innerHTML = tpl(v); document.body.style.background = "#161312";
+    css.textContent = "@page{size:" + { counter: "148mm 210mm", table: "96mm 136mm", hand: "85mm 55mm" }[v] + ";margin:0}";
+  }
+  document.head.appendChild(css);
+</script>
+</body>
+</html>
