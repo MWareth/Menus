@@ -7,6 +7,7 @@ No lid tabs any more (since 29 Oct 2026); --tabs brings back 24 white lid tabs, 
 (FOLLOW US | logo | @SmashAndPass.DXB), Lilita One, thin grey cut lines.
 
 usage:
+  --theme halloween   the Halloween event look: dark sticker, pumpkin-orange SCAN ME, QR edge and FREE bar
   python3 stickers/make_sheet.py --made "14 Oct 2026" --exp "17 Oct 2026" "San Sebastian:9" "Brownie Bag:12" "Chocolate Cake:9"
   python3 stickers/make_sheet.py --tabs-only            # lid tabs only, same spot, to reprint a used sheet
   then: node stickers/render.mjs <out>                   # writes <out>.pdf and <out>-sheet.png
@@ -32,6 +33,7 @@ ap.add_argument("--out", default="Dees-Smash-stickers")
 ap.add_argument("--size", default="auto", choices=["auto", "34", "30"], help="sticker size in mm; auto = 34 mm, or 30 mm when that keeps the order on fewer A4 pages")
 ap.add_argument("--tabs-only", action="store_true"); ap.add_argument("--tabs", action="store_true", help="add the FOLLOW US lid tabs (off since 29 Oct 2026: they are not printed any more)")
 ap.add_argument("--shop", default="smash", choices=sorted(SHOPS)); ap.add_argument("--handle")
+ap.add_argument("--theme", default="normal", choices=["normal", "halloween"], help="halloween: dark sticker, pumpkin orange, for the event")
 ap.add_argument("items", nargs="*", help='"Name:count" or "Name:count:days" (its own shelf life: EXP = MADE + days)')
 a = ap.parse_args()
 a.no_tabs = not (a.tabs or a.tabs_only)   # no lid tabs unless asked for
@@ -66,7 +68,7 @@ def sticker(name, exp=None):
     return (f'<div class="tk"><div class="top"><img class="lg" src="{logo}"><div class="nm{LONG(name)}"><span class="emo">{EMOJI.get(name, "")}</span> {name}</div></div>'
             f'<div class="mid"><img class="q" src="{qr}"><div class="side"><div class="scan">SCAN<br>ME</div>'
             f'<div class="dts"><div><i>MADE</i> {SHORT(a.made)}</div><div class="exp"><i>EXP</i> {SHORT(exp or a.exp)}</div></div></div></div>'
-            f'<div class="free">10th one FREE 🎁</div></div>')
+            f'<div class="free">10th one FREE {"🎃" if a.theme == "halloween" else "🎁"}</div></div>')
 
 TAB_MID = f'<img src="{logo}">' if SH.get("tabLogo", True) else ""   # Slate: plain fold strip, no logo
 TAB = (f'<div class="tab"><div class="p l">{IG}<span>FOLLOW US</span></div><div class="p m">{TAB_MID}</div>'
@@ -90,6 +92,14 @@ SIZE, COLS = (30, 5) if SMALL else (34, 5)
 pages = [names[i:i + PER_PAGE] for i in range(0, len(names), PER_PAGE)] or [[]]
 tabs = "" if a.no_tabs else f'<div class="tabs">{TAB * 24}</div>'
 body = "".join(f'<div class="sheet"><div class="grid">{"".join(sticker(n, e) for n, e in pg)}</div>{tabs}</div>' for pg in pages)
+
+# Halloween: the same sticker on a dark ground, pumpkin orange for the QR edge, SCAN ME and the FREE bar
+HALLOWEEN = """.tk{background:#141210;border-color:#5A4A3A}
+.nm{color:#FFF6E8}
+.q{border-color:#FF7A1A;background:#fff}
+.scan{background:#FF7A1A;color:#141210}
+.dts{color:#FFF6E8}.dts i{color:#A89A8C}.dts .exp i{color:#FF9A3D}
+.free{background:#FF7A1A;color:#141210}"""
 
 html = f"""<!doctype html><html><head><meta charset="utf-8">
 <style>
@@ -124,6 +134,7 @@ body{{background:#fff;font-family:Cairo,sans-serif;color:#1C1917}}
 .p.l span{{font-family:'Lilita Local','Lilita One','Arial Black',sans-serif;font-size:7.4pt;letter-spacing:.03em;line-height:1}}
 .p.r span{{font-family:'Lilita Local','Lilita One','Arial Black',sans-serif;font-size:{SH.get("handlePt", 5.4)}pt;line-height:1}}
 .ig{{width:3.4mm;height:3.4mm;display:block;flex:none}}
+{HALLOWEEN if a.theme == "halloween" else ""}
 </style></head><body>{body}</body></html>"""
 open(a.out + ".html", "w", encoding="utf-8").write(html)
 print(f"{a.out}.html: {len(names)} stickers ({SIZE} mm) on {len(pages)} page(s), {'no' if a.no_tabs else 24 * len(pages)} lid tabs")

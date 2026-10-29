@@ -79,4 +79,5 @@ Expiry stickers + lid tabs always use `stickers/make_sheet.py` (A4: 30 square
 24 white lid tabs 2 cm | 0.8 cm | 2 cm at the bottom). Example:
 `python3 stickers/make_sheet.py --made "14 Oct 2026" --exp "17 Oct 2026" "San Sebastian:9" "Brownie Bag:12"`
 then `node stickers/render.mjs Dees-Smash-stickers`. `--tabs-only` reprints just the tabs.
+Halloween: add `--theme halloween` for the dark sticker with pumpkin-orange SCAN ME, QR edge and FREE bar.
 Slate (Tap & Treat client): add `--shop slate` for Slate's logo and dark red, a QR to `slate.tapntreat1.workers.dev/t` and lid tabs reading @slatedxb. Run render.mjs from the folder the sheet was written to (it reads `<cwd>/<name>.html`).
