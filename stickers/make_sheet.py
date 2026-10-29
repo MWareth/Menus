@@ -3,14 +3,14 @@
 Top: 3.4 cm square expiry stickers, 5 across x 6 rows (30 per page), "Option C":
 a yellow SCAN ME tab on the QR (Pass Card sign-up, /t), logo, emoji, name,
 MADE / EXP dates and "10th one FREE".
-Bottom: 24 white lid tabs, 4 across x 6 rows, 2 cm | 0.8 cm | 2 cm
+No lid tabs any more (since 29 Oct 2026); --tabs brings back 24 white lid tabs, 4 across x 6 rows, 2 cm | 0.8 cm | 2 cm
 (FOLLOW US | logo | @SmashAndPass.DXB), Lilita One, thin grey cut lines.
 
 usage:
   python3 stickers/make_sheet.py --made "14 Oct 2026" --exp "17 Oct 2026" "San Sebastian:9" "Brownie Bag:12" "Chocolate Cake:9"
   python3 stickers/make_sheet.py --tabs-only            # lid tabs only, same spot, to reprint a used sheet
   then: node stickers/render.mjs <out>                   # writes <out>.pdf and <out>-sheet.png
-options: --out NAME (default Dees-Smash-stickers), --no-tabs
+options: --out NAME (default Dees-Smash-stickers), --tabs (the old FOLLOW US lid tabs)
   --shop slate    Slate's sheet: Slate logo and colours, QR to Slate's own Pass Card (slate.tapntreat1.workers.dev/t).
                   Lid tabs read @slatedxb (instagram.com/slatedxb).
 More than 30 stickers spill onto extra pages.
@@ -30,10 +30,11 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--made"); ap.add_argument("--exp")
 ap.add_argument("--out", default="Dees-Smash-stickers")
 ap.add_argument("--size", default="auto", choices=["auto", "34", "30"], help="sticker size in mm; auto = 34 mm, or 30 mm when that keeps the order on fewer A4 pages")
-ap.add_argument("--tabs-only", action="store_true"); ap.add_argument("--no-tabs", action="store_true")
+ap.add_argument("--tabs-only", action="store_true"); ap.add_argument("--tabs", action="store_true", help="add the FOLLOW US lid tabs (off since 29 Oct 2026: they are not printed any more)")
 ap.add_argument("--shop", default="smash", choices=sorted(SHOPS)); ap.add_argument("--handle")
 ap.add_argument("items", nargs="*", help='"Name:count" or "Name:count:days" (its own shelf life: EXP = MADE + days)')
 a = ap.parse_args()
+a.no_tabs = not (a.tabs or a.tabs_only)   # no lid tabs unless asked for
 if not a.tabs_only and not (a.made and a.items and (a.exp or all(len(x.split(":")) == 3 for x in a.items))):
     ap.error("give --made, --exp and at least one \"Name:count\" (or --tabs-only)")
 
