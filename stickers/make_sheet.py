@@ -1,6 +1,6 @@
 """The standard Dee's x Smash & Pass sticker sheet (A4).
 
-Top: 3.4 cm square expiry stickers, 5 across x 6 rows (30 per page), "Option C":
+Top: 3.4 cm square expiry stickers, 5 across x 7 rows (35 per page), 6 mm apart for easy cutting, "Option C":
 a yellow SCAN ME tab on the QR (Pass Card sign-up, /t), logo, emoji, name,
 MADE / EXP dates and "10th one FREE".
 No lid tabs any more (since 29 Oct 2026); --tabs brings back 24 white lid tabs, 4 across x 6 rows, 2 cm | 0.8 cm | 2 cm
@@ -78,11 +78,14 @@ def spec_of(x):   # "Name:count" or "Name:count:days"
         return ":".join(parts[:-2]), int(parts[-2]), plus_days(a.made, int(parts[-1]))
     return x.rsplit(":", 1)[0], int(x.rsplit(":", 1)[1]), None
 names = [] if a.tabs_only else [(n, e) for x in a.items for n, c, e in [spec_of(x)] for _ in range(c)]
-# 34 mm: 5 across x 6 rows (30 a page). 30 mm: 6 across x 8 rows (48), or x 6 rows above the lid tabs (36).
-SMALL_PER = 36 if not a.no_tabs else 48
-SMALL = a.size == "30" or (a.size == "auto" and -(-len(names) // SMALL_PER) < -(-len(names) // PER_PAGE))
-PER_PAGE = SMALL_PER if SMALL else PER_PAGE
-SIZE, COLS = (30, 6) if SMALL else (34, 5)
+# 6 mm between stickers, so they are easy to cut apart. 34 mm: 5 across x 7 rows (35 a page);
+# 30 mm: 5 across x 8 rows (40). With the old lid tabs at the bottom: 34 mm x 5 rows (25), 30 mm x 6 rows (30).
+GAP = 6
+BIG_PER = 5 * (7 if a.no_tabs else 5)
+SMALL_PER = 5 * (8 if a.no_tabs else 6)
+SMALL = a.size == "30" or (a.size == "auto" and -(-len(names) // SMALL_PER) < -(-len(names) // BIG_PER))
+PER_PAGE = SMALL_PER if SMALL else BIG_PER
+SIZE, COLS = (30, 5) if SMALL else (34, 5)
 pages = [names[i:i + PER_PAGE] for i in range(0, len(names), PER_PAGE)] or [[]]
 tabs = "" if a.no_tabs else f'<div class="tabs">{TAB * 24}</div>'
 body = "".join(f'<div class="sheet"><div class="grid">{"".join(sticker(n, e) for n, e in pg)}</div>{tabs}</div>' for pg in pages)
@@ -96,7 +99,7 @@ html = f"""<!doctype html><html><head><meta charset="utf-8">
 *{{box-sizing:border-box;margin:0;padding:0}}@page{{size:A4;margin:0}}
 body{{background:#fff;font-family:Cairo,sans-serif;color:#1C1917}}
 .sheet{{position:relative;width:210mm;height:297mm;overflow:hidden;page-break-after:always;break-after:page}}
-.grid{{position:absolute;left:0;right:0;top:8mm;display:grid;grid-template-columns:repeat({COLS},{SIZE}mm);grid-auto-rows:{SIZE}mm;gap:2mm;justify-content:center}}
+.grid{{position:absolute;left:0;right:0;top:8mm;display:grid;grid-template-columns:repeat({COLS},{SIZE}mm);grid-auto-rows:{SIZE}mm;gap:{GAP}mm;justify-content:center}}
 .grid .tk{{zoom:{SIZE / 34:.4f}}}   /* the 34 mm design, scaled as a whole */
 .tk{{width:34mm;height:34mm;border:0.3mm dashed #C9BCA4;border-radius:1.8mm;display:flex;flex-direction:column;padding:1.4mm 1.4mm 0;overflow:hidden;background:#fff}}
 .top{{display:flex;align-items:center;gap:1.2mm;height:5.4mm;flex:none}}
