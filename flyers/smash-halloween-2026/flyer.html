@@ -1,0 +1,141 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Lilita;src:url(fonts/LilitaOne.ttf)}
+@font-face{font-family:Archivo;font-weight:500;src:url(fonts/archivo-latin-500-normal.woff2)}
+@font-face{font-family:Archivo;font-weight:700;src:url(fonts/archivo-latin-700-normal.woff2)}
+@font-face{font-family:Archivo;font-weight:900;src:url(fonts/archivo-latin-900-normal.woff2)}
+:root{--ink:#101010;--yel:#FFD21C;--red:#F02820;--cream:#FFF9EE;--kraft:#D8D2C4;--pump:#F28C28}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#333;font-family:Archivo,sans-serif}
+.board{position:relative;overflow:hidden;background:radial-gradient(60% 34% at 50% 44%,rgba(242,140,40,.30),rgba(242,140,40,0) 70%),var(--ink);color:var(--cream);display:flex;flex-direction:column;align-items:center;text-align:center}
+#story{width:1080px;height:1920px;padding:70px 70px 60px}
+#post{width:1080px;height:1350px;padding:52px 64px 44px}
+.web{position:absolute;width:300px;height:300px;opacity:.5}
+.web.l{left:-6px;top:-6px}.web.r{right:-6px;top:-6px;transform:scaleX(-1)}
+.bat{position:absolute;fill:#2B2B2B}
+.logo{display:block;height:170px;width:auto}
+#post .logo{height:118px}
+.kick{font-weight:900;font-size:32px;letter-spacing:.2em;color:var(--kraft);margin-top:34px}
+#post .kick{font-size:26px;margin-top:20px}
+h1{font-family:Lilita,sans-serif;font-weight:400;line-height:.92;margin-top:16px;letter-spacing:.01em}
+h1 span{display:block}
+#story h1{font-size:156px}#post h1{font-size:96px;margin-top:10px}
+h1 .y{color:var(--yel)}
+.burger{display:block}
+#story .burger{width:560px;margin:26px 0 10px}#post .burger{width:390px;margin:6px 0 0}
+.date{font-family:Lilita,sans-serif;font-size:64px;background:var(--red);color:#fff;border-radius:999px;padding:14px 46px 10px;transform:rotate(-2deg);box-shadow:0 8px 0 rgba(0,0,0,.35)}
+#post .date{font-size:46px;padding:10px 34px 7px;margin-top:6px}
+.pass{display:flex;gap:30px;align-items:center;background:var(--cream);color:var(--ink);border-radius:34px;padding:34px 34px 34px 42px;text-align:left;margin-top:44px;width:100%}
+#post .pass{margin-top:26px;padding:24px 26px 24px 32px;gap:24px;border-radius:28px}
+.pass h2{font-family:Lilita,sans-serif;font-weight:400;font-size:56px;line-height:1;letter-spacing:.01em}
+#post .pass h2{font-size:46px}
+.pass ul{list-style:none;margin-top:16px;display:grid;gap:10px}
+#post .pass ul{margin-top:10px;gap:6px}
+.pass li{font-weight:700;font-size:33px;line-height:1.2}
+#post .pass li{font-size:25px}
+.pass li b{font-weight:900}
+.qr{flex:none;display:flex;flex-direction:column;align-items:center;gap:10px}
+.qr img{width:230px;height:230px;background:#fff;border:8px solid var(--ink);border-radius:18px;padding:4px}
+#post .qr img{width:170px;height:170px;border-width:6px}
+.qr span{font-family:Lilita,sans-serif;font-size:30px;background:var(--yel);padding:6px 16px 3px;border-radius:10px}
+#post .qr span{font-size:23px}
+.extra{margin-top:36px;display:grid;gap:14px;width:100%}
+#post .extra{margin-top:20px;gap:8px}
+.extra div{font-weight:900;font-size:34px;color:var(--yel);letter-spacing:.02em}
+#post .extra div{font-size:25px}
+.extra div i{font-style:normal;color:var(--cream)}
+.foot{margin-top:auto;display:flex;justify-content:space-between;align-items:center;width:100%;font-weight:700;font-size:28px;color:var(--kraft)}
+#post .foot{font-size:22px}
+.foot b{font-weight:900;color:var(--cream)}
+.dees{display:flex;align-items:center;gap:14px}
+.dees img{height:64px;width:auto;display:block}
+#post .dees img{height:50px}
+</style></head><body>
+
+<template id="parts">
+  <!-- the jack-o'-lantern smash burger -->
+  <svg class="burger" viewBox="0 0 560 470" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="280" cy="448" rx="230" ry="16" fill="rgba(0,0,0,.45)"/>
+    <path d="M70 360 Q72 430 150 438 L410 438 Q488 430 490 360 Z" fill="#E8A23A"/>
+    <path d="M58 318 Q60 296 92 292 L468 292 Q500 296 502 318 Q500 352 462 356 L98 356 Q60 352 58 318 Z" fill="#4A2A1A"/>
+    <path d="M70 312 Q120 300 160 314 Q200 296 240 312 Q290 298 330 314 Q380 298 420 312 Q460 300 490 312" stroke="#2E190E" stroke-width="6" fill="none" stroke-linecap="round"/>
+    <path d="M62 290 L498 290 L486 306 Q470 310 462 336 Q454 310 430 306 L330 306 Q318 310 312 350 Q304 310 290 306 L190 306 Q176 310 170 330 Q162 310 146 306 L74 306 Z" fill="#FFD21C"/>
+    <path d="M60 282 Q52 190 120 128 Q190 66 280 66 Q370 66 440 128 Q508 190 500 282 Q498 296 470 296 L90 296 Q62 296 60 282 Z" fill="#F28C28"/>
+    <path d="M200 74 Q160 170 168 292 M360 74 Q400 170 392 292 M280 66 L280 292" stroke="#D9701A" stroke-width="7" fill="none" stroke-linecap="round" opacity=".7"/>
+    <path d="M262 70 Q258 40 276 22 Q286 16 292 24 Q280 40 286 70 Z" fill="#3E5A23"/>
+    <path d="M286 30 Q316 14 330 30 Q314 32 300 44" fill="#5E8A2E"/>
+    <g fill="#101010">
+      <path d="M150 196 L206 128 L236 200 Z"/><path d="M410 196 L354 128 L324 200 Z"/>
+      <path d="M262 214 L280 186 L298 214 Z"/>
+      <path d="M128 230 Q280 300 432 230 Q420 262 396 270 L380 250 L360 274 L338 256 L316 280 L292 260 L268 280 L246 258 L224 278 L202 254 L180 272 L162 250 L146 266 Q132 256 128 230 Z"/>
+    </g>
+    <g fill="#FFD21C" opacity=".55">
+      <path d="M170 186 L204 146 L222 190 Z"/><path d="M390 186 L356 146 L338 190 Z"/>
+    </g>
+    <g fill="#FFF3D6"><ellipse cx="170" cy="112" rx="9" ry="4" transform="rotate(-25 170 112)"/><ellipse cx="398" cy="108" rx="9" ry="4" transform="rotate(25 398 108)"/><ellipse cx="226" cy="90" rx="8" ry="4"/><ellipse cx="340" cy="88" rx="8" ry="4"/></g>
+  </svg>
+  <svg class="web l" viewBox="0 0 300 300"><g stroke="#3A3A3A" stroke-width="3" fill="none"><path d="M0 0 L300 0 M0 0 L0 300 M0 0 L280 150 M0 0 L150 280 M0 0 L230 230"/><path d="M60 0 Q48 30 56 52 Q30 50 0 60"/><path d="M130 0 Q110 60 120 104 Q70 110 0 130"/><path d="M210 0 Q180 90 190 168 Q100 180 0 210"/></g></svg>
+</template>
+
+<div class="board" id="story">
+  <div class="slot-web"></div>
+  <svg class="bat" style="left:110px;top:760px;width:120px" viewBox="0 0 120 50"><path d="M60 22 Q50 6 30 4 Q36 14 28 20 Q16 14 2 18 Q14 26 12 40 Q26 30 40 36 Q46 28 52 30 Q56 40 60 42 Q64 40 68 30 Q74 28 80 36 Q94 30 108 40 Q106 26 118 18 Q104 14 92 20 Q84 14 90 4 Q70 6 60 22 Z"/></svg>
+  <svg class="bat" style="right:120px;top:900px;width:90px" viewBox="0 0 120 50"><path d="M60 22 Q50 6 30 4 Q36 14 28 20 Q16 14 2 18 Q14 26 12 40 Q26 30 40 36 Q46 28 52 30 Q56 40 60 42 Q64 40 68 30 Q74 28 80 36 Q94 30 108 40 Q106 26 118 18 Q104 14 92 20 Q84 14 90 4 Q70 6 60 22 Z"/></svg>
+  <img class="logo" src="logo.png" alt="Smash &amp; Pass">
+  <div class="kick">🎃 HALLOWEEN AT THE TRUCK 🎃</div>
+  <h1><span>NO TRICKS.</span><span class="y">JUST SMASH.</span></h1>
+  <div class="slot-burger"></div>
+  <div class="date">FRI 30 OCT · 5–10 PM</div>
+  <div class="pass">
+    <div style="flex:1;min-width:0">
+      <h2>THE PASS CARD IS LIVE</h2>
+      <ul>
+        <li>📲 Scan &amp; join today, in a minute</li>
+        <li>🍔 Every order = a stamp</li>
+        <li>🎁 <b>The 10th one is on us</b></li>
+        <li>🎮 Play games while you wait</li>
+      </ul>
+    </div>
+    <div class="qr"><img src="qr.svg" alt="QR code to the Pass Card"><span>SCAN TO JOIN</span></div>
+  </div>
+  <div class="extra">
+    <div>JOIN NOW <i>→</i> FREE BROWNIE BITE ON FRIDAY 🍫</div>
+    <div>TOP GAME SCORE ON FRIDAY <i>→</i> FREE BURGER 🏆</div>
+  </div>
+  <div class="foot"><span><b>@SmashAndPass.DXB</b></span><span class="dees">dee'serts by <img src="dees-mark.png" alt="Dee's Treats"></span></div>
+</div>
+
+<div class="board" id="post">
+  <div class="slot-web"></div>
+  <svg class="bat" style="left:150px;top:560px;width:90px" viewBox="0 0 120 50"><path d="M60 22 Q50 6 30 4 Q36 14 28 20 Q16 14 2 18 Q14 26 12 40 Q26 30 40 36 Q46 28 52 30 Q56 40 60 42 Q64 40 68 30 Q74 28 80 36 Q94 30 108 40 Q106 26 118 18 Q104 14 92 20 Q84 14 90 4 Q70 6 60 22 Z"/></svg>
+  <img class="logo" src="logo.png" alt="Smash &amp; Pass">
+  <div class="kick">🎃 HALLOWEEN AT THE TRUCK 🎃</div>
+  <h1><span>NO TRICKS.</span><span class="y">JUST SMASH.</span></h1>
+  <div class="slot-burger"></div>
+  <div class="date">FRI 30 OCT · 5–10 PM</div>
+  <div class="pass">
+    <div style="flex:1;min-width:0">
+      <h2>THE PASS CARD IS LIVE</h2>
+      <ul>
+        <li>📲 Scan &amp; join today, in a minute</li>
+        <li>🍔 Every order = a stamp</li>
+        <li>🎁 <b>The 10th one is on us</b></li>
+        <li>🎮 Play games while you wait</li>
+      </ul>
+    </div>
+    <div class="qr"><img src="qr.svg" alt="QR code to the Pass Card"><span>SCAN TO JOIN</span></div>
+  </div>
+  <div class="extra">
+    <div>JOIN NOW <i>→</i> FREE BROWNIE BITE ON FRIDAY 🍫</div>
+    <div>TOP GAME SCORE ON FRIDAY <i>→</i> FREE BURGER 🏆</div>
+  </div>
+  <div class="foot"><span><b>@SmashAndPass.DXB</b></span><span class="dees">dee'serts by <img src="dees-mark.png" alt="Dee's Treats"></span></div>
+</div>
+
+<script>
+  var t = document.getElementById("parts").content;
+  document.querySelectorAll(".slot-burger").forEach(function (s) { s.replaceWith(t.querySelector(".burger").cloneNode(true)); });
+  document.querySelectorAll(".slot-web").forEach(function (s) { var w = t.querySelector(".web").cloneNode(true), w2 = w.cloneNode(true); w2.setAttribute("class", "web r"); s.replaceWith(w, w2); });
+</script>
+</body></html>
