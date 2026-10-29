@@ -1,6 +1,6 @@
 """The standard Dee's x Smash & Pass sticker sheet (A4).
 
-Top: 3.4 cm square expiry stickers, 5 across x 7 rows (35 per page), 6 mm apart for easy cutting, "Option C":
+Top: 34 x 28 mm expiry stickers, 5 across x 8 rows (40 per page), 6 mm apart for easy cutting, "Option C":
 a yellow SCAN ME tab on the QR (Pass Card sign-up, /t), logo, emoji, name,
 MADE / EXP dates and "10th one FREE".
 No lid tabs any more (since 29 Oct 2026); --tabs brings back 24 white lid tabs, 4 across x 6 rows, 2 cm | 0.8 cm | 2 cm
@@ -78,11 +78,12 @@ def spec_of(x):   # "Name:count" or "Name:count:days"
         return ":".join(parts[:-2]), int(parts[-2]), plus_days(a.made, int(parts[-1]))
     return x.rsplit(":", 1)[0], int(x.rsplit(":", 1)[1]), None
 names = [] if a.tabs_only else [(n, e) for x in a.items for n, c, e in [spec_of(x)] for _ in range(c)]
-# 6 mm between stickers, so they are easy to cut apart. 34 mm: 5 across x 7 rows (35 a page);
-# 30 mm: 5 across x 8 rows (40). With the old lid tabs at the bottom: 34 mm x 5 rows (25), 30 mm x 6 rows (30).
+# 6 mm between stickers, so they are easy to cut apart. 34 x 28 mm: 5 across x 8 rows (40 a page);
+# 30 x 25 mm: 5 across x 9 rows (45). With the old lid tabs at the bottom there are fewer rows.
 GAP = 6
-BIG_PER = 5 * (7 if a.no_tabs else 5)
-SMALL_PER = 5 * (8 if a.no_tabs else 6)
+TALL = 28   # the sticker is 34 x 28 mm (design units): the dates sit right under SCAN ME, no empty space
+rows = lambda size: int(((226.97 - 12) if not a.no_tabs else (297 - 16)) + GAP) // int(size * TALL / 34 + GAP)
+BIG_PER, SMALL_PER = 5 * rows(34), 5 * rows(30)
 SMALL = a.size == "30" or (a.size == "auto" and -(-len(names) // SMALL_PER) < -(-len(names) // BIG_PER))
 PER_PAGE = SMALL_PER if SMALL else BIG_PER
 SIZE, COLS = (30, 5) if SMALL else (34, 5)
@@ -99,9 +100,9 @@ html = f"""<!doctype html><html><head><meta charset="utf-8">
 *{{box-sizing:border-box;margin:0;padding:0}}@page{{size:A4;margin:0}}
 body{{background:#fff;font-family:Cairo,sans-serif;color:#1C1917}}
 .sheet{{position:relative;width:210mm;height:297mm;overflow:hidden;page-break-after:always;break-after:page}}
-.grid{{position:absolute;left:0;right:0;top:8mm;display:grid;grid-template-columns:repeat({COLS},{SIZE}mm);grid-auto-rows:{SIZE}mm;gap:{GAP}mm;justify-content:center}}
+.grid{{position:absolute;left:0;right:0;top:8mm;display:grid;grid-template-columns:repeat({COLS},{SIZE}mm);grid-auto-rows:{SIZE * TALL / 34:.2f}mm;gap:{GAP}mm;justify-content:center}}
 .grid .tk{{zoom:{SIZE / 34:.4f}}}   /* the 34 mm design, scaled as a whole */
-.tk{{width:34mm;height:34mm;border:0.3mm dashed #C9BCA4;border-radius:1.8mm;display:flex;flex-direction:column;padding:1.4mm 1.4mm 0;overflow:hidden;background:#fff}}
+.tk{{width:34mm;height:{TALL}mm;border:0.3mm dashed #C9BCA4;border-radius:1.8mm;display:flex;flex-direction:column;padding:1.4mm 1.4mm 0;overflow:hidden;background:#fff}}
 .top{{display:flex;align-items:center;gap:1.2mm;height:5.4mm;flex:none}}
 .lg{{height:{"6mm" if a.shop == "slate" else "5.2mm"};width:auto;max-width:11mm;object-fit:contain;flex:none}}
 .nm{{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:7.2pt;color:#17140F;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}}
@@ -109,10 +110,10 @@ body{{background:#fff;font-family:Cairo,sans-serif;color:#1C1917}}
 .nm.long{{white-space:normal;font-size:6.4pt;line-height:1.02;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}}
 .nm.long .emo{{font-size:6pt}}
 .mid{{display:flex;gap:1.4mm;margin-top:1mm;flex:1;min-height:0}}
-.q{{width:17mm;height:17mm;display:block;flex:none;border:0.5mm solid {SH["accent"]};border-radius:1mm}}
-.side{{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between}}
+.q{{width:14.5mm;height:14.5mm;display:block;flex:none;border:0.5mm solid {SH["accent"]};border-radius:1mm}}
+.side{{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-start;gap:1.6mm}}
 .scan{{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:7.4pt;line-height:.95;color:{SH["ink"]};background:{SH["accent"]};border-radius:1mm;text-align:center;padding:1mm 0 0.6mm}}
-.dts{{display:flex;flex-direction:column;gap:0.5mm;font-size:5.8pt;font-weight:700;color:#17140F;line-height:1.05;white-space:nowrap}}
+.dts{{display:flex;flex-direction:column;gap:0.6mm;font-size:6.4pt;font-weight:700;color:#17140F;line-height:1.05;white-space:nowrap}}
 .dts i{{font-style:normal;font-weight:900;color:#9A8A7C}}.dts .exp i{{color:#B7791A}}
 .free{{background:#17140F;color:{SH.get("barInk", SH["accent"])};font-family:'Baloo 2',sans-serif;font-weight:800;font-size:6.6pt;text-align:center;padding:1mm 0 0.7mm;line-height:1;margin:1.2mm -1.4mm 0;white-space:nowrap}}
 .tabs{{position:absolute;left:0;right:0;top:226.97mm;display:grid;grid-template-columns:repeat(4,48mm);grid-auto-rows:9mm;gap:2mm;justify-content:center}}
