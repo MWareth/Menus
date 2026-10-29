@@ -4,5 +4,5 @@ Smash & Pass × Dee's: Instagram story (1080×1920) and post (1080×1350) for th
 
 - `flyer.html` holds both; open it in a browser. `SmashAndPass-Halloween-story.png` and `-post.png` are the exports.
 - Brand: black #101010, Smash yellow #FFD21C, red #F02820, cream #FFF9EE; Lilita One headlines, Archivo text (fonts in `fonts/`).
-- The QR (`qr.svg`) opens https://smashpass.tapntreat1.workers.dev/t (Smash's Pass Card, each scan counted).
+- The QR (`qr.svg`) opens https://smashpass.tapntreat1.workers.dev/scan: Smash's Pass Card sign-up, counted as an ad scan ("(ad)" in the owner page), separate from the counter QR (/t).
 - To re-export after a change: screenshot `#story` and `#post` at their exact size (Playwright, as in stickers/render.mjs).
