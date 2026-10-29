@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dee's dessert menu</title>
+<style>
+@font-face{font-family:Grandstander;font-style:italic;font-weight:700;src:url(fonts/grandstander-latin-700-italic.woff2)}
+@font-face{font-family:Grandstander;font-style:italic;font-weight:900;src:url(fonts/grandstander-latin-900-italic.woff2)}
+@font-face{font-family:Quicksand;font-weight:500;src:url(fonts/quicksand-latin-500-normal.woff2)}
+@font-face{font-family:Quicksand;font-weight:600;src:url(fonts/quicksand-latin-600-normal.woff2)}
+@font-face{font-family:Quicksand;font-weight:700;src:url(fonts/quicksand-latin-700-normal.woff2)}
+@page{size:210mm 297mm;margin:0}
+/* Dee's: the logo brown, baby blue, cream */
+:root{--brown:#543521;--brown2:#7A5238;--blue:#A8D5EA;--blue2:#D8EEF8;--cream:#FFF9EE;--line:#EADFCF}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--cream);color:var(--brown);font-family:Quicksand,sans-serif;font-weight:600;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.g{font-family:Grandstander,sans-serif;font-style:italic;font-weight:900}
+.page{width:210mm;height:297mm;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;padding:0 16mm 11mm}
+.top{position:absolute;left:0;right:0;top:0;height:70mm;background:var(--blue);border-radius:0 0 50% 50% / 0 0 22mm 22mm}
+.dots{position:absolute;left:0;right:0;top:0;height:70mm;opacity:.35;background-image:radial-gradient(circle,#fff 1.1mm,transparent 1.2mm);background-size:11mm 11mm;border-radius:0 0 50% 50% / 0 0 22mm 22mm}
+.logo{position:relative;height:38mm;margin-top:13mm;display:block}
+.title{position:relative;margin-top:21mm;font-size:30pt;line-height:1;letter-spacing:.01em;display:flex;align-items:center;gap:4mm}
+.title:before,.title:after{content:"";width:16mm;height:.8mm;border-radius:1mm;background:var(--brown);opacity:.35}
+.sub{font-size:10.5pt;margin-top:2.5mm;letter-spacing:.2em;font-weight:700;color:var(--brown2)}
+.items{width:100%;margin-top:5mm}
+.item{display:flex;align-items:center;gap:5mm;padding:4.6mm 0;border-bottom:.4mm dashed var(--line)}
+.item:last-child{border-bottom:0}
+.item .tx{flex:1}
+.item .nm{font-size:21pt;line-height:1.05}
+.item .ds{font-size:10.5pt;margin-top:1.2mm;color:var(--brown2);font-weight:600}
+.price{flex:none;width:27mm;height:27mm;border-radius:50%;background:var(--blue);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+.price small{font-weight:700;font-size:8pt;letter-spacing:.12em}
+.price b{font-family:Grandstander;font-style:italic;font-weight:900;font-size:22pt;margin-top:.6mm}
+.cookies{width:100%;margin-top:5mm;background:var(--brown);color:var(--cream);border-radius:7mm;padding:6mm 7mm 6.5mm}
+.cookies .hd{display:flex;align-items:baseline;justify-content:space-between}
+.cookies .hd .g{font-size:21pt}
+.cookies .hd span{font-size:9.5pt;font-weight:700;letter-spacing:.14em;color:var(--blue)}
+.cookies .ds{font-size:10.5pt;margin-top:1mm;opacity:.85}
+.deals{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm;margin-top:5mm}
+.deal{background:var(--cream);color:var(--brown);border-radius:5mm;padding:4mm 3mm 3.6mm;text-align:center;display:flex;flex-direction:column;align-items:center}
+.deal svg{height:13mm;width:auto;display:block}
+.deal .n{font-weight:700;font-size:10pt;margin-top:2.4mm;letter-spacing:.06em}
+.deal .p{margin-top:2mm;background:var(--blue);border-radius:999px;padding:1.4mm 4mm;font-family:Grandstander;font-style:italic;font-weight:900;font-size:15pt;line-height:1}
+.deal .p small{font-family:Quicksand;font-style:normal;font-weight:700;font-size:7.5pt;letter-spacing:.1em;margin-right:1mm}
+.foot{margin-top:auto;padding-top:5mm;text-align:center}
+.foot .g{font-size:13pt}
+.foot p{font-size:9pt;margin-top:1mm;color:var(--brown2);letter-spacing:.06em}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="top"></div><div class="dots"></div>
+  <img class="logo" src="logo-brown.png" alt="Dee's Treats">
+  <div class="title g">Dessert Menu</div>
+  <div class="sub">HOMEMADE · BAKED FRESH</div>
+
+  <div class="items">
+    <div class="item"><div class="tx"><div class="nm g">San Sebastian</div><div class="ds">Basque burnt cheesecake with a soft, creamy centre</div></div><div class="price"><small>AED</small><b>26</b></div></div>
+    <div class="item"><div class="tx"><div class="nm g">Crème Brûlée</div><div class="ds">Silky vanilla custard under a crackly caramel top</div></div><div class="price"><small>AED</small><b>23</b></div></div>
+    <div class="item"><div class="tx"><div class="nm g">Brownie</div><div class="ds">Rich, fudgy chocolate brownie</div></div><div class="price"><small>AED</small><b>13</b></div></div>
+  </div>
+
+  <div class="cookies">
+    <div class="hd"><div class="g">Cookies</div><span>PICK YOUR BUNDLE</span></div>
+    <div class="ds">Soft, gooey and baked fresh</div>
+    <div class="deals">
+      <div class="deal">%C1%<div class="n">1 COOKIE</div><div class="p"><small>AED</small>10</div></div>
+      <div class="deal">%C2%<div class="n">2 COOKIES</div><div class="p"><small>AED</small>16</div></div>
+      <div class="deal">%C3%<div class="n">3 COOKIES</div><div class="p"><small>AED</small>25</div></div>
+    </div>
+  </div>
+
+  <div class="foot"><div class="g">Made with love by Dee's Treats</div><p>All prices in AED</p></div>
+</div>
+<script>
+  /* a little cookie: golden round with chocolate chips; n of them, overlapping */
+  function cookie(x) {
+    return '<g transform="translate(' + x + ',0)"><circle cx="20" cy="20" r="18" fill="#C98B4E" stroke="#543521" stroke-width="2"/>' +
+      '<circle cx="20" cy="20" r="14" fill="#D9A066" opacity=".55"/>' +
+      [[13, 13], [25, 11], [27, 23], [15, 26], [21, 19]].map(function (c) { return '<ellipse cx="' + c[0] + '" cy="' + c[1] + '" rx="2.6" ry="2.1" fill="#543521"/>'; }).join("") + "</g>";
+  }
+  function cookies(n) { var w = 40 + (n - 1) * 26, g = ""; for (var i = 0; i < n; i++) g += cookie(i * 26); return '<svg viewBox="0 0 ' + w + ' 40" xmlns="http://www.w3.org/2000/svg">' + g + "</svg>"; }
+  var p = document.querySelector(".page");
+  p.innerHTML = p.innerHTML.replace("%C1%", cookies(1)).replace("%C2%", cookies(2)).replace("%C3%", cookies(3));
+</script>
+</body>
+</html>
