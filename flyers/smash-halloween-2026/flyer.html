@@ -8,14 +8,17 @@
 :root{--ink:#101010;--yel:#FFD21C;--red:#F02820;--cream:#FFF9EE;--kraft:#D8D2C4;--pump:#F28C28}
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#333;font-family:Archivo,sans-serif}
-.board{position:relative;overflow:hidden;background:radial-gradient(60% 34% at 50% 44%,rgba(242,140,40,.30),rgba(242,140,40,0) 70%),var(--ink);color:var(--cream);display:flex;flex-direction:column;align-items:center;text-align:center}
+.board{position:relative;overflow:hidden;background:radial-gradient(60% 34% at 50% 44%,rgba(242,140,40,.30),rgba(242,140,40,0) 70%),var(--ink);color:var(--cream);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
 #story{width:1080px;height:1920px;padding:70px 70px 60px}
 #post{width:1080px;height:1350px;padding:52px 64px 44px}
 .web{position:absolute;width:300px;height:300px;opacity:.5}
 .web.l{left:-6px;top:-6px}.web.r{right:-6px;top:-6px;transform:scaleX(-1)}
 .bat{position:absolute;fill:#2B2B2B}
-.logo{display:block;height:170px;width:auto}
-#post .logo{height:118px}
+.lock{display:flex;align-items:center;justify-content:center;gap:34px;position:relative;z-index:1}   /* in front of the web */
+.logo{display:block;height:150px;width:auto}
+.dlogo{display:block;height:118px;width:auto}
+.x{font-family:Lilita,sans-serif;font-size:84px;line-height:1;color:var(--yel)}
+#post .lock{gap:26px}#post .logo{height:108px}#post .dlogo{height:86px}#post .x{font-size:62px}
 .kick{font-weight:900;font-size:32px;letter-spacing:.2em;color:var(--kraft);margin-top:34px}
 #post .kick{font-size:26px;margin-top:20px}
 h1{font-family:Lilita,sans-serif;font-weight:400;line-height:.92;margin-top:16px;letter-spacing:.01em}
@@ -82,7 +85,7 @@ h1 .y{color:var(--yel)}
   <div class="slot-web"></div>
   <svg class="bat" style="left:110px;top:760px;width:120px" viewBox="0 0 120 50"><path d="M60 22 Q50 6 30 4 Q36 14 28 20 Q16 14 2 18 Q14 26 12 40 Q26 30 40 36 Q46 28 52 30 Q56 40 60 42 Q64 40 68 30 Q74 28 80 36 Q94 30 108 40 Q106 26 118 18 Q104 14 92 20 Q84 14 90 4 Q70 6 60 22 Z"/></svg>
   <svg class="bat" style="right:120px;top:900px;width:90px" viewBox="0 0 120 50"><path d="M60 22 Q50 6 30 4 Q36 14 28 20 Q16 14 2 18 Q14 26 12 40 Q26 30 40 36 Q46 28 52 30 Q56 40 60 42 Q64 40 68 30 Q74 28 80 36 Q94 30 108 40 Q106 26 118 18 Q104 14 92 20 Q84 14 90 4 Q70 6 60 22 Z"/></svg>
-  <img class="logo" src="logo.png" alt="Smash &amp; Pass">
+  <div class="lock"><img class="logo" src="logo.png" alt="Smash &amp; Pass"><span class="x">×</span><img class="dlogo" src="dees-mark.png" alt="Dee's Treats"></div>
   <div class="kick">🎃 HALLOWEEN AT THE TRUCK 🎃</div>
   <h1><span>NO TRICKS.</span><span class="y">JUST SMASH.</span></h1>
   <div class="slot-burger"></div>
@@ -103,13 +106,12 @@ h1 .y{color:var(--yel)}
     <div>JOIN NOW <i>→</i> FREE BROWNIE BITE ON FRIDAY 🍫</div>
     <div>TOP GAME SCORE ON FRIDAY <i>→</i> FREE BURGER 🏆</div>
   </div>
-  <div class="foot"><span><b>@SmashAndPass.DXB</b></span><span class="dees">dee'serts by <img src="dees-mark.png" alt="Dee's Treats"></span></div>
 </div>
 
 <div class="board" id="post">
   <div class="slot-web"></div>
   <svg class="bat" style="left:150px;top:560px;width:90px" viewBox="0 0 120 50"><path d="M60 22 Q50 6 30 4 Q36 14 28 20 Q16 14 2 18 Q14 26 12 40 Q26 30 40 36 Q46 28 52 30 Q56 40 60 42 Q64 40 68 30 Q74 28 80 36 Q94 30 108 40 Q106 26 118 18 Q104 14 92 20 Q84 14 90 4 Q70 6 60 22 Z"/></svg>
-  <img class="logo" src="logo.png" alt="Smash &amp; Pass">
+  <div class="lock"><img class="logo" src="logo.png" alt="Smash &amp; Pass"><span class="x">×</span><img class="dlogo" src="dees-mark.png" alt="Dee's Treats"></div>
   <div class="kick">🎃 HALLOWEEN AT THE TRUCK 🎃</div>
   <h1><span>NO TRICKS.</span><span class="y">JUST SMASH.</span></h1>
   <div class="slot-burger"></div>
@@ -130,7 +132,6 @@ h1 .y{color:var(--yel)}
     <div>JOIN NOW <i>→</i> FREE BROWNIE BITE ON FRIDAY 🍫</div>
     <div>TOP GAME SCORE ON FRIDAY <i>→</i> FREE BURGER 🏆</div>
   </div>
-  <div class="foot"><span><b>@SmashAndPass.DXB</b></span><span class="dees">dee'serts by <img src="dees-mark.png" alt="Dee's Treats"></span></div>
 </div>
 
 <script>

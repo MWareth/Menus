@@ -1,6 +1,6 @@
 # Smash & Pass · Halloween 2026 flyer
 
-Instagram story (1080×1920) and post (1080×1350) for the Pass Card launch at Friday's event, 30 Oct 2026, 5–10 pm.
+Smash & Pass × Dee's: Instagram story (1080×1920) and post (1080×1350) for the Pass Card launch at Friday's event, 30 Oct 2026, 5–10 pm. Shared on Dee's page, so both logos sit at the top and there is no footer.
 
 - `flyer.html` holds both; open it in a browser. `SmashAndPass-Halloween-story.png` and `-post.png` are the exports.
 - Brand: black #101010, Smash yellow #FFD21C, red #F02820, cream #FFF9EE; Lilita One headlines, Archivo text (fonts in `fonts/`).
