@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Slate Card print</title>
+<style>
+@font-face{font-family:Lilita;src:url(fonts/LilitaOne.ttf)}
+@font-face{font-family:Cairo;font-weight:400;src:url(fonts/cairo-latin-400-normal.woff2)}
+@font-face{font-family:Cairo;font-weight:700;src:url(fonts/cairo-latin-700-normal.woff2)}
+@font-face{font-family:Cairo;font-weight:900;src:url(fonts/cairo-latin-900-normal.woff2)}
+@font-face{font-family:CairoAr;font-weight:400;src:url(fonts/cairo-arabic-400-normal.woff2)}
+@font-face{font-family:CairoAr;font-weight:700;src:url(fonts/cairo-arabic-700-normal.woff2)}
+:root{--red:#8F352D;--red2:#B5543F;--ink:#2B2B2B;--grey:#5E5E5E;--cream:#F6F5F3;--sand:#E8C9A0;--line:#DDD8D2}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#fff;color:var(--ink);font-family:Cairo,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.ar{font-family:CairoAr,Cairo,sans-serif;direction:rtl}
+.lil{font-family:Lilita,sans-serif;font-weight:400}
+.logo{mix-blend-mode:multiply;display:block}
+.qr{display:block;background:#fff}
+.sheet{display:grid;justify-content:center;align-content:center;background:#fff}
+.cut{outline:.2mm dashed #C9C2BA;outline-offset:0}
+
+/* ---------- A5 counter sign ---------- */
+.counter{width:148mm;height:210mm;background:var(--cream);padding:12mm 12mm 9mm;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;overflow:hidden}
+.counter:before{content:"";position:absolute;left:0;right:0;top:0;height:5mm;background:var(--red)}
+.counter .logo{height:19mm;margin-top:2mm}
+.counter h1{font-size:40pt;color:var(--red);line-height:1;margin-top:3.5mm;letter-spacing:.02em}
+.counter .tag{font-weight:700;font-size:10pt;letter-spacing:.22em;color:var(--grey);margin-top:1.5mm}
+.counter .big{font-size:19pt;font-weight:900;margin-top:3.5mm;line-height:1.15}
+.counter .big b{color:var(--red)}
+.strips{width:100%;margin-top:4mm;display:flex;flex-direction:column;gap:3mm}
+.strip{background:#fff;border-radius:4mm;padding:3mm 4mm;display:flex;align-items:center;gap:3mm;border:.3mm solid var(--line)}
+.strip .nm{font-weight:900;font-size:9.5pt;text-align:left;width:24mm;line-height:1.1}
+.dots{display:flex;gap:1.6mm;flex:1;justify-content:flex-end;align-items:center}
+.dot{width:6.2mm;height:6.2mm;border-radius:50%;border:.45mm solid var(--red);opacity:.85}
+.dot.on{background:var(--red)}
+.free{width:9.5mm;height:9.5mm;border-radius:50%;background:var(--sand);color:var(--red);font-weight:900;font-size:6.2pt;display:flex;align-items:center;justify-content:center;letter-spacing:.04em}
+.perks{width:100%;margin:4mm 0 5mm;display:flex;flex-direction:column;gap:2.2mm;text-align:left}
+.perk{display:flex;align-items:center;gap:3mm;font-size:11pt;line-height:1.25}
+.perk .ic{flex:none;width:8mm;height:8mm;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center}
+.perk .ic svg{width:4.6mm;height:4.6mm}
+.perk b{font-weight:900}
+.join{margin-top:auto;display:flex;align-items:center;gap:6mm;background:var(--red);color:#fff;border-radius:5mm;padding:4.5mm 6mm;width:100%}
+.join .qrbox{background:#fff;padding:2.6mm;border-radius:2.5mm;flex:none}
+.join .qr{width:34mm;height:34mm}
+.join .t{text-align:left}
+.join .t .lil{font-size:24pt;line-height:1}
+.join .t p{font-size:10.5pt;margin-top:1.5mm;line-height:1.3;opacity:.95}
+.join .t .ar{font-size:11pt;margin-top:2mm;text-align:left;font-weight:700}
+.counter .foot{font-size:8.5pt;color:var(--grey);margin-top:3.5mm}
+
+/* ---------- A6 table card ---------- */
+.table{width:96mm;height:136mm;background:var(--cream);padding:8mm 7mm 6mm;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;overflow:hidden}
+.table:before{content:"";position:absolute;left:0;right:0;top:0;height:3.5mm;background:var(--red)}
+.table .logo{height:14mm}
+.table h2{font-size:24pt;color:var(--red);line-height:1.02;margin-top:3.5mm}
+.table .big{font-size:12.5pt;font-weight:900;margin-top:2mm;line-height:1.2}
+.table .big b{color:var(--red)}
+.table .qrbox{background:#fff;padding:3mm;border-radius:3mm;margin-top:4mm;border:.3mm solid var(--line)}
+.table .qr{width:35mm;height:35mm}
+.table .scan{font-family:Lilita,sans-serif;font-size:15pt;color:var(--red);margin-top:2.5mm;letter-spacing:.04em}
+.table .sub{font-size:9pt;color:var(--grey);line-height:1.3;margin-top:.5mm}
+.table .gift{margin-top:auto;background:var(--red);color:#fff;border-radius:999px;padding:1.8mm 5mm;font-weight:900;font-size:9.5pt}
+.table .ar{font-size:9.5pt;margin-top:2mm;color:var(--grey);font-weight:700}
+
+/* ---------- 85 x 55 handout ---------- */
+.hand{width:85mm;height:55mm;background:var(--cream);display:flex;align-items:center;gap:4mm;padding:4.5mm 5mm 4.5mm 4.5mm;position:relative;overflow:hidden}
+.hand:before{content:"";position:absolute;left:0;top:0;bottom:0;width:2.5mm;background:var(--red)}
+.hand .qrbox{background:#fff;padding:2mm;border-radius:2mm;flex:none;margin-left:1.5mm;border:.3mm solid var(--line)}
+.hand .qr{width:29mm;height:29mm}
+.hand .t{display:flex;flex-direction:column;min-width:0}
+.hand .logo{height:8.5mm;align-self:flex-start}
+.hand .lil{font-size:15pt;color:var(--red);line-height:1;margin-top:1.8mm}
+.hand .l1{font-weight:900;font-size:9pt;line-height:1.2;margin-top:1.2mm}
+.hand .l2{font-size:7.6pt;color:var(--grey);line-height:1.25;margin-top:1mm}
+.hand .ar{font-size:7.6pt;font-weight:700;color:var(--red);margin-top:1.2mm;text-align:left}
+</style>
+</head>
+<body>
+<template id="t-counter">
+  <div class="counter">
+    <img class="logo" src="logo.png" alt="Slate Kitchen &amp; Cafe">
+    <h1 class="lil">SLATE CARD</h1>
+    <div class="tag">OUR FREE LOYALTY CARD</div>
+    <div class="big">Buy 9, <b>the 10th is on us</b></div>
+    <div class="strips">
+      <div class="strip"><div class="nm">Breakfast &amp; Savory</div><div class="dots">%DOTS%</div></div>
+      <div class="strip"><div class="nm">Desserts</div><div class="dots">%DOTS%</div></div>
+    </div>
+    <div class="perks">
+      <div class="perk"><span class="ic">%GIFT%</span><span><b>10% off</b> your first order when you join</span></div>
+      <div class="perk"><span class="ic">%STAR%</span><span><b>Points on every dirham</b>, spend them off your bill</span></div>
+      <div class="perk"><span class="ic">%PLAY%</span><span><b>A game and a scratch card</b> with every order</span></div>
+    </div>
+    <div class="join">
+      <div class="qrbox"><img class="qr" src="qr.svg" alt="QR code"></div>
+      <div class="t">
+        <div class="lil">SCAN TO JOIN</div>
+        <p>Free, no app needed. Show your card at the counter to collect stamps.</p>
+        <div class="ar">امسح الكود وانضم مجاناً</div>
+      </div>
+    </div>
+    <div class="foot">One stamp for every breakfast, savory dish or dessert</div>
+  </div>
+</template>
+<template id="t-table">
+  <div class="table">
+    <img class="logo" src="logo.png" alt="Slate Kitchen &amp; Cafe">
+    <h2 class="lil">Got your<br>Slate Card?</h2>
+    <div class="big">Buy 9, <b>the 10th is on us</b></div>
+    <div class="qrbox"><img class="qr" src="qr.svg" alt="QR code"></div>
+    <div class="scan">SCAN TO JOIN</div>
+    <div class="sub">Free, no app. Points, games and<br>a scratch card with every order.</div>
+    <div class="gift">10% OFF YOUR FIRST ORDER</div>
+    <div class="ar">اشتري 9 والعاشرة علينا</div>
+  </div>
+</template>
+<template id="t-hand">
+  <div class="hand">
+    <div class="qrbox"><img class="qr" src="qr.svg" alt="QR code"></div>
+    <div class="t">
+      <img class="logo" src="logo.png" alt="Slate Kitchen &amp; Cafe">
+      <div class="lil">SLATE CARD</div>
+      <div class="l1">Buy 9, the 10th is on us</div>
+      <div class="l2">Scan to join free. 10% off your first order, points on every dirham.</div>
+      <div class="ar">اشتري 9 والعاشرة علينا</div>
+    </div>
+  </div>
+</template>
+<div id="out"></div>
+<script>
+  var ICON = {
+    GIFT: '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="9" width="18" height="12" rx="1.5"/><path d="M3 13h18M12 9v12M12 9c-1.5-3.5-6-4-6-1.2C6 9 9 9 12 9zM12 9c1.5-3.5 6-4 6-1.2C18 9 15 9 12 9z"/></svg>',
+    STAR: '<svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg>',
+    PLAY: '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 7h11a4 4 0 0 1 3.9 4.8l-.9 4.4a2.3 2.3 0 0 1-4 1l-1.8-2.2H9.3l-1.8 2.2a2.3 2.3 0 0 1-4-1l-.9-4.4A4 4 0 0 1 6.5 7z"/><path d="M7.5 10.5v3M6 12h3"/><circle cx="16" cy="11" r=".6" fill="#fff"/><circle cx="17.5" cy="13" r=".6" fill="#fff"/></svg>'
+  };
+  function dots(n) { var h = ""; for (var i = 0; i < 9; i++) h += '<span class="dot' + (i < n ? " on" : "") + '"></span>'; return h + '<span class="free">FREE</span>'; }
+  function tpl(id) {
+    var h = document.getElementById("t-" + id).innerHTML, k = 0;
+    h = h.replace(/%DOTS%/g, function () { return dots(k++ ? 3 : 6); });
+    return h.replace(/%(GIFT|STAR|PLAY)%/g, function (m, n) { return ICON[n]; });
+  }
+  /* #counter, #table, #hand: one piece; #table-sheet, #hand-sheet: A4 with gaps to cut along */
+  var v = (location.hash || "#counter").slice(1), out = document.getElementById("out"), css = document.createElement("style");
+  if (v === "table-sheet" || v === "hand-sheet") {
+    var one = v === "table-sheet" ? "table" : "hand", n = one === "table" ? 4 : 8, cols = 2, gap = "6mm";
+    var h = ""; for (var i = 0; i < n; i++) h += '<div class="cut">' + tpl(one) + "</div>";
+    out.innerHTML = '<div class="sheet" style="width:210mm;height:297mm;grid-template-columns:repeat(' + cols + ',auto);gap:' + gap + '">' + h + "</div>";
+    css.textContent = "@page{size:210mm 297mm;margin:0}";
+  } else {
+    out.innerHTML = tpl(v);
+    var size = { counter: "148mm 210mm", table: "96mm 136mm", hand: "85mm 55mm" }[v];
+    css.textContent = "@page{size:" + size + ";margin:0}";
+  }
+  document.head.appendChild(css);
+</script>
+</body>
+</html>
