@@ -19,7 +19,7 @@ import argparse, re, base64, io, os, qrcode, qrcode.image.svg
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 URL = "https://dees-stock.deestreats2026.workers.dev/t"
-EMOJI = {"Chocolate Chip Cookie": "🍪", "Double Chocolate Cookie": "🍪🍫", "San Sebastian": "🍰", "Brownie Bag": "🍫", "Chocolate Cake": "🍫🍰", "Crème Brûlée": "🍮", "Mini Pavlova": "🍓", "Lazy Cake": "🍫"}
+EMOJI = {"Chocolate Chip Cookie": "🍪", "Double Chocolate Cookie": "🍪🍫", "San Sebastian": "🍰", "Brownie Bag": "🍫", "Brownie": "🍫", "Chocolate Cake": "🍫🍰", "Crème Brûlée": "🍮", "Mini Pavlova": "🍓", "Lazy Cake": "🍫"}
 SHOPS = {   # per shop: where the QR goes, the logo, the accent colour and the text on it, the lid-tab handle
   "smash": {"url": URL, "logo": os.path.join(HERE, "..", "smash-n-pass-brand-deck", "logo.png"), "accent": "#FFD21C", "ink": "#17140F", "handle": "@SmashAndPass.DXB"},
   "slate": {"url": "https://slate.tapntreat1.workers.dev/t", "logo": "/home/user/tapntreat/clients/slate/public/logo.png", "accent": "#8F352D", "ink": "#FFFFFF", "handle": "@slatedxb", "barInk": "#FFFFFF", "tabLogo": False, "handlePt": 8.6},
@@ -52,7 +52,7 @@ IG = ('<svg class="ig" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="
 
 SHORT = lambda d: re.sub(r"\s+\d{4}$", "", str(d or "").strip())
 
-LONG = lambda n: " long" if len(n) > 16 else ""   # long names wrap onto two lines
+LONG = lambda n: " long" if len(n) > (10 if a.shop == "slate" else 16) else ""   # long names wrap onto two lines (Slate's wider logo leaves less room)
 
 import datetime
 def plus_days(made, days):   # "23 Oct 2026" + 4 -> "27 Oct 2026"
