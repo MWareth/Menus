@@ -643,9 +643,13 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       section("Savory", "var(--butter)", "burger") + section("Dee'serts", "var(--bad)", "dessert") + section("Points only", "var(--muted,#B3AEA3)", "none");
     var keys = Object.keys(basket);
     if (keys.length) {
-      var bill = keys.reduce(function (a, k) { return a + ((MENU[k] && +MENU[k].price) || 0) * basket[k]; }, 0);
+      /* cookies at their bundle price (1 for 10, 2 for 18, 3 for 25, flavours mixed), like the server works it out */
+      var nCk = keys.reduce(function (a, k) { return a + (MENU[k] && MENU[k].cookie ? basket[k] : 0); }, 0), ck = [0];
+      for (var ci = 1; ci <= nCk; ci++) ck[ci] = Math.min.apply(null, [[1, 10], [2, 18], [3, 25]].filter(function (d) { return d[0] <= ci; }).map(function (d) { return ck[ci - d[0]] + d[1]; }));
+      var bill = keys.reduce(function (a, k) { return a + (MENU[k] && !MENU[k].cookie ? (+MENU[k].price || 0) * basket[k] : 0); }, 0) + (ck[nCk] || 0);
       var savory = keys.some(function (k) { return MENU[k] && MENU[k].card === "burger"; });
-      h += keys.map(function (k) { return '<div class="bl"><span>' + basket[k] + "× " + esc(MENU[k].name) + (MENU[k].price ? " · " + aed(MENU[k].price * basket[k]) : "") + '</span><button type="button" data-less="' + k + '">remove one</button></div>'; }).join("") +
+      h += keys.map(function (k) { return '<div class="bl"><span>' + basket[k] + "× " + esc(MENU[k].name) + (MENU[k].price && !MENU[k].cookie ? " · " + aed(MENU[k].price * basket[k]) : "") + '</span><button type="button" data-less="' + k + '">remove one</button></div>'; }).join("") +
+        (nCk > 1 ? '<p class="note" style="margin:6px 0 0">🍪 ' + nCk + " cookies: " + aed(ck[nCk]) + " (bundle price)</p>" : "") +
         '<p class="big" style="margin:12px 0 2px">Bill: ' + aed(bill) + "</p>" +
         (savory ? '<p class="note" style="margin:0 0 6px;font-weight:800">' + (bill > 50 ? "✅ Savory stamp: the bill is over AED 50." : "No Savory stamp: the bill is AED 50 or less.") + "</p>" : "") +
         '<button type="button" class="btn pri" id="stamp">STAMP THIS ORDER</button>';
