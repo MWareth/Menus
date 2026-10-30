@@ -632,6 +632,34 @@ export const REPAIRS = {
     });
     return changed;
   },
+  /* 30 Oct, the event, again at the owner's word: every cookie sold that day is AED 9 each, except one order of 2 for 16.
+     Sets the day's cookie sales to 9 each (picking up anything sold since the first run), then takes AED 2 off one 2-cookie
+     sale: a single line of 2 if there is one (the earliest), else a mixed pair logged together, else the earliest line of
+     more than 2, else two single cookies. Gifts, write-offs and other days stay. */
+  "cookies-9-aed-30oct-final": (state) => {
+    const ids = new Set((state.items || []).filter((i) => /^(double chocolate|chocolate chip) cookie$/i.test(String(i.name || "").trim())).map((i) => i.id));
+    const day = "2026-10-30", lines = [];
+    (state.batches || []).forEach((b) => {
+      if (b.voided || !ids.has(b.itemId)) return;
+      (b.sales || []).forEach((x, i) => {
+        if (x.on !== day || x.kind === "gift" || x.kind === "waste" || x.fix) return;
+        x.amt = Math.round((+x.qty || 0) * 9 * 100) / 100;
+        const undone = (b.sales || []).some((u) => u.undo && u.revIdx === i);
+        if (!x.undo && !undone && x.qty > 0) lines.push(x);
+      });
+    });
+    lines.sort((p, q) => (String(p.at) < String(q.at) ? -1 : String(p.at) > String(q.at) ? 1 : 0));
+    const two = lines.find((x) => x.qty === 2 && !x.mix);
+    if (two) { two.amt = 16; return true; }
+    const pairs = {}; lines.filter((x) => x.mix).forEach((x) => { (pairs[x.at] = pairs[x.at] || []).push(x); });
+    const pair = Object.values(pairs).find((g) => g.reduce((a, x) => a + x.qty, 0) === 2);
+    if (pair) { pair.forEach((x) => { x.amt = 8 * x.qty; }); return true; }
+    const big = lines.find((x) => x.qty > 2);
+    if (big) { big.amt = Math.round((big.qty * 9 - 2) * 100) / 100; return true; }
+    const ones = lines.filter((x) => x.qty === 1).slice(0, 2);
+    if (ones.length === 2) { ones.forEach((x) => { x.amt = 8; }); return true; }
+    return true;
+  },
   /* 30 Oct, the event: one cookie bundle was logged as 3 of one flavour for AED 25, but it was 2 Chocolate Chip +
      1 Double Chocolate. That one line becomes the mix: 2 off Chocolate Chip (16.67) and 1 off Double Chocolate (8.33).
      Only when there is exactly one such line that day, not undone; otherwise nothing changes. */
