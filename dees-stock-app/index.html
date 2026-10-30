@@ -3021,7 +3021,7 @@
           dl.filter(function (d) { return d[0] <= left; }).map(function (d) {
             return '<button class="btn dark sm" type="button" data-sell="' + b.id + '" data-n="' + d[0] + '" data-amt="' + d[1] + '">' + d[0] + " FOR " + (Math.round(d[1] * 100) / 100) + "</button>"; }).join("") +
           /* a bundle across two flavours that share the same bundles (cookies): MIX 3 FOR 25 takes from both lots */
-          (mixItems(b).length ? dl.map(function (d) {
+          (mixItems(b).length ? mixDeals(dl).map(function (d) {
             return '<button class="btn dark sm" type="button" data-mix="' + b.id + '" data-n="' + d[0] + '" data-amt="' + d[1] + '">MIX ' + d[0] + " FOR " + (Math.round(d[1] * 100) / 100) + "</button>"; }).join("") : "") +
           '<button class="btn ghost sm" type="button" data-sellmany="' + b.id + '">OTHER…</button>' +
           '<button class="btn ghost sm" type="button" data-gift="' + b.id + '">GAVE AWAY</button>' +
@@ -4628,6 +4628,9 @@
   /* the other flavour for a mixed bundle: another item with exactly the same bundles, its oldest lot still on sale */
   /* COOKIE MIX: one entry for a bundle of mixed cookies. Pick the bundle, then how many of each flavour;
      each flavour comes off its own lots (oldest first), each line carrying its share of the bundle price. */
+  /* a bundle of two different flavours has its own price: 2 for 16 (two of the same stays at the item's own 2 for 18) */
+  var MIX_PRICE = { 2: 16 };
+  function mixDeals(list) { return list.map(function (d) { return MIX_PRICE[d[0]] != null ? [d[0], MIX_PRICE[d[0]]] : d; }); }
   function cookieItems() { return S.items.filter(function (it) { return /cookie/i.test(it.name || "") && it.active !== false && dealsOf(it).length; }); }
   function cookieLots(it, open) {
     return (open || live()).filter(function (x) { return x.itemId === it.id && remaining(x) > 0 && status(x) !== "expired" && !weekClosed(dropOf(x)); })
@@ -4640,7 +4643,7 @@
     var h = '<div class="card" style="border:2px dashed var(--line)"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">' +
       '<b style="font-size:17px">🍪 COOKIE MIX</b><span class="meta">' + cks.map(function (it, i) { return esc(it.name) + " " + left[i] + " left"; }).join(" · ") + "</span></div>" +
       '<div class="meta" style="margin-top:4px">A bundle with more than one flavour: pick the bundle, then how many of each.</div><div class="acts">';
-    dealsOf(cks[0]).forEach(function (d) {
+    mixDeals(dealsOf(cks[0])).forEach(function (d) {
       h += '<button class="btn dark sm" type="button" data-cmix="' + d[0] + '" data-amt="' + d[1] + '">MIX ' + d[0] + " FOR " + (Math.round(d[1] * 100) / 100) + "</button>";
     });
     return h + "</div></div>";
@@ -4649,6 +4652,11 @@
     var cks = cookieItems(), got = cks.map(function () { return 0; });
     var left = cks.map(function (it) { return cookieLots(it).reduce(function (a, x) { return a + remaining(x); }, 0); });
     var back = document.createElement("div"); back.className = "modal";
+    var priceNow = function () {   /* all one flavour: that flavour's own bundle price, not the mix price */
+      var used = got.filter(function (x) { return x > 0; }).length, one = got.indexOf(n);
+      if (used === 1 && one >= 0) { var d = dealsOf(cks[one]).filter(function (x) { return x[0] === n; })[0]; if (d) return d[1]; }
+      return amt;
+    };
     var paint = function () {
       var tot = got.reduce(function (a, x) { return a + x; }, 0);
       back.innerHTML = '<div class="modalbox" role="dialog" aria-modal="true" aria-label="Cookie mix"><h3>Cookie mix · ' + n + " for " + cur() + " " + money(amt) + "</h3>" +
@@ -4658,7 +4666,7 @@
             '<div style="display:flex;align-items:center;gap:10px"><button class="btn ghost sm" type="button" data-cm="' + i + '" data-d="-1"' + (got[i] ? "" : " disabled") + '>−</button>' +
             '<b style="min-width:18px;text-align:center;font-size:18px">' + got[i] + '</b><button class="btn ghost sm" type="button" data-cm="' + i + '" data-d="1"' + (tot < n && got[i] < left[i] ? "" : " disabled") + ">+</button></div></div>";
         }).join("") +
-        '<div class="meta" style="margin-top:12px"><b>' + tot + " of " + n + "</b> picked</div>" +
+        '<div class="meta" style="margin-top:12px"><b>' + tot + " of " + n + "</b> picked" + (tot === n ? " · <b>" + cur() + " " + money(priceNow()) + "</b>" : "") + "</div>" +
         '<div class="modalacts"><button class="btn ghost" type="button" data-m="no">Cancel</button><button class="btn pri" type="button" data-m="yes"' + (tot === n ? "" : " disabled") + ">LOG SALE</button></div></div>";
     };
     var close = function () { back.remove(); };
@@ -4667,6 +4675,7 @@
       if (t.hasAttribute("data-cm")) { got[+t.getAttribute("data-cm")] += +t.getAttribute("data-d"); paint(); return; }
       if (t.getAttribute("data-m") === "no") { close(); return; }
       if (t.getAttribute("data-m") !== "yes") return;
+      amt = priceNow();
       close();
       var on = saleDate(), ch = curChannel(), at = new Date().toISOString(), each = amt / n, lines = [];
       cks.forEach(function (it, i) {

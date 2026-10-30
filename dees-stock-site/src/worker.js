@@ -739,7 +739,8 @@ function mergeSave(stored, incoming, me) {
           if (s.amt == null || !isFinite(a)) return undefined;
           if (deals.some((d) => Array.isArray(d) && Math.abs(s.qty) === +d[0] && Math.abs(a) === +d[1] && Math.sign(a) === Math.sign(s.qty))) return a;
           /* one flavour's part of a mixed bundle (MIX 3 FOR 25 across two cookies): its share of the bundle price */
-          if (s.mix === true && Math.sign(a) === Math.sign(s.qty) && deals.some((d) => Array.isArray(d) && Math.abs(s.qty) < +d[0] && Math.abs(Math.abs(a) - Math.abs(s.qty) * d[1] / d[0]) <= 0.03)) return a;
+          /* (two different flavours are 2 for 16, their own price) */
+          if (s.mix === true && Math.sign(a) === Math.sign(s.qty) && deals.concat([[2, 16]]).some((d) => Array.isArray(d) && Math.abs(s.qty) <= +d[0] && Math.abs(Math.abs(a) - Math.abs(s.qty) * d[1] / d[0]) <= 0.03)) return a;
           return undefined;
         };
         t.sales = b.sales

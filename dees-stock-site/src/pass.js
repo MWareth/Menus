@@ -83,18 +83,25 @@ export const PASS_MENU = [
   { id: "double", name: "Double smash", card: "burger", stamps: 1, off: true },
   { id: "chicken", name: "Chicken burger", card: "burger", stamps: 1, off: true }
 ];
-/* cookies: 1 for 10, 2 for 18, 3 for 25, flavours mixed; the order pays the cheapest way to make up its count */
-export const COOKIE_DEALS = [[1, 10], [2, 18], [3, 25]];
-export function cookiesPrice(n) {
-  const best = [0];
-  for (let i = 1; i <= n; i++) best[i] = Math.min(...COOKIE_DEALS.filter(([k]) => k <= i).map(([k, p]) => best[i - k] + p));
-  return best[n] || 0;
+/* cookies: 1 for 10, 2 of one flavour for 18, 2 different flavours for 16, any 3 for 25. The order pays the cheapest
+   way to make up its cookies; counts = [Chocolate Chip, Double Chocolate] */
+const COOKIE_MOVES = [[1, 0, 10], [0, 1, 10], [2, 0, 18], [0, 2, 18], [1, 1, 16], [3, 0, 25], [2, 1, 25], [1, 2, 25], [0, 3, 25]];
+export function cookiesPrice(counts) {
+  const memo = {};
+  const f = (a, b) => {
+    if (!a && !b) return 0;
+    const k = a + "," + b;
+    if (!(k in memo)) memo[k] = Math.min(...COOKIE_MOVES.filter(([x, y]) => x <= a && y <= b).map(([x, y, p]) => p + f(a - x, b - y)));
+    return memo[k];
+  };
+  return f(counts[0] || 0, counts[1] || 0);
 }
+const cookieCounts = (items) => [items.cookie_cc || 0, items.cookie_dc || 0];
 /* the bill for an order: menu prices, with the cookies at their bundle price */
 export function billOf(items, byId) {
-  let sum = 0, cookies = 0;
-  Object.entries(items).forEach(([id, n]) => { const m = byId.get(id); if (!m) return; if (m.cookie) cookies += n; else sum += (+m.price || 0) * n; });
-  return Math.round((sum + cookiesPrice(cookies)) * 100) / 100;
+  let sum = 0;
+  Object.entries(items).forEach(([id, n]) => { const m = byId.get(id); if (!m || m.cookie) return; sum += (+m.price || 0) * n; });
+  return Math.round((sum + cookiesPrice(cookieCounts(items))) * 100) / 100;
 }
 export const BURGER_MIN = 50;   // the Savory card stamps a bill over AED 50 only (since 30 Oct 2026)
 const MENU_BY_ID = new Map(PASS_MENU.filter((m) => !m.off).map((m) => [m.id, m]));   /* only what's on sale can be stamped or given */
@@ -970,7 +977,7 @@ const shortOf = (items, left) => Object.entries(items).map(([id, n]) => { const 
 async function saleToStock(env, d, items, me, at) {
   const want = Object.entries(items).map(([id, n]) => ({ m: MENU_BY_ID.get(id), n })).filter((x) => x.m && x.m.stock);
   /* cookies sold in a bundle: each one carries its share of the bundle price, so the stock's takings match the till */
-  const nCookies = want.filter((x) => x.m.cookie).reduce((a, x) => a + x.n, 0), cookieEach = nCookies ? cookiesPrice(nCookies) / nCookies : 0;
+  const nCookies = want.filter((x) => x.m.cookie).reduce((a, x) => a + x.n, 0), cookieEach = nCookies ? cookiesPrice(cookieCounts(items)) / nCookies : 0;
   if (!want.length) return { logged: [], short: [] };
   const on = new Date(Date.parse(at) + 4 * 3600e3).toISOString().slice(0, 10);
   const addDays = (ds, n) => { const t = new Date(ds + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() + (+n || 0)); return t.toISOString().slice(0, 10); };
