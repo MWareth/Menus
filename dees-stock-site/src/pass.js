@@ -16,18 +16,72 @@ import { mailReady, sendMail, orderEmail, alertEmail, dubaiTime } from "./mail.j
 
 export const NEED = 9;
 /* `off` = not sold right now: kept so past visits still read right, hidden from the truck */
+/* the printed Smash & Pass menu (30 Oct 2026), with prices so the bill adds up by itself. card: "burger" = the Savory
+   card, "dessert" = the Dee'sert card, "none" = points only (meals, extras, drinks, Smash Match add-ons). Burgers come
+   in sizes: one button on the cashier screen, then Single / Double / Triple. */
 export const PASS_MENU = [
-  { id: "burger", name: "Burger", card: "burger", stamps: 1 },
-  { id: "ss", name: "San Sebastian", card: "dessert", stamps: 1, stock: "San Sebastian" },
-  { id: "brownie", name: "Brownie Bag (2 pcs)", card: "dessert", stamps: 1, stock: "Brownie Bag" },
-  { id: "cb", name: "Crème Brûlée", card: "dessert", stamps: 1, stock: "Crème Brûlée" },
-  { id: "choc", name: "Chocolate Cake", card: "dessert", stamps: 1, stock: "Chocolate Cake" },
+  { id: "okla_s", name: "Oklahoma Onion (S)", card: "burger", cat: "Smashed Burgers", price: 22.99, stamps: 1, group: "Oklahoma Onion", size: "Single" },
+  { id: "okla_d", name: "Oklahoma Onion (D)", card: "burger", cat: "Smashed Burgers", price: 29.99, stamps: 1, group: "Oklahoma Onion", size: "Double" },
+  { id: "okla_t", name: "Oklahoma Onion (T)", card: "burger", cat: "Smashed Burgers", price: 38.99, stamps: 1, group: "Oklahoma Onion", size: "Triple" },
+  { id: "cheese_s", name: "Cheese Burger (S)", card: "burger", cat: "Smashed Burgers", price: 22.99, stamps: 1, group: "Cheese Burger", size: "Single" },
+  { id: "cheese_d", name: "Cheese Burger (D)", card: "burger", cat: "Smashed Burgers", price: 29.99, stamps: 1, group: "Cheese Burger", size: "Double" },
+  { id: "cheese_t", name: "Cheese Burger (T)", card: "burger", cat: "Smashed Burgers", price: 38.99, stamps: 1, group: "Cheese Burger", size: "Triple" },
+  { id: "truffle_s", name: "Truffle Smash (S)", card: "burger", cat: "Smashed Burgers", price: 24.99, stamps: 1, group: "Truffle Smash", size: "Single" },
+  { id: "truffle_d", name: "Truffle Smash (D)", card: "burger", cat: "Smashed Burgers", price: 31.99, stamps: 1, group: "Truffle Smash", size: "Double" },
+  { id: "truffle_t", name: "Truffle Smash (T)", card: "burger", cat: "Smashed Burgers", price: 40.99, stamps: 1, group: "Truffle Smash", size: "Triple" },
+  { id: "hot_s", name: "Hot Smash (S)", card: "burger", cat: "Smashed Burgers", price: 22.99, stamps: 1, group: "Hot Smash", size: "Single" },
+  { id: "hot_d", name: "Hot Smash (D)", card: "burger", cat: "Smashed Burgers", price: 29.99, stamps: 1, group: "Hot Smash", size: "Double" },
+  { id: "hot_t", name: "Hot Smash (T)", card: "burger", cat: "Smashed Burgers", price: 38.99, stamps: 1, group: "Hot Smash", size: "Triple" },
+  { id: "ogchick", name: "OG Chick", card: "burger", cat: "Chicken", price: 24.99, stamps: 1 },
+  { id: "nashville", name: "Nashville", card: "burger", cat: "Chicken", price: 24.99, stamps: 1 },
+  { id: "hothoney", name: "Hot Honey Chick", card: "burger", cat: "Chicken", price: 25.99, stamps: 1 },
+  { id: "mac", name: "Mac Attack", card: "burger", cat: "Mac & Cheese", price: 24.99, stamps: 1 },
+  { id: "macchicken", name: "Mac Attack Chicken", card: "burger", cat: "Mac & Cheese", price: 30.99, stamps: 1 },
+  { id: "mactakis", name: "Mac Attack Takis", card: "burger", cat: "Mac & Cheese", price: 31.99, stamps: 1 },
+  { id: "macbeef", name: "Mac Attack Beef", card: "burger", cat: "Mac & Cheese", price: 32.99, stamps: 1 },
+  { id: "fries", name: "Just Fries", card: "burger", cat: "Fries", price: 11.99, stamps: 1 },
+  { id: "loadedsmash", name: "Loaded Smash", card: "burger", cat: "Fries", price: 20.99, stamps: 1 },
+  { id: "loadedchicken", name: "Loaded Chicken", card: "burger", cat: "Fries", price: 20.99, stamps: 1 },
+  { id: "trufflefries", name: "Truffle Fries", card: "burger", cat: "Fries", price: 23.99, stamps: 1 },
+  { id: "nashfries", name: "Nashville Fries", card: "burger", cat: "Fries", price: 20.99, stamps: 1 },
+  { id: "macloaded", name: "Mac Loaded", card: "burger", cat: "Fries", price: 20.99, stamps: 1 },
+  { id: "mozz", name: "Mozzarella Sticks", card: "burger", cat: "Sides & Kids", price: 17.99, stamps: 1 },
+  { id: "poppers", name: "Jalapeño Poppers", card: "burger", cat: "Sides & Kids", price: 17.99, stamps: 1 },
+  { id: "kids", name: "Kids Meal", card: "burger", cat: "Sides & Kids", price: 17.99, stamps: 1 },
+  { id: "tenders", name: "Tenders Non Spicy", card: "burger", cat: "Chicken Tenders (4 pcs)", price: 27.99, stamps: 1 },
+  { id: "tendersspicy", name: "Tenders Spicy", card: "burger", cat: "Chicken Tenders (4 pcs)", price: 27.99, stamps: 1 },
+  { id: "tendersnash", name: "Tenders Nashville", card: "burger", cat: "Chicken Tenders (4 pcs)", price: 29.99, stamps: 1 },
+  { id: "tendershoney", name: "Tenders Hot Honey", card: "burger", cat: "Chicken Tenders (4 pcs)", price: 29.99, stamps: 1 },
+  { id: "meal", name: "Make it a meal", card: "none", cat: "Meal & Extras", price: 9.99, stamps: 0 },
+  { id: "xbeef", name: "Extra beef patty", card: "none", cat: "Meal & Extras", price: 7, stamps: 0 },
+  { id: "xchicken", name: "Extra crispy chicken", card: "none", cat: "Meal & Extras", price: 5, stamps: 0 },
+  { id: "xcheese", name: "Extra cheese", card: "none", cat: "Meal & Extras", price: 2, stamps: 0 },
+  { id: "xonions", name: "Extra onions", card: "none", cat: "Meal & Extras", price: 2, stamps: 0 },
+  { id: "xjalapenos", name: "Extra jalapeños", card: "none", cat: "Meal & Extras", price: 2, stamps: 0 },
+  { id: "xtakis", name: "Extra Takis", card: "none", cat: "Meal & Extras", price: 6, stamps: 0 },
+  { id: "ssmash", name: "Smash sauce", card: "none", cat: "Meal & Extras", price: 3, stamps: 0 },
+  { id: "scomeback", name: "Comeback sauce", card: "none", cat: "Meal & Extras", price: 4, stamps: 0 },
+  { id: "struffle", name: "Truffle sauce", card: "none", cat: "Meal & Extras", price: 4, stamps: 0 },
+  { id: "sketchup", name: "Ketchup", card: "none", cat: "Meal & Extras", price: 1, stamps: 0 },
+  { id: "smayo", name: "Mayo", card: "none", cat: "Meal & Extras", price: 1, stamps: 0 },
+  { id: "water", name: "Water", card: "none", cat: "Drinks", price: 4, stamps: 0 },
+  { id: "soft", name: "Soft drink", card: "none", cat: "Drinks", price: 5, stamps: 0 },
+  { id: "slush", name: "Slush", card: "none", cat: "Drinks", price: 15, stamps: 0 },
+  { id: "perfect", name: "The Perfect Match", card: "none", cat: "Smash Match (add-ons)", price: 9.99, stamps: 0 },
+  { id: "datenight", name: "Date Night Double", card: "none", cat: "Smash Match (add-ons)", price: 49.99, stamps: 0 },
+  { id: "passaround", name: "The Sweet Pass-Around", card: "none", cat: "Smash Match (add-ons)", price: 64.55, stamps: 0 },
+  { id: "ss", name: "San Sebastian", card: "dessert", cat: "Dee'serts", price: 25.99, stamps: 1, stock: "San Sebastian" },
+  { id: "brownie", name: "Fresh Brownies (2 pcs)", card: "dessert", cat: "Dee'serts", price: 12.99, stamps: 1, stock: "Brownie Bag" },
+  { id: "cb", name: "Crème Brûlée", card: "dessert", cat: "Dee'serts", price: 23, stamps: 1, stock: "Crème Brûlée" },
+  { id: "choc", name: "Chocolate Cake", card: "dessert", cat: "Dee'serts", price: 45, stamps: 1, stock: "Chocolate Cake" },
+  { id: "burger", name: "Burger", card: "burger", stamps: 1, off: true },   /* the one button before the full menu: kept so past visits read right */
   { id: "lazy", name: "Lazy Cake", card: "dessert", stamps: 1, stock: "Lazy Cake", off: true },
   { id: "pav", name: "Mini Pavlova", card: "dessert", stamps: 1, stock: "Mini Pavlova", off: true },
   { id: "smash", name: "Smashed burger", card: "burger", stamps: 1, off: true },
   { id: "double", name: "Double smash", card: "burger", stamps: 1, off: true },
   { id: "chicken", name: "Chicken burger", card: "burger", stamps: 1, off: true }
 ];
+export const BURGER_MIN = 50;   // the Savory card stamps a bill over AED 50 only (since 30 Oct 2026)
 const MENU_BY_ID = new Map(PASS_MENU.filter((m) => !m.off).map((m) => [m.id, m]));   /* only what's on sale can be stamped or given */
 
 /* ---- Smash Points: earned from orders, the game zone, scratch cards and achievements,
@@ -581,12 +635,15 @@ export async function handlePass(request, env, path, d) {
         const m = MENU_BY_ID.get(id), q = Math.floor(Number(n));
         if (!m || !(q >= 1 && q <= 20)) return;
         items[id] = q;
-        if (m.card === "burger") burger = 1; else dessert = 1;
+        if (m.card === "burger") burger = 1; else if (m.card === "dessert") dessert = 1;
       });
       /* one stamp per card per order: any desserts = 1 dessert stamp; burgers = 1 burger stamp only when the
          cashier ticks "Bill over AED 50" (since 30 Oct 2026) */
-      if (!burger && !dessert) return fail("Pick at least one item.");
-      if (burger && b.over50 !== true) burger = 0;
+      if (!Object.keys(items).length) return fail("Pick at least one item.");
+      /* the bill, from the menu prices; the Savory stamp needs it over AED 50 (a stamp saved offline before the
+         full menu came with the cashier's "Bill over AED 50" tick instead) */
+      const bill = Object.entries(items).reduce((a, [id, n]) => a + (+(MENU_BY_ID.get(id).price) || 0) * n, 0);
+      if (burger && !(bill > BURGER_MIN || b.over50 === true)) burger = 0;
       if (b.offline !== true) {
         const left = await stockLeft(env, d);
         /* a first visit also takes the welcome dessert off the same shelf */
