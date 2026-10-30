@@ -608,6 +608,35 @@ export const REPAIRS = {
     });
     return changed;
   },
+  /* 30 Oct, the event: one cookie bundle was logged as 3 of one flavour for AED 25, but it was 2 Chocolate Chip +
+     1 Double Chocolate. That one line becomes the mix: 2 off Chocolate Chip (16.67) and 1 off Double Chocolate (8.33).
+     Only when there is exactly one such line that day, not undone; otherwise nothing changes. */
+  "cookie-mix-fix-30oct": (state) => {
+    const items = state.items || [];
+    const cc = items.find((i) => /^chocolate chip cookie$/i.test(String(i.name || "").trim()));
+    const dc = items.find((i) => /^double chocolate cookie$/i.test(String(i.name || "").trim()));
+    if (!cc || !dc) return false;
+    const hits = [];
+    (state.batches || []).forEach((b) => {
+      if (b.voided || (b.itemId !== cc.id && b.itemId !== dc.id)) return;
+      (b.sales || []).forEach((x, i) => {
+        if (x.on !== "2026-10-30" || x.qty !== 3 || +x.amt !== 25 || x.mix || x.kind || x.undo) return;
+        if ((b.sales || []).some((u) => u.undo && u.revIdx === i)) return;
+        hits.push({ b, x });
+      });
+    });
+    if (hits.length !== 1) return false;
+    const { b, x } = hits[0];
+    const keep = b.itemId === cc.id ? 2 : 1, move = 3 - keep, otherId = b.itemId === cc.id ? dc.id : cc.id;
+    const left = (l) => (+l.qty || 0) - (l.sales || []).reduce((a, y) => a + (+y.qty || 0), 0);
+    const other = (state.batches || []).filter((l) => !l.voided && l.itemId === otherId && left(l) >= move)
+      .sort((p, q) => (p.madeOn < q.madeOn ? -1 : p.madeOn > q.madeOn ? 1 : 0))[0];
+    if (!other) return false;
+    const keepAmt = Math.round(25 * keep / 3 * 100) / 100;
+    x.qty = keep; x.amt = keepAmt; x.mix = true;
+    other.sales = (other.sales || []).concat([{ qty: move, by: x.by, at: x.at, on: x.on, ch: x.ch, amt: Math.round((25 - keepAmt) * 100) / 100, mix: true }]);
+    return true;
+  },
 };
 
 /** Apply every repair not yet recorded in `done`; says which ones ran and whether the board moved. */
