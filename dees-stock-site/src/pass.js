@@ -583,8 +583,10 @@ export async function handlePass(request, env, path, d) {
         items[id] = q;
         if (m.card === "burger") burger = 1; else dessert = 1;
       });
-      /* one stamp per card per order: any burgers = 1 burger stamp, any desserts = 1 dessert stamp */
+      /* one stamp per card per order: any desserts = 1 dessert stamp; burgers = 1 burger stamp only when the
+         cashier ticks "Bill over AED 50" (since 30 Oct 2026) */
       if (!burger && !dessert) return fail("Pick at least one item.");
+      if (burger && b.over50 !== true) burger = 0;
       if (b.offline !== true) {
         const left = await stockLeft(env, d);
         /* a first visit also takes the welcome dessert off the same shelf */

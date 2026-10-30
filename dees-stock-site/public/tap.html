@@ -209,7 +209,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   var welcomeP = null, lb = null;
   var askGoogle = null;   /* after a review: the words to copy into Google, until they post or say not now */
   var shelf = null;   /* pieces left per stock item, from the last customer lookup; null offline */
-  var screen = "home", basket = {}, found = null, rv = { food: 0, vibe: 0, card: "burger" }, redeemFor = null, owner = null;
+  var screen = "home", basket = {}, over50 = false, found = null, rv = { food: 0, vibe: 0, card: "burger" }, redeemFor = null, owner = null;
   var MENU = {}, moreOpen = false;
   /* ---------------- English / عربي (customer pages only; the crew screens stay English) ---------------- */
   var AR = {
@@ -219,8 +219,8 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     "Show your QR code": "اعرض رمز QR الخاص بك",
     "A unique QR code made for your phone number. Tap to make it big.": "رمز QR خاص برقم هاتفك فقط. اضغط لتكبيره.",
     "Show this at the window": "اعرضه عند النافذة", "DONE": "تم",
-    "The truck scans it to add your stamps. Each order earns 1 savory stamp if it has burgers and 1 dessert stamp if it has desserts.":
-      "يمسحه فريق الشاحنة لإضافة أختامك. كل طلب يحصل على ختم مالح واحد إذا فيه برجر، وختم حلويات واحد إذا فيه حلويات.",
+    "The truck scans it to add your stamps. An order over AED 50 with a burger earns 1 savory stamp, and an order with desserts earns 1 dessert stamp.":
+      "يمسحه فريق الشاحنة لإضافة أختامك. الطلب الذي فيه برجر وقيمته أكثر من 50 درهم يحصل على ختم مالح واحد، والطلب الذي فيه حلويات يحصل على ختم حلويات واحد.",
     "📴 <b>No internet.</b> This is your saved card, and your QR still works at the window. Stamps and points update when you're back online.":
       "📴 <b>لا يوجد إنترنت.</b> هذه بطاقتك المحفوظة، ورمز QR يعمل عند النافذة. الأختام والنقاط تتحدّث عند عودة الإنترنت.",
     "How it works": "كيف تعمل", "Close": "إغلاق",
@@ -401,15 +401,15 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     return (qrMemo[c.code] = "data:image/svg+xml;base64," + btoa(svg));
   }
   function queue() { return recall("pc_queue") || []; }
-  function queueStamp(phone, items) {
-    var q = queue(); q.push({ qid: Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10), phone: phone, items: items, at: new Date().toISOString() });
+  function queueStamp(phone, items, o50) {
+    var q = queue(); q.push({ qid: Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10), phone: phone, items: items, over50: !!o50, at: new Date().toISOString() });
     store("pc_queue", q); paintQueue();
   }
   var syncing = false;
   function syncQueue() {
     var q = queue(); if (!q.length || syncing) return; syncing = true;
     var item = q[0];
-    api("/api/pass/staff/stamp", { phone: item.phone, items: item.items, offline: true, qid: item.qid, at: item.at }).then(function (res) {
+    api("/api/pass/staff/stamp", { phone: item.phone, items: item.items, over50: item.over50 === true, offline: true, qid: item.qid, at: item.at }).then(function (res) {
       syncing = false;
       if (res.net || res.error === "staff_only") { paintQueue(); return; }      /* still offline / logged out: try later */
       offline = false;
@@ -616,12 +616,14 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     var btn = function (m) { var l = leftOf(m), out = l === 0;
       return '<button type="button" data-add="' + m.id + '"' + (out ? ' disabled style="opacity:.4;cursor:not-allowed"' : "") + "><b>" + esc(m.name) + "</b><small>" +
         (out ? (basket[m.id] ? basket[m.id] + " added · none left" : "sold out") : (basket[m.id] ? basket[m.id] + " added" : "tap to add") + (l != null ? " · " + l + " left" : "")) + "</small></button>"; };
-    h += '<div class="panel"><div class="lbl">What did they buy?</div><p class="note">Tap everything in the order. It still earns just 1 stamp per card: 1 if it has burgers, 1 if it has desserts.</p><div class="lbl" style="color:var(--butter)">Savory</div><div class="items">' +
+    h += '<div class="panel"><div class="lbl">What did they buy?</div><p class="note">Tap everything in the order. It earns 1 stamp per card at most: 1 Burger stamp if it has a burger and the bill is over AED 50, 1 Dessert stamp if it has desserts.</p><div class="lbl" style="color:var(--butter)">Savory</div><div class="items">' +
       S.menu.filter(function (m) { return m.card === "burger" && !m.off; }).map(btn).join("") + '</div><div class="lbl" style="color:var(--bad)">Dee\'serts</div><div class="items">' +
       S.menu.filter(function (m) { return m.card === "dessert" && !m.off; }).map(btn).join("") + "</div>";
     var keys = Object.keys(basket);
     if (keys.length) {
       h += keys.map(function (k) { return '<div class="bl"><span>' + basket[k] + "× " + esc(MENU[k].name) + '</span><button type="button" data-less="' + k + '">remove one</button></div>'; }).join("") +
+        /* the Burger stamp needs a bill over AED 50 (since 30 Oct 2026); the cashier ticks it */
+        (keys.some(function (k) { return MENU[k] && MENU[k].card === "burger"; }) ? '<label class="check" style="margin:12px 0 4px;color:var(--ink,inherit);font-size:15px"><input type="checkbox" id="over50"' + (over50 ? " checked" : "") + '><span><b>Bill over AED 50</b><br><small>Ticked = Burger stamp. Not ticked = no Burger stamp.</small></span></label>' : "") +
         '<button type="button" class="btn pri" id="stamp">STAMP THIS ORDER</button>';
     }
     h += '</div><details class="panel"><summary>Customer forgot their PIN</summary><form id="f-reset" class="row" novalidate>' +
@@ -777,7 +779,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
         var crewSaved = recall("pc_staff"), cardSaved = recall("pc_card");
         if (res.net && (r.name === "truck" || r.name === "scan") && crewSaved) {
           S = crewSaved; MENU = {}; (S.menu || []).forEach(function (m) { MENU[m.id] = m; }); offline = true; paintQueue();
-          if (r.name === "scan") { found = { offline: true, phone: r.code.split("-")[0], first: "", last: "" }; basket = {}; welcomeP = null; shelf = null; }
+          if (r.name === "scan") { found = { offline: true, phone: r.code.split("-")[0], first: "", last: "" }; basket = {}; over50 = false; welcomeP = null; shelf = null; }
           return render();
         }
         if (res.net && r.name === "card" && cardSaved) {
@@ -796,7 +798,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       if (r.name === "card" && S.staff) { history.replaceState(null, "", crewHome()); screen = "home"; return load(); }
       if (r.name === "scan" && S.staff) {
         return api("/api/pass/staff/find?q=" + encodeURIComponent(r.code)).then(function (f) {
-          found = f.ok ? f.customer : null; welcomeP = f.ok ? f.welcome : null; shelf = f.ok && f.stock ? f.stock : null; basket = {}; render();
+          found = f.ok ? f.customer : null; welcomeP = f.ok ? f.welcome : null; shelf = f.ok && f.stock ? f.stock : null; basket = {}; over50 = false; render();
           if (!f.ok) showErr("s-err", f.error || "That code isn't a Pass Card.");
         });
       }
@@ -810,6 +812,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
   }
 
   /* the admin picked a backup file: read it, confirm, send it */
+  document.addEventListener("change", function (e) { if (e.target.id === "over50") over50 = e.target.checked; });
   document.addEventListener("change", function (e) {
     if (e.target.id !== "restore-file") return;
     var f = e.target.files && e.target.files[0], out = document.getElementById("restore-out");
@@ -853,14 +856,15 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     else if (t.hasAttribute("data-less")) { var k2 = t.getAttribute("data-less"); if (--basket[k2] <= 0) delete basket[k2]; render(); }
     else if (t.id === "stamp") {
       t.disabled = true;
-      api("/api/pass/staff/stamp", { phone: found.phone, items: basket }).then(function (res) {
+      var o50 = over50 && Object.keys(basket).some(function (k) { return MENU[k] && MENU[k].card === "burger"; });
+      api("/api/pass/staff/stamp", { phone: found.phone, items: basket, over50: o50 }).then(function (res) {
         if (!res.ok && res.net) {
-          queueStamp(found.phone, basket); basket = {}; welcomeP = null; render();
+          queueStamp(found.phone, basket, o50); basket = {}; over50 = false; welcomeP = null; render();
           toast("No signal. Stamp saved on this phone, it sends by itself."); return;
         }
         if (!res.ok) { t.disabled = false; toast(res.error || "Couldn't stamp. Try again."); return; }
         if (shelf) Object.keys(basket).forEach(function (k) { if (shelf[k] != null) shelf[k] = Math.max(0, shelf[k] - basket[k]); });
-        found = res.customer; basket = {}; welcomeP = null; render();
+        found = res.customer; basket = {}; over50 = false; welcomeP = null; render();
         var short = (res.stock && res.stock.short || []).map(function (x) { return x.qty + "× " + x.name; }).join(", ");
         if (short) { setTimeout(function () { toast("Not found in stock: " + short + ". Log it in Dee's Stock by hand.", true); }, 3200); }
         toast(res.welcome ? "Stamped. Welcome surprise: " + res.welcome.label + (res.welcome.kind === "dessert" ? " (logged as a giveaway)" : "")
@@ -919,7 +923,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       var qb = document.getElementById("qrbig");
       qb.innerHTML = '<div class="qrbig-in"><p class="lbl" style="color:var(--carbon)">' + L("Show this at the window") + "</p>" +
         '<img src="' + qrSrc() + '" alt="Your Pass Card QR code"><p class="qrbig-name">' + esc(S.customer.first + " " + S.customer.last) + "</p>" +
-        '<p class="qrbig-num" dir="ltr">' + esc(fmtPhone(S.customer.phone)) + '</p><p class="note" style="color:#3A3220">' + L("The truck scans it to add your stamps. Each order earns 1 savory stamp if it has burgers and 1 dessert stamp if it has desserts.") + "</p>" +
+        '<p class="qrbig-num" dir="ltr">' + esc(fmtPhone(S.customer.phone)) + '</p><p class="note" style="color:#3A3220">' + L("The truck scans it to add your stamps. An order over AED 50 with a burger earns 1 savory stamp, and an order with desserts earns 1 dessert stamp.") + "</p>" +
         '<button type="button" class="btn" id="qr-close" style="background:#101010;color:#FFD21C">' + L("DONE") + "</button></div>";
       qb.hidden = false; document.body.style.overflow = "hidden"; document.getElementById("qr-close").focus();
     }
@@ -1307,7 +1311,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     if (f.id === "f-find") api("/api/pass/staff/find?q=" + encodeURIComponent(val("s-q"))).then(function (r) {
       done();
       if (!r.ok && r.net && val("s-q").replace(/\D/g, "").length >= 8) { offline = true; paintQueue(); found = { offline: true, phone: val("s-q"), first: "", last: "" }; welcomeP = null; basket = {}; shelf = null; return render(); }
-      if (!r.ok) return showErr("s-err", r.error); found = r.customer; welcomeP = r.welcome; shelf = r.stock || null; basket = {}; render(); });
+      if (!r.ok) return showErr("s-err", r.error); found = r.customer; welcomeP = r.welcome; shelf = r.stock || null; basket = {}; over50 = false; render(); });
     if (f.id === "f-reset") api("/api/pass/staff/resetpin", { phone: found.phone, pin: val("rp-pin") }).then(function (r) { done(); if (!r.ok) return showErr("rp-err", r.error); toast("New PIN set. Tell the customer."); render(); });
     if (f.id === "f-cdel") api("/api/pass/staff/delete", { phone: found.phone, confirm: val("cdel-confirm") }).then(function (r) {
       done(); if (!r.ok) return showErr("cdel-err", r.error); found = null; welcomeP = null; basket = {}; render(); toast("Pass Card deleted with all its stamps, points and history."); });
