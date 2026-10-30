@@ -3021,7 +3021,7 @@
           dl.filter(function (d) { return d[0] <= left; }).map(function (d) {
             return '<button class="btn dark sm" type="button" data-sell="' + b.id + '" data-n="' + d[0] + '" data-amt="' + d[1] + '">' + d[0] + " FOR " + (Math.round(d[1] * 100) / 100) + "</button>"; }).join("") +
           /* a bundle across two flavours that share the same bundles (cookies): MIX 3 FOR 25 takes from both lots */
-          (mixPartner(b) ? dl.filter(function (d) { return d[0] <= left + remaining(mixPartner(b)); }).map(function (d) {
+          (mixItems(b).length ? dl.map(function (d) {
             return '<button class="btn dark sm" type="button" data-mix="' + b.id + '" data-n="' + d[0] + '" data-amt="' + d[1] + '">MIX ' + d[0] + " FOR " + (Math.round(d[1] * 100) / 100) + "</button>"; }).join("") : "") +
           '<button class="btn ghost sm" type="button" data-sellmany="' + b.id + '">OTHER…</button>' +
           '<button class="btn ghost sm" type="button" data-gift="' + b.id + '">GAVE AWAY</button>' +
@@ -4622,18 +4622,24 @@
   }
 
   /* the other flavour for a mixed bundle: another item with exactly the same bundles, its oldest lot still on sale */
+  /* the flavours a lot can be mixed with: other items with the same bundles, or any other cookie */
+  function mixItems(b) {
+    var it = item(b.itemId), dl = JSON.stringify(dealsOf(it)), ck = function (x) { return /cookie/i.test((x && x.name) || ""); };
+    if (!it || dl === "[]") return [];
+    return S.items.filter(function (o) { return o.id !== it.id && o.active !== false && (JSON.stringify(dealsOf(o)) === dl || (ck(it) && ck(o))); });
+  }
   function mixPartner(b) {
-    var it = item(b.itemId), dl = JSON.stringify(dealsOf(it));
-    if (!it || dl === "[]") return null;
+    var ids = mixItems(b).map(function (o) { return o.id; });
     return live().filter(function (x) {
-      var o = item(x.itemId);
-      return o && o.id !== it.id && JSON.stringify(dealsOf(o)) === dl && remaining(x) > 0 && status(x) !== "expired" && !weekClosed(dropOf(x));
+      return ids.indexOf(x.itemId) >= 0 && remaining(x) > 0 && status(x) !== "expired" && !weekClosed(dropOf(x));
     }).sort(function (a, c) { return a.madeOn < c.madeOn ? -1 : a.madeOn > c.madeOn ? 1 : 0; })[0] || null;
   }
   /* a mixed bundle: n pieces for amt, k from this lot and the rest from the other flavour, each line carrying its share */
   function logMix(bid, n, amt) {
     var b = S.batches.filter(function (x) { return x.id === bid; })[0], o = b && mixPartner(b);
-    if (!b || !o) { toast("No other flavour on sale to mix with.", true); return; }
+    if (!b) return;
+    if (!o) { toast("No " + mixItems(b).map(function (x) { return x.name; }).join(" / ") + " in stock to mix with. Log its delivery first (or check it isn't sold out or past its date).", true); return; }
+    if (remaining(b) + remaining(o) < n) { toast("Not enough left: " + remaining(b) + " + " + remaining(o) + " pieces.", true); return; }
     var a = item(b.itemId), c = item(o.itemId);
     ask({ title: "Mix " + n + " for " + cur() + " " + money(amt),
           body: "How many " + a.name + "? The rest are " + c.name + ".",
