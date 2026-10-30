@@ -717,9 +717,10 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
     var byPhone = {}; O.customers.forEach(function (c) { byPhone[c.phone] = c; });
     h += '<div class="panel"><div class="lbl">Comments</div><div class="cm">' + (cms.map(function (v) { var c = byPhone[v.phone];
       return "<div>" + esc(v.comment) + "<small>" + esc(c ? c.first + " " + c.last : "") + " · " + niceDate(v.at) + " · food " + v.food + "/5 · atmosphere " + v.vibe + "/5</small></div>"; }).join("") || '<p class="note">No comments yet.</p>') + "</div></div>";
-    h += '<div class="panel"><div class="lbl">Customers</div><div class="tw"><table><thead><tr><th>FIRST</th><th>LAST</th><th>MOBILE</th><th>EMAIL</th><th class="r">VISITS</th><th class="r">🍔</th><th class="r">🍰</th><th>OFFERS</th><th>BIRTHDAY</th><th>JOINED</th></tr></thead><tbody>' +
+    h += '<div class="panel"><div class="lbl">Customers</div><div class="tw"><table><thead><tr><th>FIRST</th><th>LAST</th><th>MOBILE</th><th>EMAIL</th><th class="r">VISITS</th><th class="r">🍔</th><th class="r">🍰</th><th>OFFERS</th><th>BIRTHDAY</th><th>JOINED</th>' + (S.staff.role === "admin" ? "<th></th>" : "") + '</tr></thead><tbody>' +
       O.customers.map(function (c) { return "<tr><td>" + esc(c.first) + "</td><td>" + esc(c.last) + "</td><td>" + esc(c.phone) + "</td><td>" + esc(c.email) + '</td><td class="r">' + (per[c.phone] || 0) +
-        '</td><td class="r">' + c.burger + '</td><td class="r">' + c.dessert + "</td><td>" + (c.offers ? "yes" : "no") + "</td><td>" + (c.birthday ? esc(c.birthday) : "\u2013") + "</td><td>" + niceDate(c.joined) + "</td></tr>"; }).join("") +
+        '</td><td class="r">' + c.burger + '</td><td class="r">' + c.dessert + "</td><td>" + (c.offers ? "yes" : "no") + "</td><td>" + (c.birthday ? esc(c.birthday) : "\u2013") + "</td><td>" + niceDate(c.joined) + "</td>" +
+          (S.staff.role === "admin" ? '<td><button type="button" class="linkbtn" data-delcust="' + esc(c.phone) + '" data-delname="' + esc((c.first + " " + c.last).trim()) + '" style="color:var(--bad);font-weight:800">DELETE</button></td>' : "") + "</tr>"; }).join("") +
       '</tbody></table></div><button type="button" class="btn ghost" id="copy-csv">COPY FOR EXCEL</button></div>';
     if (scans.length) h += '<div class="panel"><div class="lbl">Truck QR scans by day</div><div class="tw"><table><tbody>' +
       scans.slice(0, 30).map(function (s) { return "<tr><td>" + niceDate(s.day + "T12:00:00Z") + '</td><td class="r">' + s.n + "</td></tr>"; }).join("") + "</tbody></table></div></div>";
@@ -883,6 +884,18 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
         if (!res.ok) { t.disabled = false; toast(res.error || "Couldn't spend the points."); return; }
         found = res.customer; redeemFor = null; render();
         toast("Points spent. " + (res.stock === "not_found" ? "Not found in stock: log it as GAVE AWAY by hand." : "Enjoy!"));
+      });
+    }
+    else if (t.hasAttribute("data-delcust")) {   /* owner: remove a customer for good (test accounts, deletion requests) */
+      var dp = t.getAttribute("data-delcust"), dn = t.getAttribute("data-delname") || dp;
+      var typed = prompt("Delete " + dn + " (" + dp + ") for good?\nStamps, visits, free items, points and games all go. It can't be undone.\n\nType DELETE to confirm.");
+      if (typed == null) return;
+      if (typed.trim().toUpperCase() !== "DELETE") { toast("Not deleted: type DELETE to confirm."); return; }
+      t.disabled = true;
+      api("/api/pass/staff/delete", { phone: dp, confirm: "DELETE" }).then(function (r) {
+        if (!r.ok) { t.disabled = false; toast(r.error || "Could not delete."); return; }
+        toast(dn + " deleted.");
+        return api("/api/pass/owner").then(function (o) { if (o.ok) owner = o; render(); });
       });
     }
     else if (t.hasAttribute("data-game")) openGame(t.getAttribute("data-game"));
