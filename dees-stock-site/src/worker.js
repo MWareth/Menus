@@ -737,7 +737,10 @@ function mergeSave(stored, incoming, me) {
           if (had.has(k)) return had.get(k);
           const a = +s.amt;
           if (s.amt == null || !isFinite(a)) return undefined;
-          return deals.some((d) => Array.isArray(d) && Math.abs(s.qty) === +d[0] && Math.abs(a) === +d[1] && Math.sign(a) === Math.sign(s.qty)) ? a : undefined;
+          if (deals.some((d) => Array.isArray(d) && Math.abs(s.qty) === +d[0] && Math.abs(a) === +d[1] && Math.sign(a) === Math.sign(s.qty))) return a;
+          /* one flavour's part of a mixed bundle (MIX 3 FOR 25 across two cookies): its share of the bundle price */
+          if (s.mix === true && Math.sign(a) === Math.sign(s.qty) && deals.some((d) => Array.isArray(d) && Math.abs(s.qty) < +d[0] && Math.abs(Math.abs(a) - Math.abs(s.qty) * d[1] / d[0]) <= 0.02)) return a;
+          return undefined;
         };
         t.sales = b.sales
           .filter((s) => s && typeof s.qty === "number" && isFinite(s.qty))
@@ -749,6 +752,7 @@ function mergeSave(stored, incoming, me) {
             fix: s.fix === true ? true : undefined,
             undo: s.undo === true ? true : undefined,
             revIdx: typeof s.revIdx === "number" ? s.revIdx : undefined,
+            mix: s.mix === true ? true : undefined,
             amt: s.kind === "gift" || s.kind === "waste" ? undefined : amtOf(s)
           }));
       }

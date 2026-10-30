@@ -3020,6 +3020,9 @@
           (dl.some(function (d) { return d[0] === 2; }) ? "" : '<button class="btn dark sm" type="button" data-sell="' + b.id + '" data-n="2">SOLD 2</button>') +
           dl.filter(function (d) { return d[0] <= left; }).map(function (d) {
             return '<button class="btn dark sm" type="button" data-sell="' + b.id + '" data-n="' + d[0] + '" data-amt="' + d[1] + '">' + d[0] + " FOR " + (Math.round(d[1] * 100) / 100) + "</button>"; }).join("") +
+          /* a bundle across two flavours that share the same bundles (cookies): MIX 3 FOR 25 takes from both lots */
+          (mixPartner(b) ? dl.filter(function (d) { return d[0] <= left + remaining(mixPartner(b)); }).map(function (d) {
+            return '<button class="btn dark sm" type="button" data-mix="' + b.id + '" data-n="' + d[0] + '" data-amt="' + d[1] + '">MIX ' + d[0] + " FOR " + (Math.round(d[1] * 100) / 100) + "</button>"; }).join("") : "") +
           '<button class="btn ghost sm" type="button" data-sellmany="' + b.id + '">OTHER…</button>' +
           '<button class="btn ghost sm" type="button" data-gift="' + b.id + '">GAVE AWAY</button>' +
           '<button class="btn danger sm" type="button" data-waste="' + b.id + '">BINNED</button>';
@@ -3999,6 +4002,9 @@
     app.querySelectorAll("[data-sell]").forEach(function (b) {
       b.onclick = function () { logSale(b.getAttribute("data-sell"), +b.getAttribute("data-n"), null, b.hasAttribute("data-amt") ? +b.getAttribute("data-amt") : null); };
     });
+    app.querySelectorAll("[data-mix]").forEach(function (b) {
+      b.onclick = function () { logMix(b.getAttribute("data-mix"), +b.getAttribute("data-n"), +b.getAttribute("data-amt")); };
+    });
     var MOVE = {
       sellmany: { kind: "sale",  title: "How many sold?",       ok: "LOG SALE",  body: "" },
       gift:     { kind: "gift",  title: "How many given away?", ok: "LOG IT",
@@ -4073,7 +4079,7 @@
               t.sales = t.sales || [];
               t.sales.push({ qty: -mv.qty, kind: k, on: saleOn(mv), by: me.id,
                              at: new Date().toISOString(), undo: true, revIdx: idx,
-                             amt: mv.amt != null ? -mv.amt : undefined });
+                             amt: mv.amt != null ? -mv.amt : undefined, mix: mv.mix ? true : undefined });
             }, count(mv.qty, bPortion(bt)) + " " + word + " undone.");
           });
       };
@@ -4613,6 +4619,38 @@
     set("price", money(price));
     set("profit", profit == null ? "—" : money(profit), profit == null ? "" : profit >= 0 ? "good" : "bad");
     set("margin", margin == null ? "—" : (Math.round(margin * 10) / 10) + "%", margin == null ? "" : margin >= 0 ? "good" : "bad");
+  }
+
+  /* the other flavour for a mixed bundle: another item with exactly the same bundles, its oldest lot still on sale */
+  function mixPartner(b) {
+    var it = item(b.itemId), dl = JSON.stringify(dealsOf(it));
+    if (!it || dl === "[]") return null;
+    return live().filter(function (x) {
+      var o = item(x.itemId);
+      return o && o.id !== it.id && JSON.stringify(dealsOf(o)) === dl && remaining(x) > 0 && status(x) !== "expired" && !weekClosed(dropOf(x));
+    }).sort(function (a, c) { return a.madeOn < c.madeOn ? -1 : a.madeOn > c.madeOn ? 1 : 0; })[0] || null;
+  }
+  /* a mixed bundle: n pieces for amt, k from this lot and the rest from the other flavour, each line carrying its share */
+  function logMix(bid, n, amt) {
+    var b = S.batches.filter(function (x) { return x.id === bid; })[0], o = b && mixPartner(b);
+    if (!b || !o) { toast("No other flavour on sale to mix with.", true); return; }
+    var a = item(b.itemId), c = item(o.itemId);
+    ask({ title: "Mix " + n + " for " + cur() + " " + money(amt),
+          body: "How many " + a.name + "? The rest are " + c.name + ".",
+          input: { label: "HOW MANY " + a.name.toUpperCase(), value: Math.min(n - 1, remaining(b)), min: 1, max: Math.min(n - 1, remaining(b)) },
+          ok: "LOG SALE" }).then(function (k) {
+      if (k == null) return;
+      var rest = n - k;
+      if (rest > remaining(o)) { toast("Only " + count(remaining(o), bPortion(o)) + " " + c.name + " left.", true); return; }
+      var on = saleDate(), ch = curChannel(), at = new Date().toISOString(), share = Math.round(amt * k / n * 100) / 100;
+      save(function (nx) {
+        [[b.id, k, share], [o.id, rest, Math.round((amt - share) * 100) / 100]].forEach(function (x) {
+          var t = nx.batches.filter(function (y) { return y.id === x[0]; })[0];
+          t.sales = t.sales || [];
+          t.sales.push({ qty: x[1], by: me.id, at: at, on: on, ch: ch, amt: x[2], mix: true });
+        });
+      }, k + " " + a.name + " + " + rest + " " + c.name + " sold for " + cur() + " " + money(amt) + " — logged.");
+    });
   }
 
   function logSale(bid, n, kind, amt) {
