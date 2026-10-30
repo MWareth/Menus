@@ -2696,6 +2696,7 @@
         "set <b>SOLD ON</b> to the day it went and log it. Whatever is genuinely left over stays as waste.</div>";
       sell += rowsByDate(stale, perm, true);
     }
+    sell += cookieMixCard(perm, open);
     sell += '<div class="subhead">ON THE TRUCK NOW</div>';
     sell += open.length ? rowsByDate(open, perm, true) :
       '<div class="empty">Nothing in date on the truck.</div>';
@@ -3572,6 +3573,9 @@
     app.querySelectorAll("[data-sell]").forEach(function (b) {
       b.onclick = function () { logSale(b.getAttribute("data-sell"), +b.getAttribute("data-n"), null, b.hasAttribute("data-amt") ? +b.getAttribute("data-amt") : null); };
     });
+    app.querySelectorAll("[data-cmix]").forEach(function (b) {
+      b.onclick = function () { cookieMix(+b.getAttribute("data-cmix"), +b.getAttribute("data-amt")); };
+    });
     app.querySelectorAll("[data-mix]").forEach(function (b) {
       b.onclick = function () { logMix(b.getAttribute("data-mix"), +b.getAttribute("data-n"), +b.getAttribute("data-amt")); };
     });
@@ -4192,6 +4196,66 @@
   }
 
   /* the other flavour for a mixed bundle: another item with exactly the same bundles, its oldest lot still on sale */
+  /* COOKIE MIX: one entry for a bundle of mixed cookies. Pick the bundle, then how many of each flavour;
+     each flavour comes off its own lots (oldest first), each line carrying its share of the bundle price. */
+  function cookieItems() { return S.items.filter(function (it) { return /cookie/i.test(it.name || "") && it.active !== false && dealsOf(it).length; }); }
+  function cookieLots(it, open) {
+    return (open || live()).filter(function (x) { return x.itemId === it.id && remaining(x) > 0 && status(x) !== "expired" && !weekClosed(dropOf(x)); })
+      .sort(function (a, c) { return a.madeOn < c.madeOn ? -1 : a.madeOn > c.madeOn ? 1 : 0; });
+  }
+  function cookieMixCard(perm, open) {
+    var cks = cookieItems();
+    if (cks.length < 2 || !perm.canSell || readOnly) return "";
+    var left = cks.map(function (it) { return cookieLots(it, open).reduce(function (a, x) { return a + remaining(x); }, 0); });
+    var h = '<div class="card" style="border:2px dashed var(--line)"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">' +
+      '<b style="font-size:17px">🍪 COOKIE MIX</b><span class="meta">' + cks.map(function (it, i) { return esc(it.name) + " " + left[i] + " left"; }).join(" · ") + "</span></div>" +
+      '<div class="meta" style="margin-top:4px">A bundle with more than one flavour: pick the bundle, then how many of each.</div><div class="acts">';
+    dealsOf(cks[0]).forEach(function (d) {
+      h += '<button class="btn dark sm" type="button" data-cmix="' + d[0] + '" data-amt="' + d[1] + '">MIX ' + d[0] + " FOR " + (Math.round(d[1] * 100) / 100) + "</button>";
+    });
+    return h + "</div></div>";
+  }
+  function cookieMix(n, amt) {
+    var cks = cookieItems(), got = cks.map(function () { return 0; });
+    var left = cks.map(function (it) { return cookieLots(it).reduce(function (a, x) { return a + remaining(x); }, 0); });
+    var back = document.createElement("div"); back.className = "modal";
+    var paint = function () {
+      var tot = got.reduce(function (a, x) { return a + x; }, 0);
+      back.innerHTML = '<div class="modalbox" role="dialog" aria-modal="true" aria-label="Cookie mix"><h3>Cookie mix · ' + n + " for " + cur() + " " + money(amt) + "</h3>" +
+        '<div class="msg">How many of each? Pick ' + n + " in total.</div>" +
+        cks.map(function (it, i) {
+          return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px"><div><b>' + esc(itemLabel(it)) + '</b><div class="meta">' + left[i] + " left</div></div>" +
+            '<div style="display:flex;align-items:center;gap:10px"><button class="btn ghost sm" type="button" data-cm="' + i + '" data-d="-1"' + (got[i] ? "" : " disabled") + '>−</button>' +
+            '<b style="min-width:18px;text-align:center;font-size:18px">' + got[i] + '</b><button class="btn ghost sm" type="button" data-cm="' + i + '" data-d="1"' + (tot < n && got[i] < left[i] ? "" : " disabled") + ">+</button></div></div>";
+        }).join("") +
+        '<div class="meta" style="margin-top:12px"><b>' + tot + " of " + n + "</b> picked</div>" +
+        '<div class="modalacts"><button class="btn ghost" type="button" data-m="no">Cancel</button><button class="btn pri" type="button" data-m="yes"' + (tot === n ? "" : " disabled") + ">LOG SALE</button></div></div>";
+    };
+    var close = function () { back.remove(); };
+    back.addEventListener("click", function (e) {
+      var t = e.target.closest("button"); if (!t || t.disabled) return;
+      if (t.hasAttribute("data-cm")) { got[+t.getAttribute("data-cm")] += +t.getAttribute("data-d"); paint(); return; }
+      if (t.getAttribute("data-m") === "no") { close(); return; }
+      if (t.getAttribute("data-m") !== "yes") return;
+      close();
+      var on = saleDate(), ch = curChannel(), at = new Date().toISOString(), each = amt / n, lines = [];
+      cks.forEach(function (it, i) {
+        var need = got[i];
+        cookieLots(it).forEach(function (x) { if (!need) return; var q = Math.min(need, remaining(x)); lines.push([x.id, q]); need -= q; });
+      });
+      var shares = lines.map(function (l) { return Math.round(l[1] * each * 100) / 100; });
+      shares[shares.length - 1] = Math.round((amt - shares.slice(0, -1).reduce(function (a, x) { return a + x; }, 0)) * 100) / 100;
+      save(function (nx) {
+        lines.forEach(function (l, j) {
+          var t2 = nx.batches.filter(function (y) { return y.id === l[0]; })[0];
+          t2.sales = t2.sales || [];
+          t2.sales.push(lines.length > 1 ? { qty: l[1], by: me.id, at: at, on: on, ch: ch, amt: shares[j], mix: true } : { qty: l[1], by: me.id, at: at, on: on, ch: ch, amt: amt });
+        });
+      }, "Cookie mix: " + cks.map(function (it, i) { return got[i] ? got[i] + " " + it.name : ""; }).filter(Boolean).join(" + ") + " sold for " + cur() + " " + money(amt) + " — logged.");
+    });
+    paint(); document.body.appendChild(back);
+  }
+
   /* the flavours a lot can be mixed with: other items with the same bundles, or any other cookie */
   function mixItems(b) {
     var it = item(b.itemId), dl = JSON.stringify(dealsOf(it)), ck = function (x) { return /cookie/i.test((x && x.name) || ""); };
