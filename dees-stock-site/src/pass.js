@@ -83,9 +83,9 @@ export const PASS_MENU = [
   { id: "double", name: "Double smash", card: "burger", stamps: 1, off: true },
   { id: "chicken", name: "Chicken burger", card: "burger", stamps: 1, off: true }
 ];
-/* cookies: 1 for 10, 2 of one flavour for 18, 2 different flavours for 16, any 3 for 25. The order pays the cheapest
+/* cookies: 1 for 10, any 2 for 16, any 3 for 25. The order pays the cheapest
    way to make up its cookies; counts = [Chocolate Chip, Double Chocolate] */
-const COOKIE_MOVES = [[1, 0, 10], [0, 1, 10], [2, 0, 18], [0, 2, 18], [1, 1, 16], [3, 0, 25], [2, 1, 25], [1, 2, 25], [0, 3, 25]];
+const COOKIE_MOVES = [[1, 0, 10], [0, 1, 10], [2, 0, 16], [0, 2, 16], [1, 1, 16], [3, 0, 25], [2, 1, 25], [1, 2, 25], [0, 3, 25]];
 export function cookiesPrice(counts) {
   const memo = {};
   const f = (a, b) => {

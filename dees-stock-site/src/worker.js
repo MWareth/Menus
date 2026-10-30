@@ -608,6 +608,30 @@ export const REPAIRS = {
     });
     return changed;
   },
+  /* 30 Oct: 2 cookies are AED 16, same flavour or mixed (1 for 10 and 3 for 25 stay) */
+  "cookies-2-for-16": (state) => {
+    let changed = false;
+    (state.items || []).forEach((it) => {
+      if (!/^(double chocolate|chocolate chip) cookie$/i.test(String(it.name || "").trim())) return;
+      if (JSON.stringify(it.deals) !== "[[2,16],[3,25]]") { it.deals = [[2, 16], [3, 25]]; changed = true; }
+    });
+    return changed;
+  },
+  /* 30 Oct, the event: every cookie sold that day counts at AED 9 each (the owner's call for the night). Only the money
+     on the day's cookie sales changes (undos too, so they still cancel out); how many sold, gifts and write-offs stay. */
+  "cookies-9-aed-30oct": (state) => {
+    const ids = new Set((state.items || []).filter((i) => /^(double chocolate|chocolate chip) cookie$/i.test(String(i.name || "").trim())).map((i) => i.id));
+    let changed = false;
+    (state.batches || []).forEach((b) => {
+      if (b.voided || !ids.has(b.itemId)) return;
+      (b.sales || []).forEach((x) => {
+        if (x.on !== "2026-10-30" || x.kind === "gift" || x.kind === "waste" || x.fix) return;
+        const amt = Math.round((+x.qty || 0) * 9 * 100) / 100;
+        if (x.amt !== amt) { x.amt = amt; changed = true; }
+      });
+    });
+    return changed;
+  },
   /* 30 Oct, the event: one cookie bundle was logged as 3 of one flavour for AED 25, but it was 2 Chocolate Chip +
      1 Double Chocolate. That one line becomes the mix: 2 off Chocolate Chip (16.67) and 1 off Double Chocolate (8.33).
      Only when there is exactly one such line that day, not undone; otherwise nothing changes. */
