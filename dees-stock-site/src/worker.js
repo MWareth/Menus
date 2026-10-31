@@ -752,6 +752,28 @@ export const REPAIRS = {
     });
     return changed;
   },
+  /* 31 Oct: the cookies that went out on 30 Oct and have sold so far come to (sold x 9) - 4: two pairs at 16, every other
+     cookie 9. Done by the lots themselves (sent out 30 Oct), so sales logged after midnight count too. Undos cancel at 9;
+     gifts and write-offs stay. */
+  "cookies-30oct-lots-total": (state) => {
+    const ids = new Set((state.items || []).filter((i) => /^(double chocolate|chocolate chip) cookie$/i.test(String(i.name || "").trim())).map((i) => i.id));
+    const lines = [];
+    (state.batches || []).forEach((b) => {
+      if (b.voided || !ids.has(b.itemId) || b.madeOn !== "2026-10-30") return;
+      (b.sales || []).forEach((x, i) => {
+        if (x.kind === "gift" || x.kind === "waste") return;
+        x.amt = Math.round((+x.qty || 0) * 9 * 100) / 100;
+        const undone = (b.sales || []).some((u) => u.undo && u.revIdx === i);
+        if (!x.undo && !undone && x.qty > 0) lines.push(x);
+      });
+    });
+    let off = 4;
+    lines.sort((p, q) => q.qty - p.qty || (String(p.at) < String(q.at) ? -1 : 1)).forEach((x) => {
+      const take = Math.min(off, x.amt - 8 * x.qty);
+      if (take > 0) { x.amt = Math.round((x.amt - take) * 100) / 100; off -= take; }
+    });
+    return true;
+  },
   /* 30 Oct, the event: one cookie bundle was logged as 3 of one flavour for AED 25, but it was 2 Chocolate Chip +
      1 Double Chocolate. That one line becomes the mix: 2 off Chocolate Chip (16.67) and 1 off Double Chocolate (8.33).
      Only when there is exactly one such line that day, not undone; otherwise nothing changes. */
