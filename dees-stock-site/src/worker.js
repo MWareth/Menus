@@ -711,6 +711,27 @@ export const REPAIRS = {
     });
     return true;
   },
+  /* 31 Oct: the 30 Oct Double Chocolate cookies went out charged at AED 9 each (the "cost we charge Smash" box) instead of
+     their real cost. Recalculated like the Chocolate Chip cookies: recipe AED 60.03 for 35, plus AED 0.30 packaging, plus the
+     same share of the delivery the lot already carries. And neither cookie charges a set 9 any more: new deliveries go out
+     at the recipe cost. */
+  "double-cookie-30oct-real-cost": (state) => {
+    let changed = false;
+    (state.items || []).forEach((it) => {
+      if (!/^(double chocolate|chocolate chip) cookie$/i.test(String(it.name || "").trim())) return;
+      if (it.chargeCost != null) { delete it.chargeCost; changed = true; }
+      if (it.chargeTray != null) { delete it.chargeTray; changed = true; }
+    });
+    const dc = (state.items || []).find((i) => /^double chocolate cookie$/i.test(String(i.name || "").trim()));
+    const closed = new Set((state.weeks || []).map((w) => w.start));
+    (state.batches || []).forEach((b) => {
+      if (!dc || b.voided || b.itemId !== dc.id || b.madeOn !== "2026-10-30" || closed.has(b.drop || b.id) || b.unitCost == null) return;
+      const deliv = b.deliveryEach != null ? +b.deliveryEach : Math.max(0, +b.unitCost - 9);
+      const each = Math.round((60.03 / 35 + 0.30 + deliv) * 10000) / 10000;
+      if (Math.abs(+b.unitCost - each) > 0.0001) { b.unitCost = each; changed = true; }
+    });
+    return changed;
+  },
   /* 30 Oct, the event: one cookie bundle was logged as 3 of one flavour for AED 25, but it was 2 Chocolate Chip +
      1 Double Chocolate. That one line becomes the mix: 2 off Chocolate Chip (16.67) and 1 off Double Chocolate (8.33).
      Only when there is exactly one such line that day, not undone; otherwise nothing changes. */
