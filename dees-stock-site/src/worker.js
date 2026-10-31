@@ -689,6 +689,28 @@ export const REPAIRS = {
     while (left && ones.length >= 2) { ones.shift().amt = 8; ones.shift().amt = 8; left--; }
     return true;
   },
+  /* 31 Oct: the night of 30 Oct's cookies must come to (cookies sold x 9) - 4: two pairs at 16, the rest at 9. Sets every
+     30 Oct cookie sale to 9 each, then takes the AED 4 off line by line, never below 8 a cookie (biggest lines first),
+     so the total is right however the sales were logged. */
+  "cookies-30oct-total": (state) => {
+    const ids = new Set((state.items || []).filter((i) => /^(double chocolate|chocolate chip) cookie$/i.test(String(i.name || "").trim())).map((i) => i.id));
+    const day = "2026-10-30", lines = [];
+    (state.batches || []).forEach((b) => {
+      if (b.voided || !ids.has(b.itemId)) return;
+      (b.sales || []).forEach((x, i) => {
+        if (x.on !== day || x.kind === "gift" || x.kind === "waste" || x.fix) return;
+        x.amt = Math.round((+x.qty || 0) * 9 * 100) / 100;
+        const undone = (b.sales || []).some((u) => u.undo && u.revIdx === i);
+        if (!x.undo && !undone && x.qty > 0) lines.push(x);
+      });
+    });
+    let off = 4;
+    lines.sort((p, q) => q.qty - p.qty || (String(p.at) < String(q.at) ? -1 : 1)).forEach((x) => {
+      const take = Math.min(off, x.amt - 8 * x.qty);
+      if (take > 0) { x.amt = Math.round((x.amt - take) * 100) / 100; off -= take; }
+    });
+    return true;
+  },
   /* 30 Oct, the event: one cookie bundle was logged as 3 of one flavour for AED 25, but it was 2 Chocolate Chip +
      1 Double Chocolate. That one line becomes the mix: 2 off Chocolate Chip (16.67) and 1 off Double Chocolate (8.33).
      Only when there is exactly one such line that day, not undone; otherwise nothing changes. */
