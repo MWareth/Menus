@@ -660,6 +660,9 @@ export const REPAIRS = {
     if (ones.length === 2) { ones.forEach((x) => { x.amt = 8; }); return true; }
     return true;
   },
+  /* 31 Oct: the same again after closing, so the cookies sold later on the night of 30 Oct are at AED 9 too
+     (it picks the same 2-for-16 sale as before: the earliest one) */
+  "cookies-9-aed-30oct-close": (state) => REPAIRS["cookies-9-aed-30oct-final"](state),
   /* 30 Oct, the event: one cookie bundle was logged as 3 of one flavour for AED 25, but it was 2 Chocolate Chip +
      1 Double Chocolate. That one line becomes the mix: 2 off Chocolate Chip (16.67) and 1 off Double Chocolate (8.33).
      Only when there is exactly one such line that day, not undone; otherwise nothing changes. */
