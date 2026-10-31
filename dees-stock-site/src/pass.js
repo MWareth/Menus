@@ -74,8 +74,8 @@ export const PASS_MENU = [
   { id: "brownie", name: "Fresh Brownies (2 pcs)", card: "dessert", cat: "Dee'serts", price: 12.99, stamps: 1, stock: "Brownie Bag" },
   { id: "cb", name: "Crème Brûlée", card: "dessert", cat: "Dee'serts", price: 23, stamps: 1, stock: "Crème Brûlée" },
   { id: "choc", name: "Chocolate Cake", card: "dessert", cat: "Dee'serts", price: 45, stamps: 1, stock: "Chocolate Cake" },
-  { id: "cookie_cc", name: "Chocolate Chip Cookie", card: "dessert", cat: "Dee'serts", price: 10, cookie: true, stamps: 1, stock: "Chocolate Chip Cookie" },
-  { id: "cookie_dc", name: "Double Chocolate Cookie", card: "dessert", cat: "Dee'serts", price: 10, cookie: true, stamps: 1, stock: "Double Chocolate Cookie" },
+  { id: "cookie_cc", name: "Chocolate Chip Cookie", card: "dessert", cat: "Dee'serts", price: 9, cookie: true, stamps: 1, stock: "Chocolate Chip Cookie" },
+  { id: "cookie_dc", name: "Double Chocolate Cookie", card: "dessert", cat: "Dee'serts", price: 9, cookie: true, stamps: 1, stock: "Double Chocolate Cookie" },
   { id: "burger", name: "Burger", card: "burger", stamps: 1, off: true },   /* the one button before the full menu: kept so past visits read right */
   { id: "lazy", name: "Lazy Cake", card: "dessert", stamps: 1, stock: "Lazy Cake", off: true },
   { id: "pav", name: "Mini Pavlova", card: "dessert", stamps: 1, stock: "Mini Pavlova", off: true },
@@ -85,7 +85,7 @@ export const PASS_MENU = [
 ];
 /* cookies: 1 for 10, any 2 for 16, any 3 for 25. The order pays the cheapest
    way to make up its cookies; counts = [Chocolate Chip, Double Chocolate] */
-const COOKIE_MOVES = [[1, 0, 10], [0, 1, 10], [2, 0, 16], [0, 2, 16], [1, 1, 16], [3, 0, 25], [2, 1, 25], [1, 2, 25], [0, 3, 25]];
+const COOKIE_MOVES = [[1, 0, 9], [0, 1, 9]];   /* since 31 Oct: AED 9 each, no bundles */
 export function cookiesPrice(counts) {
   const memo = {};
   const f = (a, b) => {

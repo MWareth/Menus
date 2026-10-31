@@ -732,6 +732,26 @@ export const REPAIRS = {
     });
     return changed;
   },
+  /* 31 Oct: cookies sell at AED 9 each from now on: no bundles, no mix. The cookies still on the truck sell at 9 too;
+     what already sold keeps the money it brought in. */
+  "cookies-9-each": (state) => {
+    const ids = new Set();
+    let changed = false;
+    (state.items || []).forEach((it) => {
+      if (!/^(double chocolate|chocolate chip) cookie$/i.test(String(it.name || "").trim())) return;
+      ids.add(it.id);
+      if (+it.price !== 9) { it.price = 9; changed = true; }
+      if (it.deals) { delete it.deals; changed = true; }
+    });
+    const closed = new Set((state.weeks || []).map((w) => w.start));
+    (state.batches || []).forEach((b) => {
+      if (b.voided || !ids.has(b.itemId) || closed.has(b.drop || b.id) || +b.unitPrice === 9) return;
+      /* sales already logged without an amount keep the price they were sold at */
+      (b.sales || []).forEach((x) => { if ((!x.kind || x.kind === "sale") && x.amt == null) x.amt = (+x.qty || 0) * (+b.unitPrice || 0); });
+      b.unitPrice = 9; changed = true;
+    });
+    return changed;
+  },
   /* 30 Oct, the event: one cookie bundle was logged as 3 of one flavour for AED 25, but it was 2 Chocolate Chip +
      1 Double Chocolate. That one line becomes the mix: 2 off Chocolate Chip (16.67) and 1 off Double Chocolate (8.33).
      Only when there is exactly one such line that day, not undone; otherwise nothing changes. */
