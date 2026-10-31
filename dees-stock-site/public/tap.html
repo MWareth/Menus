@@ -836,6 +836,19 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       f("stock", "📦 Low stock", "When a dessert drops below its warning number.") +
       '<button type="button" class="btn pri" id="al-save">SAVE ALERT EMAILS</button></div>';
   }
+  /* the email log: every email the site sent lately, and whether Gmail took it */
+  function mailLogHtml(list) {
+    var KIND = { receipt: "🧾 Customer receipt", orders: "🧾 Order notice", sales: "🍰 Dessert sale", stock: "📦 Low stock", reviews: "⭐ Review", test: "✉️ Test" };
+    list = list || [];
+    var bad = list.filter(function (m) { return !m.ok; }).length;
+    return '<div class="panel" style="grid-column:1/-1"><div class="lbl">📨 Emails sent</div><p class="note">The latest emails, newest first. ✅ = Gmail took it and sent it. ❌ = it did not go, with Gmail\'s reason. ' +
+      'A ✅ that the customer can\'t find is in their Spam or Promotions, or the email they gave has a typo.' + (bad ? " <b style=\"color:var(--bad)\">" + bad + " failed.</b>" : "") + "</p>" +
+      (list.length ? '<div class="tw"><table><thead><tr><th></th><th>WHEN</th><th>WHAT</th><th>TO</th></tr></thead><tbody>' +
+        list.slice(0, 40).map(function (m) { return "<tr><td style=\"font-size:16px\">" + (m.ok ? "✅" : "❌") + "</td><td style=\"white-space:nowrap\">" + esc(new Date(m.at).toLocaleString("en-GB", { timeZone: "Asia/Dubai", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })) + "</td><td>" +
+          esc(KIND[m.kind] || "✉️ Email") + '<small style="display:block;color:var(--muted)">' + esc(m.subject || "") + "</small></td><td>" + esc(m.rcpt || "") + (m.copies ? ' <small style="color:var(--muted)">+' + m.copies + " copy" + (m.copies === 1 ? "" : "ies") + "</small>" : "") +
+          (m.ok ? "" : '<small style="display:block;color:var(--bad);font-weight:700">Not sent: ' + esc(m.err || "") + "</small>") + "</td></tr>"; }).join("") + "</tbody></table></div>"
+        : '<p class="note">No emails since the log started. The next order or alert shows here.</p>') + "</div>";
+  }
   function viewOwner() {
     if (!S.staff) return needStaff();
     if (!owner) return '<div class="panel"><p class="note">Loading…</p></div>';
@@ -861,7 +874,7 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       '<div style="display:flex;gap:8px;flex-wrap:wrap"><input id="gr-url" value="' + esc(S.googleReview || "") + '" placeholder="https://g.page/r/…" style="flex:1;min-width:200px;padding:9px;border:1px solid var(--line);border-radius:10px"><button type="button" class="btn pri" id="gr-save" style="padding:8px 14px">SAVE</button></div></div>' +
       alertsHtml() +
       '<div class="panel"><div class="lbl">✉️ Email</div><p class="note">Sends one test email to your alert address (ALERT_TO) and shows what Gmail answered.</p>' +
-      '<button class="btn ghost" type="button" data-mailtest>SEND TEST EMAIL</button><p class="note" id="mailtest-out"></p></div>' : "";
+      '<button class="btn ghost" type="button" data-mailtest>SEND TEST EMAIL</button><p class="note" id="mailtest-out"></p></div>' + mailLogHtml(O.mails) : "";
     var P = { buy: "", byday: "", who: "", log: "", pts: "", prize: "" };
     P.games = practiceHtml();
     P.qr = '<div class="panel"><div class="lbl">The truck QR</div><div class="kpis">' + kpi(scanTotal, "scans of the truck QR") + kpi(scanToday, "scans today") +

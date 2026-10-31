@@ -14,7 +14,7 @@
 
 import { SEED } from "./seed.js";
 import { handlePass, nightlyBackup } from "./pass.js";
-import { mailReady, sendMail, alertEmail, dubaiTime } from "./mail.js";
+import { mailReady, sendMail, alertEmail, receiptEmail, dubaiTime } from "./mail.js";
 
 const enc = new TextEncoder();
 const DAY = 86400;
@@ -1154,7 +1154,7 @@ async function lowStockCheck(env, before, after, origin) {
   const list = ((after.alerts || {}).stock || []).length ? after.alerts.stock : String(env.ALERT_TO || "").split(/[,;]/).map((x) => x.trim()).filter(Boolean);
   if (!list.length) return;
   const mail = alertEmail({ title: "📦 Running low: " + hit.length + " item" + (hit.length === 1 ? "" : "s"), lines: hit.concat(["Time to prepare the next batch."]), link: (origin || "") + "/" });
-  await sendMail(env, { to: list[0], bcc: list.slice(1).join(","), fromName: "Stock alerts", ...mail });
+  await sendMail(env, { kind: "stock", to: list[0], bcc: list.slice(1).join(","), fromName: "Smash & Pass", ...mail });
 }
 
 /* ============ the API ============ */
@@ -1334,7 +1334,8 @@ async function api(request, env, path, later = () => {}) {
   return json({ ok: false, error: "not_found" }, 404);
 }
 
-/* Owner alert: every new sale logged in Dee's Stock (all of it is desserts), one email per save. */
+/* Owner alert: every new sale logged in Dee's Stock (all of it is desserts), one email per save, as a receipt:
+   each sale with what it came to (its bundle price when it was one), and the total. */
 async function saleAlert(env, before, after, me, origin) {
   const seen = new Set();
   (before.batches || []).forEach((b) => (b.sales || []).forEach((s) => seen.add(b.id + "|" + s.at + "|" + s.qty)));
@@ -1343,14 +1344,31 @@ async function saleAlert(env, before, after, me, origin) {
   const fresh = [];
   (after.batches || []).forEach((b) => (b.sales || []).forEach((s) => {
     if (s.kind || !(+s.qty > 0) || seen.has(b.id + "|" + s.at + "|" + s.qty)) return;   /* sales only, not gifts, waste or fixes */
-    fresh.push({ name: items.get(b.itemId) || "Dessert", qty: +s.qty, ch: s.ch || "", by: team.get(s.by) || me.name, at: s.at });
+    const each = +b.unitPrice || 0, amt = s.amt != null && isFinite(+s.amt) ? +s.amt : (+s.qty) * each;
+    fresh.push({ name: items.get(b.itemId) || "Dessert", qty: +s.qty, each, amt, mix: s.mix === true, ch: s.ch || "", by: team.get(s.by) || me.name, at: s.at });
   }));
   if (!fresh.length) return;
-  const lines = fresh.map((f) => f.qty + "× " + f.name + (f.ch ? " · " + f.ch : "") + " · " + dubaiTime(f.at) + " · logged by " + f.by);
-  const n = fresh.reduce((a, f) => a + f.qty, 0);
-  const mail = alertEmail({ title: "🍰 " + n + " dessert" + (n === 1 ? "" : "s") + " sold", lines, link: origin + "/" });
+  const short = (n) => String(n).replace(/ Cookie$/i, "");
+  const r2 = (n) => Math.round(n * 100) / 100;
+  /* one row per sale: the lines of a mixed bundle (logged together) become one "Mix of N" row */
+  const rows = [], groups = new Map();
+  fresh.forEach((f) => { if (!f.mix) return; const k = f.at; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(f); });
+  groups.forEach((g) => {
+    const byName = new Map(); g.forEach((f) => byName.set(f.name, (byName.get(f.name) || 0) + f.qty));
+    const n = g.reduce((a, f) => a + f.qty, 0);
+    rows.push({ at: g[0].at, label: "Mix of " + n, sub: [...byName].map(([k, q]) => q + " " + short(k)).join(" + "), amt: r2(g.reduce((a, f) => a + f.amt, 0)) });
+  });
+  fresh.filter((f) => !f.mix).forEach((f) => {
+    const bundle = Math.abs(f.amt - f.qty * f.each) > 0.005;
+    rows.push({ at: f.at, label: f.qty + "× " + f.name, sub: bundle ? f.qty + " for AED " + r2(f.amt) : "AED " + r2(f.each) + " each", amt: r2(f.amt) });
+  });
+  rows.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
+  const n = fresh.reduce((a, f) => a + f.qty, 0), total = r2(rows.reduce((a, r) => a + r.amt, 0));
+  const first = fresh.slice().sort((a, b) => (a.at < b.at ? -1 : 1))[0];
+  const mail = receiptEmail({ title: "🍰 " + n + " dessert" + (n === 1 ? "" : "s") + " sold",
+    meta: dubaiTime(first.at) + (first.ch ? " · " + first.ch : "") + " · logged by " + first.by, rows, total, link: origin + "/" });
   const set = ((after.alerts || {}).sales || []), list = set.length ? set : String(env.ALERT_TO || "").split(/[,;]/).map((x) => x.trim()).filter(Boolean);
-  if (list.length) await sendMail(env, { to: list[0], bcc: list.slice(1).join(","), fromName: "Dee's Stock alerts", ...mail });
+  if (list.length) await sendMail(env, { kind: "sales", to: list[0], bcc: list.slice(1).join(","), fromName: "Smash & Pass", ...mail });
 }
 
 /* ============ the Worker ============ */

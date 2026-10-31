@@ -12,7 +12,7 @@
  * cannot be made up for someone else's.
  */
 import qrcode from "qrcode-generator";
-import { mailReady, sendMail, orderEmail, alertEmail, dubaiTime } from "./mail.js";
+import { mailReady, sendMail, orderEmail, alertEmail, receiptEmail, dubaiTime } from "./mail.js";
 
 export const NEED = 9;
 /* `off` = not sold right now: kept so past visits still read right, hidden from the truck */
@@ -110,6 +110,23 @@ export function billOf(items, byId, mixes) {
   Object.entries(items).forEach(([id, n]) => { const m = byId.get(id); if (!m || m.cookie) return; sum += (+m.price || 0) * n; });
   return Math.round((sum + cookiesPrice(cookieCounts(items), mixes)) * 100) / 100;
 }
+/* an order as receipt rows: each item at its menu price, the cookies as their bundles (MIX OF 2 / MIX OF 3) and
+   single cookies at 10, with the flavours in a note. desserts = only what comes off the dessert stock. */
+export function receiptOf(items, mixes, desserts) {
+  const rows = [];
+  Object.entries(items).forEach(([id, n]) => { const m = MENU_BY_ID.get(id); if (!m || m.cookie || (desserts && !m.stock)) return;
+    const each = +m.price || 0;
+    rows.push({ label: n + "× " + m.name, sub: n > 1 ? "AED " + each + " each" : "", amt: Math.round(each * n * 100) / 100 }); });
+  const [cc, dc] = cookieCounts(items);
+  let inMix = 0;
+  Object.entries(mixes || {}).forEach(([k, q]) => { inMix += +k * q; rows.push({ label: (q > 1 ? q + "× " : "") + "Mix of " + k, sub: k + " cookies, any flavours", amt: (COOKIE_MIX[k] || 0) * q }); });
+  const single = Math.max(0, cc + dc - inMix);
+  if (single) rows.push({ label: single + "× Cookie", sub: single > 1 ? "AED " + COOKIE_EACH + " each" : "", amt: single * COOKIE_EACH });
+  const total = Math.round(rows.reduce((a, r) => a + r.amt, 0) * 100) / 100;
+  const note = cc + dc ? "Cookies: " + [cc ? cc + " Chocolate Chip" : "", dc ? dc + " Double Chocolate" : ""].filter(Boolean).join(" + ") + "." : "";
+  return { rows, total, note };
+}
+export const dessertReceipt = (items, mixes) => receiptOf(items, mixes, true);
 export const BURGER_MIN = 50;   // the Savory card stamps a bill over AED 50 only (since 30 Oct 2026)
 const MENU_BY_ID = new Map(PASS_MENU.filter((m) => !m.off).map((m) => [m.id, m]));   /* only what's on sale can be stamped or given */
 
@@ -381,7 +398,7 @@ export async function handlePass(request, env, path, d) {
   const alertMail = async (kind, fromName, mail, list) => {
     if (!mailReady(env) || !d.later) return;
     list = list || (await alertList(kind));
-    if (list.length) d.later(sendMail(env, { to: list[0], bcc: list.slice(1).join(","), fromName, ...mail }));
+    if (list.length) d.later(sendMail(env, { kind, to: list[0], bcc: list.slice(1).join(","), fromName, ...mail }));
   };
 
   /* ---- the truck poster: count every scan, then open the card page ---- */
@@ -719,14 +736,18 @@ export async function handlePass(request, env, path, d) {
       const ordersTo = mailReady(env) ? await alertList("orders") : [];
       const copied = mailReady(env) && c.email && !c.no_order_email && d.later;
       if (copied) {
+        /* the receipt: the whole order at the menu prices, less the welcome 10% when this order got it */
+        const rc = receiptOf(items, mixes, false);
+        if (welcome && welcome.kind === "discount" && rc.total > 0) { const off = Math.round(rc.total * 10) / 100; rc.rows.push({ label: "Welcome gift: 10% off", sub: "", amt: -off }); rc.total = Math.round((rc.total - off) * 100) / 100; }
+        rc.meta = dubaiTime(at) + (rc.note ? " · " + rc.note : "");
         const mail = orderEmail({
           first: c.first, need: NEED, card: { burger: after.burger, dessert: after.dessert }, points: after.points, gameMin: GAME_WINDOW_MIN,
-          items: itemsText,
+          items: itemsText, receipt: rc,
           link: origin + "/tap", unsub: origin + "/api/pass/unsub?p=" + encodeURIComponent(phone) + "&t=" + (await d.hmac(secret, "unsub:" + phone)).slice(0, 24)
         });
-        d.later(sendMail(env, { to: c.email, bcc: ordersTo.join(","), fromName: "Smash & Pass", ...mail }));
+        d.later(sendMail(env, { kind: "receipt", to: c.email, bcc: ordersTo.join(","), fromName: "Smash & Pass", ...mail }));
       } else if (ordersTo.length) {
-        await alertMail("orders", "Smash & Pass orders", alertEmail({
+        await alertMail("orders", "Smash & Pass", alertEmail({
           title: "🧾 New order · " + c.first + " " + String(c.last || "").charAt(0) + ". · " + itemsText,
           lines: [itemsText, "Savory card: " + (after.burger % NEED) + "/" + NEED + " · Dee'sert card: " + (after.dessert % NEED) + "/" + NEED + " · " + after.points + " points",
             "Stamped by " + me.name + " · " + dubaiTime(at)].concat(sold.logged.length
@@ -737,9 +758,10 @@ export async function handlePass(request, env, path, d) {
       if (sold.logged.length && mailReady(env)) {
         const salesTo = (await alertList("sales")).filter((a) => !ordersTo.some((o) => o.toLowerCase() === a.toLowerCase()));
         const n = sold.logged.reduce((a, x) => a + x.qty, 0);
-        if (salesTo.length) await alertMail("sales", "Dee's Stock alerts", alertEmail({
+        if (salesTo.length) await alertMail("sales", "Smash & Pass", receiptEmail({
           title: "🍰 " + n + " dessert" + (n === 1 ? "" : "s") + " sold",
-          lines: sold.logged.map((x) => x.qty + "× " + x.name + " · " + sold.ch + " · " + dubaiTime(at) + " · Pass Card, stamped by " + me.name),
+          meta: dubaiTime(at) + " · " + sold.ch + " · Pass Card, stamped by " + me.name,
+          ...dessertReceipt(items, mixes),
           link: origin + "/" }), salesTo);
       }
       return ok({ customer: after, added: { burger, dessert }, welcome, completed: done.map((x) => x[1]),
@@ -815,7 +837,7 @@ export async function handlePass(request, env, path, d) {
       if (!has.SMTP_USER || !has.SMTP_PASS || !has.ALERT_TO)
         return fail("Missing in Cloudflare: " + Object.keys(has).filter((k) => !has[k]).join(", ") + ". Add it as a Secret and deploy.");
       try {
-        const sent = await sendMail(env, { to: String(env.ALERT_TO).split(/[,;]/)[0], fromName: "Smash & Pass", ...alertEmail({
+        const sent = await sendMail(env, { kind: "test", to: String(env.ALERT_TO).split(/[,;]/)[0], fromName: "Smash & Pass", ...alertEmail({
           title: "✅ Test email from the Pass Card", lines: ["If you can read this, Gmail is connected.", "Sent " + dubaiTime() + " by " + me.name] }) });
         return sent ? ok({ to: String(env.ALERT_TO).split(/[,;]/)[0] }) : fail("ALERT_TO doesn't look like an email address.");
       } catch (e) {
@@ -866,7 +888,9 @@ export async function handlePass(request, env, path, d) {
       const scanLog = await all("SELECT at, src, device, browser, joined FROM pass_scan_log ORDER BY id DESC LIMIT 300");
       const pts = (await all("SELECT kind, COUNT(*) AS n, SUM(delta) AS pts FROM pass_points GROUP BY kind"));
       const plays = await all("SELECT kind, game, COUNT(*) AS n, AVG(score) AS avg FROM pass_plays WHERE finished IS NOT NULL GROUP BY kind, game");
-      return ok({ customers, visits, redeems, scans, scanLog, menu: PASS_MENU, need: NEED, points: pts, plays, rewards: REWARDS });
+      /* the latest emails sent, for the owner's email log (the table appears with the first email) */
+      const mails = await env.DB.prepare("SELECT at, kind, rcpt, copies, subject, ok, err FROM mail_log ORDER BY id DESC LIMIT 60").all().then((r) => r.results || []).catch(() => []);
+      return ok({ customers, visits, redeems, scans, scanLog, menu: PASS_MENU, need: NEED, points: pts, plays, rewards: REWARDS, mails });
     }
   }
   return fail("not_found", 404);
