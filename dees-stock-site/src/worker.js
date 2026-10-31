@@ -663,6 +663,32 @@ export const REPAIRS = {
   /* 31 Oct: the same again after closing, so the cookies sold later on the night of 30 Oct are at AED 9 too
      (it picks the same 2-for-16 sale as before: the earliest one) */
   "cookies-9-aed-30oct-close": (state) => REPAIRS["cookies-9-aed-30oct-final"](state),
+  /* 31 Oct, the owner's final word on the night of 30 Oct: two orders were a mixed pair for AED 16, every other cookie
+     was AED 9 on its own. So the night's cookies come to 9 each, less AED 2 for each of the two pairs. Sets every 30 Oct
+     cookie sale to 9 each, then makes two 2-cookie sales AED 16: mixed pairs logged together first, then lines of 2,
+     then AED 2 off a bigger line, then two single cookies at 8. Gifts, write-offs and other days stay. */
+  "cookies-30oct-two-pairs": (state) => {
+    const ids = new Set((state.items || []).filter((i) => /^(double chocolate|chocolate chip) cookie$/i.test(String(i.name || "").trim())).map((i) => i.id));
+    const day = "2026-10-30", lines = [];
+    (state.batches || []).forEach((b) => {
+      if (b.voided || !ids.has(b.itemId)) return;
+      (b.sales || []).forEach((x, i) => {
+        if (x.on !== day || x.kind === "gift" || x.kind === "waste" || x.fix) return;
+        x.amt = Math.round((+x.qty || 0) * 9 * 100) / 100;
+        const undone = (b.sales || []).some((u) => u.undo && u.revIdx === i);
+        if (!x.undo && !undone && x.qty > 0) lines.push(x);
+      });
+    });
+    lines.sort((p, q) => (String(p.at) < String(q.at) ? -1 : String(p.at) > String(q.at) ? 1 : 0));
+    const used = new Set(); let left = 2;
+    const groups = {}; lines.filter((x) => x.mix).forEach((x) => { (groups[x.at] = groups[x.at] || []).push(x); });
+    Object.values(groups).filter((g) => g.reduce((a, x) => a + x.qty, 0) === 2).forEach((g) => { if (!left) return; g.forEach((x) => { x.amt = 8 * x.qty; used.add(x); }); left--; });
+    lines.filter((x) => x.qty === 2 && !used.has(x)).forEach((x) => { if (!left) return; x.amt = 16; used.add(x); left--; });
+    lines.filter((x) => x.qty > 2 && !used.has(x)).forEach((x) => { while (left && x.amt - 2 >= x.qty * 8) { x.amt = Math.round((x.amt - 2) * 100) / 100; left--; } used.add(x); });
+    const ones = lines.filter((x) => x.qty === 1 && !used.has(x));
+    while (left && ones.length >= 2) { ones.shift().amt = 8; ones.shift().amt = 8; left--; }
+    return true;
+  },
   /* 30 Oct, the event: one cookie bundle was logged as 3 of one flavour for AED 25, but it was 2 Chocolate Chip +
      1 Double Chocolate. That one line becomes the mix: 2 off Chocolate Chip (16.67) and 1 off Double Chocolate (8.33).
      Only when there is exactly one such line that day, not undone; otherwise nothing changes. */
