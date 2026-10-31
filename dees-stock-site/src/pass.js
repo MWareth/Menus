@@ -74,8 +74,8 @@ export const PASS_MENU = [
   { id: "brownie", name: "Fresh Brownies (2 pcs)", card: "dessert", cat: "Dee'serts", price: 12.99, stamps: 1, stock: "Brownie Bag" },
   { id: "cb", name: "Crème Brûlée", card: "dessert", cat: "Dee'serts", price: 23, stamps: 1, stock: "Crème Brûlée" },
   { id: "choc", name: "Chocolate Cake", card: "dessert", cat: "Dee'serts", price: 45, stamps: 1, stock: "Chocolate Cake" },
-  { id: "cookie_cc", name: "Chocolate Chip Cookie", card: "dessert", cat: "Dee'serts", price: 9, cookie: true, stamps: 1, stock: "Chocolate Chip Cookie" },
-  { id: "cookie_dc", name: "Double Chocolate Cookie", card: "dessert", cat: "Dee'serts", price: 9, cookie: true, stamps: 1, stock: "Double Chocolate Cookie" },
+  { id: "cookie_cc", name: "Chocolate Chip Cookie", card: "dessert", cat: "Dee'serts", price: 10, cookie: true, stamps: 1, stock: "Chocolate Chip Cookie" },
+  { id: "cookie_dc", name: "Double Chocolate Cookie", card: "dessert", cat: "Dee'serts", price: 10, cookie: true, stamps: 1, stock: "Double Chocolate Cookie" },
   { id: "burger", name: "Burger", card: "burger", stamps: 1, off: true },   /* the one button before the full menu: kept so past visits read right */
   { id: "lazy", name: "Lazy Cake", card: "dessert", stamps: 1, stock: "Lazy Cake", off: true },
   { id: "pav", name: "Mini Pavlova", card: "dessert", stamps: 1, stock: "Mini Pavlova", off: true },
@@ -83,25 +83,32 @@ export const PASS_MENU = [
   { id: "double", name: "Double smash", card: "burger", stamps: 1, off: true },
   { id: "chicken", name: "Chicken burger", card: "burger", stamps: 1, off: true }
 ];
-/* cookies: 1 for 10, any 2 for 16, any 3 for 25. The order pays the cheapest
-   way to make up its cookies; counts = [Chocolate Chip, Double Chocolate] */
-const COOKIE_MOVES = [[1, 0, 9], [0, 1, 9]];   /* since 31 Oct: AED 9 each, no bundles */
-export function cookiesPrice(counts) {
-  const memo = {};
-  const f = (a, b) => {
-    if (!a && !b) return 0;
-    const k = a + "," + b;
-    if (!(k in memo)) memo[k] = Math.min(...COOKIE_MOVES.filter(([x, y]) => x <= a && y <= b).map(([x, y, p]) => p + f(a - x, b - y)));
-    return memo[k];
-  };
-  return f(counts[0] || 0, counts[1] || 0);
+/* cookies: AED 10 each. The cashier's MIX OF 2 (AED 16) and MIX OF 3 (AED 25) are bundles of any flavours
+   (since 31 Oct night): mixes = { 2: how many MIX OF 2, 3: how many MIX OF 3 }; the cookies in them are in the
+   counts too. Cookies outside a bundle are 10 each; nothing is bundled by itself. counts = [Chocolate Chip, Double Chocolate] */
+export const COOKIE_EACH = 10;
+export const COOKIE_MIX = { 2: 16, 3: 25 };
+/* the bundles an order can really have: no more cookies in bundles than the order has */
+export function cleanMixes(m, items) {
+  let left = (items.cookie_cc || 0) + (items.cookie_dc || 0);
+  const out = {};
+  [3, 2].forEach((n) => {
+    const q = Math.max(0, Math.min(20, Math.floor(Number((m || {})[n]) || 0), Math.floor(left / n)));
+    if (q) { out[n] = q; left -= q * n; }
+  });
+  return out;
+}
+export function cookiesPrice(counts, mixes) {
+  let inMix = 0, sum = 0;
+  Object.entries(mixes || {}).forEach(([n, q]) => { inMix += +n * q; sum += (COOKIE_MIX[n] || 0) * q; });
+  return sum + Math.max(0, (counts[0] || 0) + (counts[1] || 0) - inMix) * COOKIE_EACH;
 }
 const cookieCounts = (items) => [items.cookie_cc || 0, items.cookie_dc || 0];
 /* the bill for an order: menu prices, with the cookies at their bundle price */
-export function billOf(items, byId) {
+export function billOf(items, byId, mixes) {
   let sum = 0;
   Object.entries(items).forEach(([id, n]) => { const m = byId.get(id); if (!m || m.cookie) return; sum += (+m.price || 0) * n; });
-  return Math.round((sum + cookiesPrice(cookieCounts(items))) * 100) / 100;
+  return Math.round((sum + cookiesPrice(cookieCounts(items), mixes)) * 100) / 100;
 }
 export const BURGER_MIN = 50;   // the Savory card stamps a bill over AED 50 only (since 30 Oct 2026)
 const MENU_BY_ID = new Map(PASS_MENU.filter((m) => !m.off).map((m) => [m.id, m]));   /* only what's on sale can be stamped or given */
@@ -662,9 +669,10 @@ export async function handlePass(request, env, path, d) {
       /* one stamp per card per order: any desserts = 1 dessert stamp; burgers = 1 burger stamp only when the
          cashier ticks "Bill over AED 50" (since 30 Oct 2026) */
       if (!Object.keys(items).length) return fail("Pick at least one item.");
+      const mixes = cleanMixes(b.mixes, items);
       /* the bill, from the menu prices; the Savory stamp needs it over AED 50 (a stamp saved offline before the
          full menu came with the cashier's "Bill over AED 50" tick instead) */
-      const bill = billOf(items, MENU_BY_ID);
+      const bill = billOf(items, MENU_BY_ID, mixes);
       if (burger && !(bill > BURGER_MIN || b.over50 === true)) burger = 0;
       if (b.offline !== true) {
         const left = await stockLeft(env, d);
@@ -693,11 +701,11 @@ export async function handlePass(request, env, path, d) {
       /* an offline stamp keeps the time it was taken (up to a week back), so the sale lands on the right day */
       const now = Date.now(), t0 = b.offline === true ? Date.parse(b.at) : NaN;
       const at = new Date(t0 > now - 7 * 864e5 && t0 <= now ? t0 : now).toISOString();
-      const sold = await saleToStock(env, d, items, me, at);
+      const sold = await saleToStock(env, d, items, me, at, mixes);
       const done = [...filled("burger", phone, c.burger, burger), ...filled("dessert", phone, c.dessert, dessert)];
       await env.DB.batch([
         ...done.map(([p, k]) => completion(p, k)),
-        pointsRow(phone, (burger + dessert) * POINTS_PER_STAMP, "order", Object.entries(items).map(([k, n]) => n + "x " + k).join(", ") + (qid ? " #" + qid : "")),
+        pointsRow(phone, (burger + dessert) * POINTS_PER_STAMP, "order", Object.entries(items).map(([k, n]) => n + "x " + k).join(", ") + Object.entries(mixes).map(([n, q]) => ", " + q + "x mix of " + n).join("") + (qid ? " #" + qid : "")),
         env.DB.prepare("UPDATE pass_customers SET burger = burger + ?, dessert = dessert + ? WHERE phone = ?").bind(burger, dessert, phone),
         env.DB.prepare("INSERT INTO pass_visits (phone, at, items, by, burger, dessert) VALUES (?, ?, ?, ?, ?, ?)")
           .bind(phone, at, JSON.stringify(items), me.id, burger, dessert)
@@ -974,10 +982,10 @@ async function stockLeft(env, d) {
   return out;
 }
 const shortOf = (items, left) => Object.entries(items).map(([id, n]) => { const m = MENU_BY_ID.get(id); return m && m.stock && n > (left[id] || 0) ? (left[id] ? "Only " + left[id] + " " + m.name + " left" : m.name + " is sold out") : null; }).filter(Boolean);
-async function saleToStock(env, d, items, me, at) {
+async function saleToStock(env, d, items, me, at, mixes) {
   const want = Object.entries(items).map(([id, n]) => ({ m: MENU_BY_ID.get(id), n })).filter((x) => x.m && x.m.stock);
   /* cookies sold in a bundle: each one carries its share of the bundle price, so the stock's takings match the till */
-  const nCookies = want.filter((x) => x.m.cookie).reduce((a, x) => a + x.n, 0), cookieEach = nCookies ? cookiesPrice(cookieCounts(items)) / nCookies : 0;
+  const nCookies = want.filter((x) => x.m.cookie).reduce((a, x) => a + x.n, 0), cookieEach = nCookies ? cookiesPrice(cookieCounts(items), mixes) / nCookies : 0;
   if (!want.length) return { logged: [], short: [] };
   const on = new Date(Date.parse(at) + 4 * 3600e3).toISOString().slice(0, 10);
   const addDays = (ds, n) => { const t = new Date(ds + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() + (+n || 0)); return t.toISOString().slice(0, 10); };

@@ -823,6 +823,26 @@ export const REPAIRS = {
     other.sales = (other.sales || []).concat([{ qty: move, by: x.by, at: x.at, on: x.on, ch: x.ch, amt: Math.round((25 - keepAmt) * 100) / 100, mix: true }]);
     return true;
   },
+  /* 31 Oct, night: cookies go back to AED 10 each, any 2 for 16, any 3 for 25 (MIX OF 2 / MIX OF 3 take any flavours).
+     The cookies still on the truck sell at 10 from now; what already sold keeps the money it brought in (9 each). */
+  "cookies-10-bundles": (state) => {
+    const ids = new Set();
+    let changed = false;
+    (state.items || []).forEach((it) => {
+      if (!/^(double chocolate|chocolate chip) cookie$/i.test(String(it.name || "").trim())) return;
+      ids.add(it.id);
+      if (+it.price !== 10) { it.price = 10; changed = true; }
+      if (JSON.stringify(it.deals || []) !== "[[2,16],[3,25]]") { it.deals = [[2, 16], [3, 25]]; changed = true; }
+    });
+    const closed = new Set((state.weeks || []).map((w) => w.start));
+    (state.batches || []).forEach((b) => {
+      if (b.voided || !ids.has(b.itemId) || closed.has(b.drop || b.id) || +b.unitPrice === 10) return;
+      /* sales already logged without an amount keep the price they were sold at */
+      (b.sales || []).forEach((x) => { if ((!x.kind || x.kind === "sale") && x.amt == null) x.amt = (+x.qty || 0) * (+b.unitPrice || 0); });
+      b.unitPrice = 10; changed = true;
+    });
+    return changed;
+  },
 };
 
 /** Apply every repair not yet recorded in `done`; says which ones ran and whether the board moved. */

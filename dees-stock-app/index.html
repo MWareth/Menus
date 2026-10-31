@@ -3021,7 +3021,7 @@
           dl.filter(function (d) { return d[0] <= left; }).map(function (d) {
             return '<button class="btn dark sm" type="button" data-sell="' + b.id + '" data-n="' + d[0] + '" data-amt="' + d[1] + '">' + d[0] + " FOR " + (Math.round(d[1] * 100) / 100) + "</button>"; }).join("") +
           /* a bundle across two flavours that share the same bundles (cookies): MIX 3 FOR 25 takes from both lots */
-          (mixItems(b).length ? mixDeals(dl).map(function (d) {
+          (mixItems(b).length && !inCookieCard(b) ? mixDeals(dl).map(function (d) {
             return '<button class="btn dark sm" type="button" data-mix="' + b.id + '" data-n="' + d[0] + '" data-amt="' + d[1] + '">MIX ' + d[0] + " FOR " + (Math.round(d[1] * 100) / 100) + "</button>"; }).join("") : "") +
           '<button class="btn ghost sm" type="button" data-sellmany="' + b.id + '">OTHER…</button>' +
           '<button class="btn ghost sm" type="button" data-gift="' + b.id + '">GAVE AWAY</button>' +
@@ -4631,55 +4631,60 @@
   /* a bundle of two different flavours has its own price: 2 for 16 (two of the same stays at the item's own 2 for 18) */
   var MIX_PRICE = { 2: 16 };
   function mixDeals(list) { return list.map(function (d) { return MIX_PRICE[d[0]] != null ? [d[0], MIX_PRICE[d[0]]] : d; }); }
-  function cookieItems() { return S.items.filter(function (it) { return /cookie/i.test(it.name || "") && it.active !== false && dealsOf(it).length; }); }
+  function cookieItems() { return S.items.filter(function (it) { return /cookie/i.test(it.name || "") && it.active !== false && dealsOf(it).length; })
+    .sort(function (a, b) { return String(a.name) < String(b.name) ? -1 : 1; }); }   /* Chocolate Chip first, then Double Chocolate */
   function cookieLots(it, open) {
     return (open || live()).filter(function (x) { return x.itemId === it.id && remaining(x) > 0 && status(x) !== "expired" && !weekClosed(dropOf(x)); })
       .sort(function (a, c) { return a.madeOn < c.madeOn ? -1 : a.madeOn > c.madeOn ? 1 : 0; });
   }
+  /* MIX OF 2 (AED 16) and MIX OF 3 (AED 25): any flavours, one tap per cookie (since 31 Oct night) */
+  var COOKIE_MIX = [[2, 16], [3, 25]];
+  function inCookieCard(b) { var cks = cookieItems(); return cks.length >= 2 && cks.some(function (it) { return it.id === b.itemId; }); }
   function cookieMixCard(perm, open) {
     var cks = cookieItems();
     if (cks.length < 2 || !perm.canSell || readOnly) return "";
     var left = cks.map(function (it) { return cookieLots(it, open).reduce(function (a, x) { return a + remaining(x); }, 0); });
+    var all = left.reduce(function (a, x) { return a + x; }, 0);
     var h = '<div class="card" style="border:2px dashed var(--line)"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">' +
-      '<b style="font-size:17px">🍪 COOKIE MIX</b><span class="meta">' + cks.map(function (it, i) { return esc(it.name) + " " + left[i] + " left"; }).join(" · ") + "</span></div>" +
-      '<div class="meta" style="margin-top:4px">A bundle with more than one flavour: pick the bundle, then how many of each.</div><div class="acts">';
-    mixDeals(dealsOf(cks[0])).forEach(function (d) {
-      h += '<button class="btn dark sm" type="button" data-cmix="' + d[0] + '" data-amt="' + d[1] + '">MIX ' + d[0] + " FOR " + (Math.round(d[1] * 100) / 100) + "</button>";
+      '<b style="font-size:17px">🍪 COOKIE BUNDLES</b><span class="meta">' + cks.map(function (it, i) { return esc(it.name) + " " + left[i] + " left"; }).join(" · ") + "</span></div>" +
+      '<div class="meta" style="margin-top:4px">1 cookie ' + cur() + " " + money(+cks[0].price || 10) + " · any 2 for 16 · any 3 for 25. Tap the bundle, then pick each cookie's flavour.</div><div class=\"acts\">";
+    COOKIE_MIX.forEach(function (d) {
+      h += '<button class="btn dark" type="button" data-cmix="' + d[0] + '" data-amt="' + d[1] + '"' + (all >= d[0] ? "" : " disabled") + ">MIX OF " + d[0] + " · " + cur() + " " + money(d[1]) + "</button>";
     });
     return h + "</div></div>";
   }
   function cookieMix(n, amt) {
-    var cks = cookieItems(), got = cks.map(function () { return 0; });
+    var cks = cookieItems(), picks = [];
+    for (var z = 0; z < n; z++) picks.push(-1);
     var left = cks.map(function (it) { return cookieLots(it).reduce(function (a, x) { return a + remaining(x); }, 0); });
+    var got = function () { return cks.map(function (_, i) { return picks.filter(function (p) { return p === i; }).length; }); };
     var back = document.createElement("div"); back.className = "modal";
-    var priceNow = function () {   /* all one flavour: that flavour's own bundle price, not the mix price */
-      var used = got.filter(function (x) { return x > 0; }).length, one = got.indexOf(n);
-      if (used === 1 && one >= 0) { var d = dealsOf(cks[one]).filter(function (x) { return x[0] === n; })[0]; if (d) return d[1]; }
-      return amt;
-    };
     var paint = function () {
-      var tot = got.reduce(function (a, x) { return a + x; }, 0);
-      back.innerHTML = '<div class="modalbox" role="dialog" aria-modal="true" aria-label="Cookie mix"><h3>Cookie mix · ' + n + " for " + cur() + " " + money(amt) + "</h3>" +
-        '<div class="msg">How many of each? Pick ' + n + " in total.</div>" +
-        cks.map(function (it, i) {
-          return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px"><div><b>' + esc(itemLabel(it)) + '</b><div class="meta">' + left[i] + " left</div></div>" +
-            '<div style="display:flex;align-items:center;gap:10px"><button class="btn ghost sm" type="button" data-cm="' + i + '" data-d="-1"' + (got[i] ? "" : " disabled") + '>−</button>' +
-            '<b style="min-width:18px;text-align:center;font-size:18px">' + got[i] + '</b><button class="btn ghost sm" type="button" data-cm="' + i + '" data-d="1"' + (tot < n && got[i] < left[i] ? "" : " disabled") + ">+</button></div></div>";
+      var g = got(), done = picks.every(function (p) { return p >= 0; });
+      back.innerHTML = '<div class="modalbox" role="dialog" aria-modal="true" aria-label="Mix of ' + n + '"><h3>Mix of ' + n + " · " + cur() + " " + money(amt) + "</h3>" +
+        '<div class="msg">Tap the flavour of each cookie.</div>' +
+        picks.map(function (p, k) {
+          return '<div style="margin-top:12px"><div class="meta" style="font-weight:800">COOKIE ' + (k + 1) + '</div><div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">' +
+            cks.map(function (it, i) {
+              var room = left[i] - g[i] + (p === i ? 1 : 0) > 0;
+              return '<button class="btn ' + (p === i ? "pri" : "ghost") + '" type="button" style="flex:1;min-width:130px" data-cp="' + k + '" data-ci="' + i + '"' + (room ? "" : " disabled") + ">" +
+                (p === i ? "✓ " : "") + esc(itemLabel(it)) + "</button>";
+            }).join("") + "</div></div>";
         }).join("") +
-        '<div class="meta" style="margin-top:12px"><b>' + tot + " of " + n + "</b> picked" + (tot === n ? " · <b>" + cur() + " " + money(priceNow()) + "</b>" : "") + "</div>" +
-        '<div class="modalacts"><button class="btn ghost" type="button" data-m="no">Cancel</button><button class="btn pri" type="button" data-m="yes"' + (tot === n ? "" : " disabled") + ">LOG SALE</button></div></div>";
+        '<div class="meta" style="margin-top:12px">' + (done ? "<b>" + cks.map(function (it, i) { return g[i] ? g[i] + " " + esc(it.name) : ""; }).filter(Boolean).join(" + ") + " · " + cur() + " " + money(amt) + "</b>"
+          : picks.filter(function (p) { return p >= 0; }).length + " of " + n + " picked") + "</div>" +
+        '<div class="modalacts"><button class="btn ghost" type="button" data-m="no">Cancel</button><button class="btn pri" type="button" data-m="yes"' + (done ? "" : " disabled") + ">LOG BUNDLE</button></div></div>";
     };
     var close = function () { back.remove(); };
     back.addEventListener("click", function (e) {
       var t = e.target.closest("button"); if (!t || t.disabled) return;
-      if (t.hasAttribute("data-cm")) { got[+t.getAttribute("data-cm")] += +t.getAttribute("data-d"); paint(); return; }
+      if (t.hasAttribute("data-cp")) { picks[+t.getAttribute("data-cp")] = +t.getAttribute("data-ci"); paint(); return; }
       if (t.getAttribute("data-m") === "no") { close(); return; }
       if (t.getAttribute("data-m") !== "yes") return;
-      amt = priceNow();
       close();
-      var on = saleDate(), ch = curChannel(), at = new Date().toISOString(), each = amt / n, lines = [];
+      var g = got(), on = saleDate(), ch = curChannel(), at = new Date().toISOString(), each = amt / n, lines = [];
       cks.forEach(function (it, i) {
-        var need = got[i];
+        var need = g[i];
         cookieLots(it).forEach(function (x) { if (!need) return; var q = Math.min(need, remaining(x)); lines.push([x.id, q]); need -= q; });
       });
       var shares = lines.map(function (l) { return Math.round(l[1] * each * 100) / 100; });
@@ -4690,7 +4695,7 @@
           t2.sales = t2.sales || [];
           t2.sales.push(lines.length > 1 ? { qty: l[1], by: me.id, at: at, on: on, ch: ch, amt: shares[j], mix: true } : { qty: l[1], by: me.id, at: at, on: on, ch: ch, amt: amt });
         });
-      }, "Cookie mix: " + cks.map(function (it, i) { return got[i] ? got[i] + " " + it.name : ""; }).filter(Boolean).join(" + ") + " sold for " + cur() + " " + money(amt) + " — logged.");
+      }, "Mix of " + n + ": " + cks.map(function (it, i) { return g[i] ? g[i] + " " + it.name : ""; }).filter(Boolean).join(" + ") + " sold for " + cur() + " " + money(amt) + " — logged.");
     });
     paint(); document.body.appendChild(back);
   }
