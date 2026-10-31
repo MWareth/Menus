@@ -181,6 +181,122 @@ td{padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
 .cm small{display:block;color:var(--muted);font-weight:700;font-size:12px;margin-top:4px}
 .toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--paper);color:var(--carbon);font-weight:900;padding:11px 18px;border-radius:999px;max-width:90vw;z-index:9;font-size:14px}
 details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700}
+/* the owner dashboard on a computer: the same look as the other Tap & Treat dashboards (the phone keeps its own page) */
+:root{--db-card:#1E1C19;--db-bar:#FFD21C;--db-track:#2A2723;--db-page:#141311}
+/* the owner's Overview: stat tiles, the last 30 days, best sellers, what's waiting, what just happened */
+.dash{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
+.dhead h2{font-family:var(--body);font-weight:900;font-size:20px;letter-spacing:0}
+.dhead p{margin:2px 0 0;color:var(--muted);font-size:13.5px}
+.dtiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.dtile{background:var(--db-card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.dtile span{font-size:12.5px;color:var(--muted);font-weight:700}
+.dtile b{font-family:var(--body);font-weight:900;font-size:24px;line-height:1.1;color:var(--paper);font-variant-numeric:tabular-nums;white-space:nowrap}
+.dtile b small{font-size:15px;color:var(--muted);font-weight:800;margin-right:3px}
+.dtile small{font-size:12px;color:var(--muted)}
+.dtile.hot{border-color:var(--paper);box-shadow:inset 0 0 0 1px var(--paper)}
+.dcard{background:var(--db-card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;min-width:0}
+.dt{font-weight:900;font-size:15px;color:var(--paper)}
+.ds{color:var(--muted);font-size:12.5px;margin:2px 0 12px}
+.dcols{position:relative;height:170px;display:flex;align-items:flex-end;gap:2px;margin-left:24px}
+.dgrid{position:absolute;left:0;right:0;border-top:1px solid var(--line);font-size:10.5px;color:var(--muted)}
+.dgrid i{position:absolute;right:calc(100% + 6px);top:-7px;font-style:normal;font-variant-numeric:tabular-nums}
+.dcol{flex:1;display:flex;align-items:flex-end;justify-content:center;height:100%;position:relative;z-index:1}
+.dcol s{display:block;width:100%;max-width:24px;background:var(--db-bar);border-radius:4px 4px 0 0;min-height:0}
+.dcol s.z{background:none}
+.dcol em{position:absolute;bottom:calc(var(--h) + 3px);font-style:normal;font-size:11px;font-weight:900;color:var(--paper)}
+.dcol .tip{display:none;position:absolute;bottom:calc(var(--h) + 6px);left:50%;transform:translateX(-50%);background:var(--paper);color:var(--carbon);font-size:12px;font-weight:700;padding:5px 8px;border-radius:8px;white-space:nowrap;z-index:3;pointer-events:none}
+.dcol:hover .tip{display:block}.dcol:hover s{opacity:.8}
+.dx{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin:0 0 0 24px;border-top:1px solid var(--line);padding-top:5px}
+.dbar{display:grid;grid-template-columns:minmax(0,13fr) minmax(0,9fr) auto;gap:10px;align-items:center;padding:5px 0;font-size:13.5px}
+.dbar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dbar u{display:block;height:12px;background:var(--db-track);border-radius:0 4px 4px 0;text-decoration:none}
+.dbar u i{display:block;height:100%;background:var(--db-bar);border-radius:0 4px 4px 0}
+.dbar b{font-variant-numeric:tabular-nums;font-size:13px}
+.drow{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
+.drow:first-of-type{border-top:0}
+.drow .ic{flex:none;width:28px;height:28px;border-radius:50%;background:var(--db-track);display:grid;place-items:center;font-size:14px}
+.drow div{flex:1;min-width:0}
+.drow small{display:block;color:var(--muted);font-size:12px}
+.drow time{flex:none;color:var(--muted);font-size:12px;white-space:nowrap}
+.dstack{display:flex;flex-direction:column;gap:14px;min-width:0}
+.dempty{color:var(--muted);font-size:13.5px;padding:8px 0}
+.dlink{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:13.5px}
+.dlink:first-of-type{border-top:0}
+.dlink a{color:var(--paper);font-weight:800;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dmore{background:none;border:1px solid var(--line);border-radius:10px;padding:7px 12px;color:var(--paper);font-weight:800;font-size:13px;cursor:pointer;margin-top:10px}
+@media (min-width:1000px){
+  html.owner-page,html.owner-page body{background:var(--db-page)}
+  html.owner-page .brand img{height:46px!important}
+  html.owner-page .brand p{display:none}
+  .ow-sec .panel{background:var(--db-card);border-radius:16px;padding:18px 20px}
+  .ow-side{background:var(--db-card)}
+  .ow-sec.on.dsec{display:block}
+  .ow-sec.on.dsec .ow-h{display:none}
+  .dash{grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}
+  .dhead,.dtiles{grid-column:1/-1}
+  .dtiles{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .dstack{gap:16px}
+  .d8{grid-column:span 8}.d4{grid-column:span 4}.d6{grid-column:span 6}
+/* the gradient banner at the top of each owner section, in Smash & Pass's colours */
+.ow-ban{position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border-radius:16px;padding:18px 20px;color:#FFF8EE;
+  background:radial-gradient(120% 140% at 100% 0%,rgba(255,210,28,.30) 0%,rgba(255,210,28,0) 55%),linear-gradient(115deg,#0B0B0B 0%,#1C1C1C 45%,#3B3210 75%,#9C7C0C 100%)}
+.ow-ban::after{content:"";position:absolute;right:-40px;bottom:-60px;width:220px;height:220px;border-radius:50%;background:rgba(255,248,238,.07);pointer-events:none}
+.ow-ban h2{font-family:var(--body);font-weight:900;font-size:20px;letter-spacing:0;color:#FFF8EE;margin:0}
+.ow-ban p{margin:3px 0 0;color:rgba(255,248,238,.82);font-size:13px}
+.ban-pill{position:relative;z-index:1;border:1px solid rgba(255,248,238,.35);background:rgba(255,248,238,.14);color:#FFF8EE;font:inherit;font-weight:800;font-size:13px;padding:8px 14px;border-radius:999px;cursor:pointer;backdrop-filter:blur(4px)}
+.ban-pill:hover{background:rgba(255,248,238,.24)}
+.ow-sec:not(.dsec) .ow-ban{display:none}
+@media (min-width:1000px){
+  .ow-sec.on:not(.dsec) .ow-ban{display:flex;grid-column:1/-1}
+  .ow-sec.on:not(.dsec) .ow-h{display:none!important}
+  .ow-ban{padding:22px 26px}.ow-ban h2{font-size:22px}
+}
+@media (min-width:1000px){
+  html.owner-page .brand{display:none}
+  html.owner-page .staffbar{justify-content:flex-end;padding:4px 0 2px;font-size:11.5px}
+  html.owner-page .staffbar a{padding:5px 11px;font-size:11px}
+  .ow{grid-template-columns:210px minmax(0,1fr);gap:22px}
+  .ow .ow-side{padding:12px 8px;border-radius:14px;gap:2px;background:var(--db-card)}
+  .ow .ow-logo{display:block;height:44px;width:auto;align-self:flex-start;margin:6px 12px 18px}
+  .ow .ow-side button{display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:700;padding:9px 12px;border-radius:9px;color:var(--muted);background:none}
+  .ow .ow-side button:hover{background:var(--db-track);color:var(--paper)}
+  .ow .ow-side button[aria-current="page"]{background:var(--db-track);color:var(--paper);font-weight:800}
+  .ow .ow-side button[aria-current="page"] svg{color:var(--db-bar)}
+  .ow-h,.ow-sec.on .ow-h{font-family:var(--body)!important;font-weight:900!important;font-size:20px!important;letter-spacing:0}
+  .ow-h svg{display:none}
+  .ow-sec .panel{border-radius:12px;padding:16px 18px;gap:10px}
+  .ow-sec .panel .lbl{font-size:10.5px}
+  .ow-sec .note{font-size:12.5px}
+  .ow-sec .btn{padding:9px 14px;font-size:12px;border-radius:10px}
+  html.owner-page .ow-sec input,html.owner-page .ow-sec select,html.owner-page .ow-sec textarea{font-size:13.5px!important;padding:8px 10px}
+  .ow-sec .kpi{padding:10px 12px;border-radius:10px}.ow-sec .kpi b{font-size:20px}.ow-sec .kpi span{font-size:11.5px}
+  .ow-sec table{font-size:13px}
+  .dhead h2{font-size:19px}.dhead p{font-size:12.5px}
+  .dtile{padding:12px 14px;border-radius:12px}.dtile span{font-size:11.5px}.dtile b{font-size:22px}.dtile b small{font-size:12px}.dtile small{font-size:11.5px}
+  .dcard{border-radius:12px;padding:14px 16px}.dt{font-size:14px}.ds{font-size:12px;margin-bottom:10px}
+  .dbar,.drow,.dlink{font-size:13px}
+/* phone: each section is a fold, one open at a time */
+.ow-side,.ow-logo{display:none}
+.ow-main{display:flex;flex-direction:column;gap:10px}
+.ow-sec{display:flex;flex-direction:column;gap:16px}
+.ow-sec:not(.on)>:not(.ow-h){display:none}
+.ow-h{display:flex;width:100%;justify-content:flex-start;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin:0;font-family:var(--body);font-weight:800;font-size:15px;letter-spacing:0;color:var(--paper);cursor:pointer;text-align:left}
+.ow-h::after{content:"▾";font-size:13px;color:var(--muted);margin-left:auto}
+.ow-h svg{flex:none;color:var(--muted)}.ow-sec.on .ow-h svg{color:inherit}
+.ow-sec.on .ow-h{background:var(--paper);color:var(--carbon);border-color:var(--paper)}
+.ow-sec.on .ow-h::after{content:"▴";color:inherit}
+@media (min-width:1000px){
+  html.owner-page .wrap{max-width:1280px}
+  .ow{display:grid;grid-template-columns:230px minmax(0,1fr);gap:24px;align-items:start}
+  .ow-side{display:flex;flex-direction:column;gap:4px;position:sticky;top:16px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:8px}
+  .ow-side button{text-align:left;border:0;background:none;color:var(--paper);font-weight:800;font-size:15px;padding:11px 14px;border-radius:12px;cursor:pointer}
+  .ow-side button:hover{background:var(--line)}
+  .ow-side button[aria-current="page"]{background:var(--paper);color:var(--carbon)}
+  .ow-sec{display:none}
+  .ow-sec.on{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:16px;align-items:start}
+  .ow-sec.one.on{grid-template-columns:minmax(0,1fr)}
+  .ow-h,.ow-sec.on .ow-h{display:block;grid-column:1/-1;background:none;border:0;padding:0;margin:4px 0 0;font-family:var(--display);font-weight:400;font-size:28px;color:var(--paper);pointer-events:none}
+  .ow-h::after,.ow-sec.on .ow-h::after{content:none}
 </style>
 <style id="no-zoom">html{touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}input,select,textarea{font-size:16px!important}</style>
 <script>/* no zooming anywhere: iPhones ignore user-scalable=no, so pinches are stopped here too */
@@ -746,10 +862,11 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       alertsHtml() +
       '<div class="panel"><div class="lbl">✉️ Email</div><p class="note">Sends one test email to your alert address (ALERT_TO) and shows what Gmail answered.</p>' +
       '<button class="btn ghost" type="button" data-mailtest>SEND TEST EMAIL</button><p class="note" id="mailtest-out"></p></div>' : "";
-    var h = practiceHtml() +
-      '<div class="panel"><div class="lbl">The truck QR</div><div class="kpis">' + kpi(scanTotal, "scans of the truck QR") + kpi(scanToday, "scans today") +
+    var P = { buy: "", byday: "", who: "", log: "", pts: "", prize: "" };
+    P.games = practiceHtml();
+    P.qr = '<div class="panel"><div class="lbl">The truck QR</div><div class="kpis">' + kpi(scanTotal, "scans of the truck QR") + kpi(scanToday, "scans today") +
       kpi(O.customers.length, "signed up") + kpi(conv, "of scans signed up") + "</div></div>";
-    h += '<div class="panel"><div class="lbl">Customers and reviews</div><div class="kpis">' + kpi(back, "came back more than once") + kpi(O.visits.length, "stamped orders") +
+    P.cr = '<div class="panel"><div class="lbl">Customers and reviews</div><div class="kpis">' + kpi(back, "came back more than once") + kpi(O.visits.length, "stamped orders") +
       kpi(avg("food"), "food quality, " + revs.length + " reviews") + kpi(avg("vibe"), "atmosphere") + kpi(freeB, "free burgers given") + kpi(O.redeems.length - freeB, "free desserts given") +
       kpi(O.customers.filter(function (c) { return c.surprise && c.surprise.indexOf("dessert:") === 0; }).length, "welcome desserts (giveaways)") +
       kpi(O.customers.filter(function (c) { return c.surprise === "discount10"; }).length, "welcome 10% discounts") + "</div></div>";
@@ -757,30 +874,30 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       var pk = {}; O.points.forEach(function (p) { var k = p.kind.indexOf("ach:") === 0 ? "ach" : p.kind; pk[k] = pk[k] || { n: 0, pts: 0 }; pk[k].n += p.n; pk[k].pts += p.pts; });
       var gp = {}; (O.plays || []).forEach(function (p) { gp[p.kind === "scratch" ? "scratch" : p.game] = p; });
       var g = function (k) { return pk[k] || { n: 0, pts: 0 }; };
-      h += '<div class="panel"><div class="lbl">⚡ Smash Points & games</div><div class="kpis">' +
+      P.pts = '<div class="panel"><div class="lbl">⚡ Smash Points & games</div><div class="kpis">' +
         kpi(g("order").pts + g("game").pts + g("scratch").pts + g("ach").pts, "points given") + kpi(-g("reward").pts, "points spent") + kpi(g("reward").n, "rewards taken") +
         kpi((gp.scratch || { n: 0 }).n, "scratch cards") + Object.keys(GAME_INFO).map(function (k) { var p = gp[k] || { n: 0, avg: 0 };
           return kpi(p.n, GAME_INFO[k][1] + " plays" + (p.n ? " · avg " + Math.round(p.avg) : "")); }).join("") + "</div></div>";
     }
     if (lb) {
-      h += '<div class="panel"><div class="lbl">🏆 Prize · free meal for the month\'s #1 (min. ' + lb.prizeMin + " cards)</div>" +
+      P.prize = '<div class="panel"><div class="lbl">🏆 Prize · free meal for the month\'s #1 (min. ' + lb.prizeMin + " cards)</div>" +
         (lb.leader ? '<p class="note">Leading ' + monthName(lb.month) + ": <b>" + esc(lb.leader.name) + "</b> · " + esc(fmtPhone(lb.leader.phone)) + " · " + lb.leader.n + " cards</p>"
           : '<p class="note">Nobody has ' + lb.prizeMin + " cards yet in " + monthName(lb.month) + ".</p>") +
         (lb.lastWinner ? '<p class="note">🥇 ' + monthName(lb.lastWinner.month) + " winner: <b>" + esc(lb.lastWinner.name) + "</b> · " + esc(fmtPhone(lb.lastWinner.phone)) + " · " + lb.lastWinner.n + " cards. Give them their free meal.</p>" : "") +
         "</div>" + boardHtml(lb, null);
     }
-    if (Object.keys(items).length) h += '<div class="panel"><div class="lbl">What people buy</div><div class="tw"><table><thead><tr><th>ITEM</th><th class="r">BOUGHT</th></tr></thead><tbody>' +
+    if (Object.keys(items).length) P.buy = '<div class="panel"><div class="lbl">What people buy</div><div class="tw"><table><thead><tr><th>ITEM</th><th class="r">BOUGHT</th></tr></thead><tbody>' +
       O.menu.filter(function (m) { return items[m.id]; }).sort(function (a, b) { return items[b.id] - items[a.id]; }).map(function (m) { return "<tr><td>" + esc(m.name) + '</td><td class="r">' + items[m.id] + "</td></tr>"; }).join("") + "</tbody></table></div></div>";
     var cms = revs.filter(function (v) { return v.comment; });
     var byPhone = {}; O.customers.forEach(function (c) { byPhone[c.phone] = c; });
-    h += '<div class="panel"><div class="lbl">Comments</div><div class="cm">' + (cms.map(function (v) { var c = byPhone[v.phone];
+    P.comments = '<div class="panel"><div class="lbl">Comments</div><div class="cm">' + (cms.map(function (v) { var c = byPhone[v.phone];
       return "<div>" + esc(v.comment) + "<small>" + esc(c ? c.first + " " + c.last : "") + " · " + niceDate(v.at) + " · food " + v.food + "/5 · atmosphere " + v.vibe + "/5</small></div>"; }).join("") || '<p class="note">No comments yet.</p>') + "</div></div>";
-    h += '<div class="panel"><div class="lbl">Customers</div><div class="tw"><table><thead><tr><th>FIRST</th><th>LAST</th><th>MOBILE</th><th>EMAIL</th><th class="r">VISITS</th><th class="r">🍔</th><th class="r">🍰</th><th>OFFERS</th><th>BIRTHDAY</th><th>JOINED</th>' + (S.staff.role === "admin" ? "<th></th>" : "") + '</tr></thead><tbody>' +
+    P.customers = '<div class="panel"><div class="lbl">Customers</div><div class="tw"><table><thead><tr><th>FIRST</th><th>LAST</th><th>MOBILE</th><th>EMAIL</th><th class="r">VISITS</th><th class="r">🍔</th><th class="r">🍰</th><th>OFFERS</th><th>BIRTHDAY</th><th>JOINED</th>' + (S.staff.role === "admin" ? "<th></th>" : "") + '</tr></thead><tbody>' +
       O.customers.map(function (c) { return "<tr><td>" + esc(c.first) + "</td><td>" + esc(c.last) + "</td><td>" + esc(c.phone) + "</td><td>" + esc(c.email) + '</td><td class="r">' + (per[c.phone] || 0) +
         '</td><td class="r">' + c.burger + '</td><td class="r">' + c.dessert + "</td><td>" + (c.offers ? "yes" : "no") + "</td><td>" + (c.birthday ? esc(c.birthday) : "\u2013") + "</td><td>" + niceDate(c.joined) + "</td>" +
           (S.staff.role === "admin" ? '<td><button type="button" class="linkbtn" data-delcust="' + esc(c.phone) + '" data-delname="' + esc((c.first + " " + c.last).trim()) + '" style="color:var(--bad);font-weight:800">DELETE</button></td>' : "") + "</tr>"; }).join("") +
       '</tbody></table></div><button type="button" class="btn ghost" id="copy-csv">COPY FOR EXCEL</button></div>';
-    if (scans.length) h += '<div class="panel"><div class="lbl">Truck QR scans by day</div><div class="tw"><table><tbody>' +
+    if (scans.length) P.byday = '<div class="panel"><div class="lbl">Truck QR scans by day</div><div class="tw"><table><tbody>' +
       scans.slice(0, 30).map(function (s) { return "<tr><td>" + niceDate(s.day + "T12:00:00Z") + '</td><td class="r">' + s.n + "</td></tr>"; }).join("") + "</tbody></table></div></div>";
     /* every scan with its time, newest first, grouped by day (Dubai time) */
     var log = O.scanLog || [];
@@ -789,22 +906,134 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
       log.forEach(function (s) { var d = new Date(s.at).toLocaleDateString("en-GB", { timeZone: "Asia/Dubai", weekday: "short", day: "numeric", month: "short" }); if (!byDay[d]) { byDay[d] = []; days.push(d); } byDay[d].push(s); });
       var dv = {}; log.forEach(function (s) { var k = s.device || "Other"; dv[k] = (dv[k] || 0) + 1; });
       var joinedN = log.filter(function (s) { return s.joined; }).length;
-      h += '<div class="panel"><div class="lbl">Who scans</div><div class="kpis">' + Object.keys(dv).sort(function (a, b) { return dv[b] - dv[a]; }).map(function (k) { return kpi(dv[k], k); }).join("") +
+      P.who = '<div class="panel"><div class="lbl">Who scans</div><div class="kpis">' + Object.keys(dv).sort(function (a, b) { return dv[b] - dv[a]; }).map(function (k) { return kpi(dv[k], k); }).join("") +
         kpi(joinedN, "scans that signed up") + "</div></div>";
-      h += '<div class="panel"><div class="lbl">QR scans, one by one</div><p class="note">The time each poster or sticker QR was scanned. Scans since 16 Oct; the daily totals above go back further.</p>' +
+      P.log = '<div class="panel"><div class="lbl">QR scans, one by one</div><p class="note">The time each poster or sticker QR was scanned. Scans since 16 Oct; the daily totals above go back further.</p>' +
         days.map(function (d) { return '<div class="lbl" style="margin-top:10px">' + esc(d) + " · " + byDay[d].length + '</div><p class="note" style="line-height:1.9">' +
           byDay[d].map(function (s) { return new Date(s.at).toLocaleTimeString("en-GB", { timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit" }) +
             (s.device ? " " + esc(s.device) + (s.browser && s.browser !== "Other" ? "/" + esc(s.browser) : "") : "") + (s.src === "scan" ? " (ad)" : "") + (s.joined ? " ✅" : ""); }).join(" · ") + "</p>"; }).join("") +
         '<p class="note">✅ = that scan signed up. iPhone/Instagram means the QR was opened inside the Instagram app.</p></div>';
     }
-    return h + tools;
+    /* a phone keeps the page as it was: everything one under the other */
+    if (!wideOwner()) return P.games + P.qr + P.cr + P.pts + P.prize + P.buy + P.comments + P.customers + P.byday + P.who + P.log + tools;
+    var secs = [["overview", "Overview", overviewHtml()],
+      ["numbers", "Numbers", P.qr + P.cr + P.pts + P.buy + P.byday + P.who + P.log],
+      ["customers", "Customers", P.comments + P.customers],
+      ["rewards", "Rewards", P.prize || '<div class="panel"><p class="note">The monthly prize shows here once the leaderboard loads.</p></div>'],
+      ["games", "Games", P.games]];
+    if (tools) secs.push(["settings", "Settings", tools]);
+    return ownerLayout(secs);
+  }
+
+  var OWNER_CFG = { name: "Smash & Pass", card: "Pass Card", logoAlt: "Smash & Pass", links: [["🎁 Pass Card", "/tap"]] };
+  function overviewHtml() {
+    var O = owner, now = Date.now(), H = 4 * 3600e3;
+    var dayOf = function (t) { return new Date((typeof t === "number" ? t : Date.parse(t)) + H).toISOString().slice(0, 10); };
+    var ago = function (n) { return dayOf(now - n * 864e5); };
+    var today = ago(0), wk = ago(6), wk2 = ago(13), mo = today.slice(0, 7), lastMo = dayOf(Date.parse(mo + "-01T12:00:00Z") - 864e5).slice(0, 7);
+    var nf = function (n) { return Math.round(n).toLocaleString("en"); };
+    var since = function (t) { var m = Math.round((now - Date.parse(t)) / 60000); return m < 1 ? "now" : m < 60 ? m + " min" : m < 1440 ? Math.round(m / 60) + " h" : Math.round(m / 1440) + " d"; };
+    var names = {}; (O.menu || []).forEach(function (m) { names[m.id] = m.name; });
+    var byPhone = {}; O.customers.forEach(function (c) { byPhone[c.phone] = c; });
+    var who = function (p) { var c = byPhone[p]; return c ? esc(c.first + " " + (c.last || "").slice(0, 1) + ".") : esc(fmtPhone(p)); };
+    var visits = O.visits, vWeek = visits.filter(function (v) { return dayOf(v.at) >= wk; }).length;
+    var vLast = visits.filter(function (v) { var d = dayOf(v.at); return d >= wk2 && d < wk; }).length;
+    var per = {}; visits.forEach(function (v) { per[v.phone] = (per[v.phone] || 0) + 1; });
+    var buyers = Object.keys(per).length, regulars = Object.keys(per).filter(function (p) { return per[p] > 1; }).length;
+    var revs = visits.filter(function (v) { return v.food; }), avg = revs.length ? (revs.reduce(function (a, v) { return a + v.food; }, 0) / revs.length).toFixed(1) : "–";
+    var newWk = O.customers.filter(function (c) { return c.joined && dayOf(c.joined) >= wk; }).length;
+    var tile = function (label, value, sub, hot) { return '<div class="dtile' + (hot ? " hot" : "") + '"><span>' + label + "</span><b>" + value + "</b>" + (sub ? "<small>" + sub + "</small>" : "") + "</div>"; };
+    var tiles = '<div class="dtiles">' +
+      tile("Stamped this week", vWeek, "last week " + vLast) +
+      tile("Customers", nf(O.customers.length), newWk + " new this week") +
+      tile("Came back", buyers ? Math.round(regulars / buyers * 100) + "%" : "–", regulars + " of " + buyers + " bought again") +
+      tile("Food rating", avg === "–" ? "–" : avg + " ★", revs.length + " review" + (revs.length === 1 ? "" : "s")) + "</div>";
+    /* stamped orders per day, last 30 days */
+    var days = []; for (var i = 29; i >= 0; i--) days.push(ago(i));
+    var cnt = {}; visits.forEach(function (v) { var d = dayOf(v.at); if (d >= days[0]) cnt[d] = (cnt[d] || 0) + 1; });
+    var max = Math.max.apply(null, days.map(function (d) { return cnt[d] || 0; }).concat([1])), step = max <= 4 ? 1 : max <= 10 ? 2 : max <= 25 ? 5 : Math.ceil(max / 50) * 10, top = Math.ceil(max / step) * step;
+    var grid = ""; for (var g = step; g <= top; g += step) grid += '<div class="dgrid" style="bottom:' + (g / top * 100) + '%"><i>' + g + "</i></div>";
+    var total30 = days.reduce(function (a, d) { return a + (cnt[d] || 0); }, 0);
+    var cols = days.map(function (d) { var n = cnt[d] || 0, h = (n / top * 100).toFixed(1) + "%";
+      return '<div class="dcol" style="--h:' + h + '"><s' + (n ? "" : ' class="z"') + ' style="height:' + h + '"></s>' + (d === today && n ? "<em>" + n + "</em>" : "") +
+        '<span class="tip">' + new Date(d + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) + " · " + n + " stamped</span></div>"; }).join("");
+    var lbl = function (d) { return new Date(d + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short" }); };
+    var chart = '<div class="dcard d8"><div class="dt">Stamped orders per day</div><p class="ds">Last 30 days · ' + total30 + " in total</p>" +
+      '<div class="dcols" style="margin-top:18px" role="img" aria-label="Stamped orders per day, last 30 days, ' + total30 + ' in total">' + grid + cols + "</div>" +
+      '<div class="dx"><span>' + lbl(days[0]) + "</span><span>" + lbl(days[10]) + "</span><span>" + lbl(days[20]) + "</span><span>Today</span></div></div>";
+    /* best sellers, last 30 days */
+    var it = {}; visits.forEach(function (v) { if (dayOf(v.at) >= days[0]) Object.keys(v.items || {}).forEach(function (k) { it[k] = (it[k] || 0) + v.items[k]; }); });
+    var best = Object.keys(it).sort(function (a, b) { return it[b] - it[a]; }).slice(0, 7), bmax = best.length ? it[best[0]] : 1;
+    var sellers = '<div class="dcard d4"><div class="dt">Best sellers</div><p class="ds">Last 30 days, by pieces stamped</p>' +
+      (best.length ? best.map(function (k) { return '<div class="dbar"><span title="' + esc(names[k] || k) + '">' + esc(names[k] || k) + '</span><u><i style="width:' + (it[k] / bmax * 100) + '%"></i></u><b>' + it[k] + "</b></div>"; }).join("")
+        : '<p class="dempty">Nothing stamped in the last 30 days yet.</p>') + "</div>";
+    /* the welcome surprise and free items */
+    var freeB = (O.redeems || []).filter(function (r) { return r.card === "burger"; }).length;
+    var wait = '<div class="dcard"><div class="dt">Free treats</div><p class="ds">Cards completed and welcome surprises</p>' +
+      '<div class="dlink"><span>🍔 Free burgers given</span><b>' + freeB + "</b></div>" +
+      '<div class="dlink"><span>🍰 Free desserts given</span><b>' + ((O.redeems || []).length - freeB) + "</b></div>" +
+      '<div class="dlink"><span>🎁 Welcome desserts</span><b>' + O.customers.filter(function (c) { return c.surprise && c.surprise.indexOf("dessert:") === 0; }).length + "</b></div>" +
+      '<div class="dlink"><span>🏷️ Welcome 10% off</span><b>' + O.customers.filter(function (c) { return c.surprise === "discount10"; }).length + "</b></div></div>";
+    /* the latest activity: sign-ups, stamps, reviews and free items */
+    var ev = [];
+    O.customers.slice(0, 30).forEach(function (c) { if (c.joined) ev.push([c.joined, "🎉", "<b>" + who(c.phone) + "</b> got a " + OWNER_CFG.card, ""]); });
+    visits.slice(0, 30).forEach(function (v) { ev.push([v.at, "✅", "<b>" + who(v.phone) + "</b> was stamped", Object.keys(v.items || {}).map(function (k) { return v.items[k] + "× " + esc(names[k] || k); }).join(", ")]);
+      if (v.food) ev.push([v.at, "⭐", "<b>" + who(v.phone) + "</b> rated the food " + v.food + "/5", v.comment ? "“" + esc(v.comment) + "”" : ""]); });
+    (O.redeems || []).slice(0, 20).forEach(function (r) { ev.push([r.at, "🎁", "<b>" + who(r.phone) + "</b> got a free " + esc(names[r.item] || r.item || (r.card === "burger" ? "burger" : "dessert")), ""]); });
+    ev.sort(function (a, b) { return a[0] < b[0] ? 1 : -1; });
+    var feed = '<div class="dcard d6"><div class="dt">Latest activity</div><p class="ds">Sign-ups, stamps, reviews and free treats</p>' +
+      (ev.length ? ev.slice(0, 7).map(function (e) { return '<div class="drow"><span class="ic">' + e[1] + "</span><div>" + e[2] + (e[3] ? "<small>" + e[3] + "</small>" : "") + "</div><time>" + since(e[0]) + "</time></div>"; }).join("")
+        : '<p class="dempty">Nothing yet. It fills up as customers sign up and get stamped.</p>') + "</div>";
+    /* the counter QR and the shop's links */
+    var scans = O.scans.filter(function (x) { return x.src === "truck"; }), sToday = 0, sWeek = 0;
+    scans.forEach(function (x) { if (x.day === today) sToday += x.n; if (x.day >= wk) sWeek += x.n; });
+    var site = /\.workers\.dev$/.test(location.hostname) ? location.origin : "https://" + location.hostname.replace(/^www\./, "");
+    var links = '<div class="dcard"><div class="dt">Your links</div><p class="ds">Truck QR: ' + sToday + " scan" + (sToday === 1 ? "" : "s") + " today · " + sWeek + " this week</p>" +
+      OWNER_CFG.links.map(function (l) { var u = site + l[1];
+        return '<div class="dlink"><span>' + l[0] + '</span><a href="' + u + '" target="_blank" rel="noopener">' + esc(u.replace(/^https:\/\//, "")) + " ↗</a></div>"; }).join("") + "</div>";
+    var hr = new Date(now + H).getUTCHours(), hello = hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening";
+    return '<div class="dash"><div class="dhead ow-ban"><div><h2>' + hello + ", " + esc((S.staff.name || "").split(" ")[0]) + "</h2><p>" +
+      new Date(now).toLocaleDateString("en-GB", { timeZone: "Asia/Dubai", weekday: "long", day: "numeric", month: "long" }) + " · here's how " + OWNER_CFG.name + " is doing</p></div>" +
+      '<button type="button" class="ban-pill" data-osec="customers">👥 ' + nf(O.customers.length) + " Pass Card" + (O.customers.length === 1 ? "" : "s") + " ›</button></div>" +
+      tiles + chart + sellers + '<div class="d6 dstack">' + wait + links + "</div>" + feed + "</div>";
+  }
+  /* line icons for the owner sections (drawn, not emoji) */
+  var OW_ICONS = {
+    overview: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>',
+    orders: '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 8h8M8 12h8M8 16h5"/>',
+    reports: '<path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/>',
+    numbers: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+    customers: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+    money: '<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>',
+    menu: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+    rewards: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C9.5 3 11 5 12 8c1-3 2.5-5 4.5-5a2.5 2.5 0 0 1 0 5"/>',
+    games: '<rect x="2" y="6" width="20" height="12" rx="4"/><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01"/>',
+    settings: '<path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/>'
+  };
+  var OW_ABOUT = { numbers: "The truck QR, reviews, points and games, and what people buy.", customers: "Everyone with a Pass Card, and what they said.",
+    rewards: "The monthly prize: a free meal for the month's #1.", games: "Practice the games. No order needed, and scores don't count.", settings: "Backup, Google reviews, email alerts." };
+  function owIcon(k) { return '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (OW_ICONS[k] || "") + "</svg>"; }
+  /* the owner page in sections. On a computer: the sections down the left, one open at a time, its boxes side by side
+     (like HQ). On a phone: every section one under the other, as before. */
+  var ownerSec = (function () { try { return localStorage.getItem("ownerSec") || "overview"; } catch (e) { return "overview"; } })();
+  function wideOwner() { return window.matchMedia && matchMedia("(min-width:1000px)").matches; }
+  function ownerLayout(secs) {
+    /* on a phone every fold can be closed ("none"); a computer always shows one section */
+    if (!secs.some(function (x) { return x[0] === ownerSec; }) && !(ownerSec === "none" && !wideOwner())) ownerSec = secs[0][0];
+    return '<div class="ow"><nav class="ow-side" aria-label="Sections"><img class="ow-logo" src="/smash-logo.png" alt="' + esc(OWNER_CFG.logoAlt) + '">' + secs.map(function (x) {
+        return '<button type="button" data-osec="' + x[0] + '"' + (x[0] === ownerSec ? ' aria-current="page"' : "") + ">" + owIcon(x[0]) + "<span>" + x[1] + "</span></button>"; }).join("") + "</nav>" +
+      '<div class="ow-main">' + secs.map(function (x) {
+        return '<section class="ow-sec' + (x[0] === ownerSec ? " on" : "") + (x[0] === "customers" || x[0] === "menu" || x[0] === "reports" ? " one" : "") + (x[0] === "overview" ? " dsec" : "") + '"><button type="button" class="ow-h" data-osec="' + x[0] + '" aria-expanded="' + (x[0] === ownerSec) + '">' + owIcon(x[0]) + "<span>" + x[1] + "</span></button>" + (x[0] === "overview" ? "" : '<div class="ow-ban"><h2>' + x[1] + "</h2><p>" + (OW_ABOUT[x[0]] || "") + "</p></div>") + x[2] + "</section>"; }).join("") + "</div></div>";
   }
 
   /* ---------------- render + load ---------------- */
   /* one link for everyone: on /tap a crew login goes straight to its dashboard */
   function crewHome() { return S.staff && (S.staff.role === "admin" || S.staff.role === "dees") ? "/tap/owner" : "/tap/truck"; }
+  if (window.matchMedia) { var owMq = matchMedia("(min-width:1000px)"); var owFlip = function () { if (route().name === "owner") render(); };
+    if (owMq.addEventListener) owMq.addEventListener("change", owFlip); else if (owMq.addListener) owMq.addListener(owFlip); }
   function render() {
     var r = route();
+    document.documentElement.classList.toggle("owner-page", r.name === "owner" && !!S.staff && wideOwner());   /* the wide dashboard on a computer only */
     var bar = document.getElementById("staffbar");
     /* the customer page never shows anything staff-side; truck + owner are their own pages */
     var crew = r.name === "truck" || r.name === "owner" || r.name === "scan" && S.staff;
@@ -953,6 +1182,10 @@ details summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:700
         found = res.customer; redeemFor = null; render();
         toast("Points spent. " + (res.stock === "not_found" ? "Not found in stock: log it as GAVE AWAY by hand." : "Enjoy!"));
       });
+    }
+    else if (t.hasAttribute("data-osec")) {
+      ownerSec = t.getAttribute("data-osec"); try { localStorage.setItem("ownerSec", ownerSec); } catch (e) {}
+      render(); scrollTo(0, 0);
     }
     else if (t.hasAttribute("data-delcust")) {   /* owner: remove a customer for good (test accounts, deletion requests) */
       var dp = t.getAttribute("data-delcust"), dn = t.getAttribute("data-delname") || dp;
