@@ -19,14 +19,20 @@ const word = (s) => "=?UTF-8?B?" + b64(s) + "?=";   /* headers that may hold Ara
 const bare = (s) => String(s || "").replace(/[\r\n<>"]/g, "").trim();
 
 /* One message: plain text and HTML, both base64 so any language goes through untouched. */
-function message(from, fromName, to, subject, text, html) {
+/* Headers that keep the email out of Junk: the sender's name written plainly when it is plain English, a message ID
+   on the sender's own domain (the Gmail address it really comes from), and, on customer emails, an unsubscribe
+   link mail apps can show as a button (one tap, no page to open). */
+function message(from, fromName, to, subject, text, html, unsub) {
   const boundary = "pc" + Math.random().toString(36).slice(2);
+  const name = /^[\x20-\x7E]*$/.test(fromName) ? '"' + String(fromName).replace(/["\\]/g, "") + '"' : word(fromName);
+  const domain = String(from).split("@")[1] || "gmail.com";
   return [
-    "From: " + word(fromName) + " <" + from + ">",
+    "From: " + name + " <" + from + ">",
     "To: <" + to + ">",
-    "Subject: " + word(subject),
+    "Subject: " + (/^[\x20-\x7E]*$/.test(subject) ? subject : word(subject)),
     "Date: " + new Date().toUTCString(),
-    "Message-ID: <" + Date.now().toString(36) + Math.random().toString(36).slice(2) + "@deestreats.pass>",
+    "Message-ID: <" + Date.now().toString(36) + "." + Math.random().toString(36).slice(2) + "@" + domain + ">",
+  ].concat(unsub ? ["List-Unsubscribe: <" + unsub + ">", "List-Unsubscribe-Post: List-Unsubscribe=One-Click"] : []).concat([
     "MIME-Version: 1.0",
     'Content-Type: multipart/alternative; boundary="' + boundary + '"',
     "",
@@ -42,7 +48,7 @@ function message(from, fromName, to, subject, text, html) {
     wrap(b64(html)),
     "--" + boundary + "--",
     ""
-  ].join("\r\n");
+  ]).join("\r\n");
 }
 
 async function open(env) {
@@ -82,7 +88,7 @@ export async function sendMail(env, opts) {
     throw e;
   }
 }
-async function sendNow(env, { to, bcc, subject, text, html, fromName }) {
+async function sendNow(env, { to, bcc, subject, text, html, fromName, unsub }) {
   if (!mailReady(env)) return false;
   to = bare(to);
   const ok = (a) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a);
@@ -113,7 +119,7 @@ async function sendNow(env, { to, bcc, subject, text, html, fromName }) {
   };
   try {
     await step(null, ["220"]);
-    await step("EHLO deestreats.pass", ["250"]);
+    await step("EHLO " + (user.split("@")[1] || "localhost"), ["250"]);
     await step("AUTH LOGIN", ["334"]);
     await step(b64(user), ["334"]);
     await step(b64(String(env.SMTP_PASS).replace(/\s+/g, "")), ["235"]);
@@ -125,7 +131,7 @@ async function sendNow(env, { to, bcc, subject, text, html, fromName }) {
     }
     if (refused.length === 1 + hidden.length) throw new Error(refused.join(" | "));
     await step("DATA", ["354"]);
-    const body = message(user, fromName || "Smash & Pass", to, subject, text, html)
+    const body = message(user, fromName || "Smash & Pass", to, subject, text, html, unsub)
       .split("\r\n").map((l) => (l.startsWith(".") ? "." + l : l)).join("\r\n");
     await step(body + "\r\n.", ["250"]);
     await writer.write(enc.encode("QUIT\r\n")).catch(() => {});
@@ -185,7 +191,7 @@ export function orderEmail({ first, items, receipt, card, need, points, gameMin,
     "\n\nSavory card: " + (card.burger % need) + "/" + need + "\nDee'sert card: " + (card.dessert % need) + "/" + need +
     (freeB ? "\nFree burgers waiting: " + freeB : "") + (freeD ? "\nFree desserts waiting: " + freeD : "") +
     "\nSmash Points: " + points + "\n\nYour games are open for " + gameMin + " minutes: " + link + "\n\nStop order emails: " + unsub;
-  return { subject: receipt && receipt.rows && receipt.rows.length ? "Your Smash & Pass receipt · AED " + (Math.round(receipt.total * 100) / 100).toFixed(2) : "Thanks for your order! Your Pass Card is updated", html, text };
+  return { subject: receipt && receipt.rows && receipt.rows.length ? "Your Smash & Pass receipt: AED " + (Math.round(receipt.total * 100) / 100).toFixed(2) : "Thanks for your order! Your Pass Card is updated", html, text, unsub };
 }
 
 /* a sale as a receipt: every line with what it came to, and the total paid.

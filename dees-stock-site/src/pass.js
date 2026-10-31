@@ -574,7 +574,8 @@ export async function handlePass(request, env, path, d) {
   }
 
   /* the "Stop order emails" link in every order email */
-  if (path === "/api/pass/unsub" && request.method === "GET") {
+  /* GET: the link in the email; POST: the mail app's own unsubscribe button (one tap) */
+  if (path === "/api/pass/unsub" && (request.method === "GET" || request.method === "POST")) {
     const u = new URL(request.url), phone = normPhone(u.searchParams.get("p") || "");
     const good = validPhone(phone) && d.sameString(u.searchParams.get("t") || "", (await d.hmac(secret, "unsub:" + phone)).slice(0, 24));
     if (good) await env.DB.prepare("UPDATE pass_customers SET no_order_email = 1 WHERE phone = ?").bind(phone).run();
