@@ -774,6 +774,26 @@ export const REPAIRS = {
     });
     return true;
   },
+  /* 31 Oct: the owner set what Smash is charged per cookie: Double Chocolate AED 3, Chocolate Chip AED 2.68. The 30 Oct
+     cookies (not paid yet) move to it too: the charge plus the share of the delivery the lot already carries. */
+  "cookies-30oct-new-charge": (state) => {
+    const want = { "double chocolate cookie": 3, "chocolate chip cookie": 2.68 };
+    const closed = new Set((state.weeks || []).map((w) => w.start));
+    let changed = false;
+    (state.items || []).forEach((it) => {
+      const k = String(it.name || "").trim().toLowerCase();
+      if (!(k in want)) return;
+      if (it.chargeCost == null || it.chargeCost === "") { it.chargeCost = want[k]; changed = true; }
+      const charge = +it.chargeCost;
+      (state.batches || []).forEach((b) => {
+        if (b.voided || b.itemId !== it.id || b.madeOn !== "2026-10-30" || closed.has(b.drop || b.id) || b.unitCost == null) return;
+        const deliv = b.deliveryEach != null ? +b.deliveryEach : 0.4553;
+        const each = Math.round((charge + deliv) * 10000) / 10000;
+        if (Math.abs(+b.unitCost - each) > 0.0001) { b.unitCost = each; changed = true; }
+      });
+    });
+    return changed;
+  },
   /* 30 Oct, the event: one cookie bundle was logged as 3 of one flavour for AED 25, but it was 2 Chocolate Chip +
      1 Double Chocolate. That one line becomes the mix: 2 off Chocolate Chip (16.67) and 1 off Double Chocolate (8.33).
      Only when there is exactly one such line that day, not undone; otherwise nothing changes. */
